@@ -1,6 +1,6 @@
 // DO NOT EDIT
 // Generated automatically using libclang using the command :
-// c++2py.py ../c++/ctint.hpp -p -mpytriqs.applications.impurity_solvers.ctint_new -o ctint_new --moduledoc "The ctint solver"
+// c++2py.py ../c++/ctint.hpp -p -mpytriqs.applications.impurity_solvers.ctint_keldysh -o ctint_keldysh --moduledoc "The ctint solver"
 
 
 // --- C++ Python converter for solve_parameters_t
@@ -34,22 +34,29 @@ template <> struct py_converter<solve_parameters_t> {
    r = init_default;
  }
 
+ template <typename T> static void _get_optional(PyObject *dic, const char *name, T &r) {
+  if (PyDict_Contains(dic, pyref::string(name)))
+   r = convert_from_python<T>(PyDict_GetItemString(dic, name));
+  else
+   r = T{};
+ }
+
  static solve_parameters_t py2c(PyObject *dic) {
   solve_parameters_t res;
   res.U = convert_from_python<double>(PyDict_GetItemString(dic, "U"));
   res.L = convert_from_python<int>(PyDict_GetItemString(dic, "L"));
   res.tmax = convert_from_python<double>(PyDict_GetItemString(dic, "tmax"));
   res.alpha = convert_from_python<double>(PyDict_GetItemString(dic, "alpha"));
-  _get_optional(dic, "p_dbl"                 , res.p_dbl                   , 0.5);
-  _get_optional(dic, "max_perturbation_order", res.max_perturbation_order  , 3);
-  _get_optional(dic, "min_perturbation_order", res.min_perturbation_order  , 0);
+  _get_optional(dic, "p_dbl"                 , res.p_dbl                    ,0.5);
+  _get_optional(dic, "max_perturbation_order", res.max_perturbation_order   ,3);
+  _get_optional(dic, "min_perturbation_order", res.min_perturbation_order   ,0);
   res.n_cycles = convert_from_python<int>(PyDict_GetItemString(dic, "n_cycles"));
-  _get_optional(dic, "length_cycle"          , res.length_cycle            , 50);
-  _get_optional(dic, "n_warmup_cycles"       , res.n_warmup_cycles         , 5000);
-  _get_optional(dic, "random_seed"           , res.random_seed             , 34788+928374*triqs::mpi::communicator().rank());
-  _get_optional(dic, "random_name"           , res.random_name             , "");
-  _get_optional(dic, "max_time"              , res.max_time                , -1);
-  _get_optional(dic, "verbosity"             , res.verbosity               , ((triqs::mpi::communicator().rank()==0)?3:0));
+  _get_optional(dic, "length_cycle"          , res.length_cycle             ,50);
+  _get_optional(dic, "n_warmup_cycles"       , res.n_warmup_cycles          ,5000);
+  _get_optional(dic, "random_seed"           , res.random_seed              ,34788+928374*triqs::mpi::communicator().rank());
+  _get_optional(dic, "random_name"           , res.random_name              ,"");
+  _get_optional(dic, "max_time"              , res.max_time                 ,-1);
+  _get_optional(dic, "verbosity"             , res.verbosity                ,((triqs::mpi::communicator().rank()==0)?3:0));
   return res;
  }
 

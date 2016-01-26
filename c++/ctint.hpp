@@ -23,7 +23,7 @@ class ctint_solver {
 
  array_view <double,2> CnSn() { return cn_sn;}
  
- // ???
+ // FIXME : get it from matrix of the det...
  double c0()   { return imag(g0_lesser(mindex(0,0,0),0.0)); } ///< non interacting charge
  
  TRIQS_WRAP_ARG_AS_DICT // Wrap the solver parameters as a ** call in python with the clang & c++2py tool
