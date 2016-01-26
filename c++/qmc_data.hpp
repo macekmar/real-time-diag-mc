@@ -2,16 +2,13 @@
 #include <triqs/gfs.hpp>
 #include "./parameters.hpp"
 #include <triqs/det_manip.hpp>
-//#include <cmath>
 
 using triqs::det_manip::det_manip;
 using namespace triqs::gfs;
+
 using gf_latt_time_t = gf<cartesian_product<cyclic_lattice, retime>, scalar_valued, no_tail>;
 
-/// The index other than time, can be space coordinate 
-using space_index_t = gf_mesh<cyclic_lattice>::index_t;
-
-// ----------------------------------------------------
+// --------------  time --------------------------------------
 
 /// Storage of the value of the time. A double, without any possible operations and cast.
 class qmc_time_t {
@@ -24,6 +21,33 @@ class qmc_time_t {
  friend bool operator==(qmc_time_t x, qmc_time_t y) { return x.t == y.t; }
  friend bool operator>(qmc_time_t x, qmc_time_t y) { return x.t > y.t; }
 };
+
+// ----------------------------------------------------
+
+#define LATTICE
+
+// three cases
+#ifdef LATTICE
+using gf0_t =gf_latt_time_t; // the type of g0< and g0>
+using space_index_t = gf_mesh<cyclic_lattice>::index_t; // The index other than time, can be space coordinate
+template <typename G, typename X, typename T> auto _call(G &g, X &&x, T &&t) { return g(x, t); }
+template <typename G, typename X> auto _call0(G &g, X &&x) { return g(mindex(0, 0, 0), 0.0); }
+#endif
+
+#ifdef IMPURITY_SCALAR
+using gf0_t = gf<retime, scalar_valued, no_tail>;
+using space_index_t = int;
+template <typename G, typename X, typename T> auto _call(G &g, X &&x, T &&t) { return g(t); }
+template <typename G, typename X> auto _call0(G &g, X &&x) { return g(0.0); }
+#endif
+
+#ifdef IMPURITY_MATRIX
+using gf0_t = gf<retime, matrix_valued, no_tail>;
+using space_index_t = int;
+template <typename G, typename X, typename T> auto _call(G &g, X &&x, T &&t) { return g(t)(x[0],x[1]); }
+template <typename G, typename X> auto _call0(G &g, X &&x) { return g(0.0)(x[0],x[1]); }
+#endif
+
 
 /// A point in time on the double contour.
 struct point {
@@ -43,19 +67,17 @@ inline point flip_index(point const &t) { return {t.x, t.time, 1 - t.k_index}; }
 // It is a (kind of) lambda, but I need its explicit type below to declare det_manip, so I write it explicitely here.
 struct g0_keldysh_t {
 
- gf_latt_time_t const &g0_lesser;
- gf_latt_time_t const &g0_greater;
+ gf0_t const &g0_lesser;
+ gf0_t const &g0_greater;
  dcomplex alpha;
  qmc_time_t t_max;
 
  dcomplex operator()(point const &x, point const &y) const {
 
-  bool y_at_tmax = (y.time == t_max); // if true, we need a special GF for the observable
-
-  // do not put alpha for the time_max
-  if (x == y) return g0_lesser(mindex(0, 0, 0), 0.0) - (y_at_tmax ? 0_j : 1_j * alpha);
-
+  // do not put alpha for the time_max even at equal time
+  if (x == y) return _call0(g0_lesser,x) - ((y.time == t_max) ? 0_j : 1_j * alpha);
   auto dx = x.x - y.x;
+
   double dt = double(x.time) - double(y.time);
   // mapping: is it lesser or greater ?
   //  x    y    (x.time > y.time)   L/G ?
@@ -67,7 +89,7 @@ struct g0_keldysh_t {
   //  0    1           *            L
   //  1    0           *            G
   bool is_lesser = (x.k_index == y.k_index ? (x.k_index xor (x.time > y.time)) : y.k_index);
-  return (is_lesser ? g0_lesser(dx, dt) : g0_greater(dx, dt));
+  return (is_lesser ? _call(g0_lesser, dx, dt) : _call(g0_greater, dx, dt));
 
   // old code. slower because more tests 
   // if (x.k_index == 0 && y.k_index == 0) return (x.time > y.time ? g0_greater(dr, dt) : g0_lesser(dr, dt));

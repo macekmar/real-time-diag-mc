@@ -8,24 +8,27 @@ namespace mpi = triqs::mpi;
 struct measure_cs {
 
  qmc_data_t const *data; // Pointer to the MC qmc_data_t
- array<double, 2> &cn_sn;
+ array<double, 1> &cn;
+ array<double, 1> &sn;
  long Z = 0;
 
- measure_cs(qmc_data_t const *data, array<double, 2> &cn_sn) : data(data), cn_sn(cn_sn) { cn_sn() = 0; }
+ measure_cs(qmc_data_t const *data, array<double, 1> *cn, array<double, 1> *sn) : data(data), cn(*cn), sn(*sn) {
+}
 
  void accumulate(dcomplex sign) {
   Z++;
-  int N = data->perturbation_order;
-  cn_sn(0, N) += 1;
-  cn_sn(1, N) += real(sign);
+  int k = data->perturbation_order;
+  cn(k) += 1;
+  sn(k) += real(sign);
  }
 
  void collect_results(mpi::communicator c) {
   Z = mpi_all_reduce(Z, c);
-  cn_sn = mpi_all_reduce(cn_sn, c);
-  for (int i = 0; i < second_dim(cn_sn()); ++i) {
-   if (std::isnormal(cn_sn(0, i))) cn_sn(1, i) /= cn_sn(0, i);
-   cn_sn(0, i) /= Z;
+  cn = mpi_all_reduce(cn, c);
+  sn = mpi_all_reduce(sn, c);
+  for (int i = 0; i < first_dim(cn); ++i) {
+   if (std::isnormal(cn(i))) sn(i) /= cn(i);
+   cn(i) /= Z;
   }
  }
 };

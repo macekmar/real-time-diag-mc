@@ -3,16 +3,12 @@
 #include "./qmc_data.hpp"
 #include "./parameters.hpp"
 
-// using namespace triqs::gfs;
-// namespace mpi = triqs::mpi;
-
 namespace moves {
 
 struct common {
  qmc_data_t *data;
  const solve_parameters_t *params;
  triqs::mc_tools::random_generator &rng;
- int L = params->L;
  double t_max_L_L_U = params->tmax * params->L * params->L * params->U;
  bool quick_exit = false;
  dcomplex sum_dets = 0;

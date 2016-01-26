@@ -11,7 +11,6 @@
 
 using namespace triqs::arrays;
 using namespace triqs::lattice;
-//namespace h5 = triqs::h5;
 using namespace triqs::gfs;
 using namespace triqs::arrays;
 using triqs::utility::mindex;
@@ -24,7 +23,11 @@ ctint_solver::ctint_solver(double beta, double mu, int n_freq, double t_min, dou
 
 // -------------------------------------------------------------------------
 // The method that runs the qmc
-void ctint_solver::solve(solve_parameters_t const &params) {
+std::pair<array<double, 1>, array<double, 1>> ctint_solver::solve(solve_parameters_t const &params) {
+
+ auto cn = array<double, 1>(params.max_perturbation_order + 1); ///< measurement of c_n
+ cn() = 0;
+ auto sn = cn;
 
  // Prepare the data
  auto data = qmc_data_t{};
@@ -33,10 +36,15 @@ void ctint_solver::solve(solve_parameters_t const &params) {
  // Initialize the M-matrices. 100 is the initial matrix size
  for (auto spin : {up, down}) data.matrices.emplace_back(g0_keldysh_t{g0_lesser, g0_greater, params.alpha, t_max}, 100);
 
+ // Insert the operators to be measured.
  // We measure the density
  // For up, we insert the fixed pair of times (t_max, t_max), Keldysh index +-.
+ //FIXME: Code dependent
  data.matrices[up].insert_at_end({mindex(0, 0, 0), t_max, 0}, {mindex(0, 0, 0), t_max, 1}); // C^+ C
 
+ cn(0)= imag(data.matrices[up].determinant() * data.matrices[down].determinant());
+ sn(0)= 1;
+ if (params.max_perturbation_order == 0) return {cn, sn};
 
  // Construct a Monte Carlo loop
  auto qmc = triqs::mc_tools::mc_generic<dcomplex>(params.n_cycles, params.length_cycle, params.n_warmup_cycles,
@@ -51,10 +59,15 @@ void ctint_solver::solve(solve_parameters_t const &params) {
   qmc.add_move(moves::insert2{&data, &params, qmc.get_rng()}, "insertion2", params.p_dbl);
   qmc.add_move(moves::remove2{&data, &params, qmc.get_rng()}, "removal2", params.p_dbl);
  }
- qmc.add_measure(measure_cs{&data, cn_sn}, "M measurement");
+ qmc.add_measure(measure_cs{&data, &cn, &sn}, "M measurement");
 
- // Run and collect results
+ // Run
  qmc.start(1.0, triqs::utility::clock_callback(params.max_time));
+ 
+ // Collect results
+ mpi::communicator world;
  qmc.collect_results(world);
+ return {cn, sn};
+
 }
 

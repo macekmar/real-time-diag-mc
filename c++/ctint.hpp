@@ -1,5 +1,5 @@
 #include <triqs/gfs.hpp>
-#include "./parameters.hpp"
+#include "./qmc_data.hpp"
 
 // ------------ The main class of the solver -----------------------
 
@@ -8,9 +8,7 @@ namespace mpi = triqs::mpi;
 
 class ctint_solver {
 
- gf<cartesian_product<cyclic_lattice, retime>, scalar_valued, no_tail> g0_lesser, g0_greater;
- array<double, 2> cn_sn = array<double, 2>(2, 20); ///< measurement of c_n and s_n at different n
- mpi::communicator world;
+ gf0_t g0_lesser, g0_greater;
 
  public:
  ctint_solver(double beta,
@@ -21,12 +19,8 @@ class ctint_solver {
               int L,
               int Lk);
 
- array_view <double,2> CnSn() { return cn_sn;}
- 
- // FIXME : get it from matrix of the det...
- double c0()   { return imag(g0_lesser(mindex(0,0,0),0.0)); } ///< non interacting charge
- 
  TRIQS_WRAP_ARG_AS_DICT // Wrap the solver parameters as a ** call in python with the clang & c++2py tool
- void solve(solve_parameters_t const & params);
+     std::pair<array<double, 1>, array<double, 1>>
+     solve(solve_parameters_t const& params);
 };
 

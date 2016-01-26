@@ -2,18 +2,19 @@
 #include <triqs/det_manip.hpp>
 #include "./keldysh_sum.hpp"
 
-using triqs::det_manip::det_manip;
-
-
-// ------------ QMC insertion move --------------------------------------
-
 namespace moves {
 
-auto get_random_lattice_point(int L, triqs::mc_tools::random_generator &rng) {
- int rx = rng(L); // x coordinate
- int ry = rng(L); // y coordinate
- return mindex(rx, ry, 0);
+#ifdef LATTICE 
+point get_random_point(triqs::mc_tools::random_generator &rng, const solve_parameters_t *params) {
+ int rx = rng(params->L);                // x coordinate
+ int ry = rng(params->L);                // y coordinate
+ auto r = mindex(rx, ry, 0);             // point on the lattice
+ auto t = qmc_time_t{rng(params->tmax)}; // new time
+ return {r, t, 0};
 }
+#endif
+
+// ------------ QMC insertion move --------------------------------------
 
 dcomplex insert::attempt() {
 
@@ -22,10 +23,8 @@ dcomplex insert::attempt() {
  if (quick_exit) return 0;
 
  // insert the new line and col.
- auto r = get_random_lattice_point(L, rng);
- auto t = qmc_time_t{rng(params->tmax)}; // new time
-
- for (auto &m : data->matrices) m.insert(k, k, {r, t, 0}, {r, t, 0});
+ auto p = get_random_point(rng, params);
+ for (auto &m : data->matrices) m.insert(k, k, p, p);
  sum_dets = recompute_sum_keldysh_indices(data, k + 1);
 
  // The Metropolis ratio
@@ -52,11 +51,9 @@ dcomplex insert2::attempt() {
  if (quick_exit) return 0;
 
  // insert the new lines and cols.
- auto r1 = get_random_lattice_point(L, rng);
- auto r2 = get_random_lattice_point(L, rng);
- auto t1 = qmc_time_t{rng(params->tmax)}; // new time1
- auto t2 = qmc_time_t{rng(params->tmax)}; // new time2
- for (auto &m : data->matrices) m.insert2(k, k + 1, k, k + 1, {r1, t1, 0}, {r2, t2, 0}, {r1, t1, 0}, {r2, t2, 0});
+ auto p1 = get_random_point(rng, params);
+ auto p2 = get_random_point(rng, params);
+ for (auto &m : data->matrices) m.insert2(k, k + 1, k, k + 1, p1, p2, p1, p2);
 
  sum_dets = recompute_sum_keldysh_indices(data, k + 2);
 
