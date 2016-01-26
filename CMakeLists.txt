@@ -1,6 +1,6 @@
 # Version number of the application
-set (CTINT_VERSION "1.2")
-set (CTINT_RELEASE "1.2.0")
+set (CTINT_VERSION "1.4")
+set (CTINT_RELEASE "1.4.0")
 
 # Append triqs installed files to the cmake load path
 list(APPEND CMAKE_MODULE_PATH ${TRIQS_PATH}/share/triqs/cmake)

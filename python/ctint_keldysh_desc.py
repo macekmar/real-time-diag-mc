@@ -1,9 +1,9 @@
 # Generated automatically using the command :
-# c++2py.py ../c++/ctint.hpp -p -mpytriqs.applications.impurity_solvers.ctint_new -o ctint_new --moduledoc "The ctint solver"
+# c++2py.py ../c++/ctint.hpp -p -mpytriqs.applications.impurity_solvers.ctint_keldysh -o ctint_keldysh --moduledoc "The ctint solver"
 from wrap_generator import *
 
 # The module
-module = module_(full_name = "pytriqs.applications.impurity_solvers.ctint_new", doc = "The ctint solver")
+module = module_(full_name = "pytriqs.applications.impurity_solvers.ctint_keldysh", doc = "The ctint solver")
 
 # All the triqs C++/Python modules
 module.use_module('gf')

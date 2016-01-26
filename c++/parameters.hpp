@@ -1,8 +1,6 @@
 #pragma once
 using namespace triqs::utility;
 
-enum spin {up, down};
-
 // All the arguments of the solve function
 struct solve_parameters_t {
 
