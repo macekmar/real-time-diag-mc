@@ -2,12 +2,9 @@
 #include <triqs/mc_tools.hpp>
 #include <triqs/det_manip.hpp>
 #include <triqs/gfs.hpp>
-#include <triqs/gfs/bz.hpp>
-#include <triqs/gfs/cyclic_lattice.hpp>
 #include "./qmc_data.hpp"
 #include "./moves.hpp"
 #include "./measures.hpp"
-#include "./g0_latt.hpp"
 
 using namespace triqs::arrays;
 using namespace triqs::lattice;
@@ -16,10 +13,6 @@ using namespace triqs::arrays;
 using triqs::utility::mindex;
 
 // ------------ The main class of the solver ------------------------
-
-ctint_solver::ctint_solver(double beta, double mu, int n_freq, double t_min, double t_max, int L, int Lk) {
- std::tie(g0_lesser, g0_greater) = make_g0_lattice(beta, mu, n_freq, t_min, t_max, L, Lk);
-}
 
 // -------------------------------------------------------------------------
 // The method that runs the qmc
@@ -34,7 +27,8 @@ std::pair<array<double, 1>, array<double, 1>> ctint_solver::solve(solve_paramete
  auto t_max = qmc_time_t{params.tmax};
 
  // Initialize the M-matrices. 100 is the initial matrix size
- for (auto spin : {up, down}) data.matrices.emplace_back(g0_keldysh_t{g0_lesser, g0_greater, params.alpha, t_max}, 100);
+ for (auto spin : {up, down})
+  data.matrices.emplace_back(g0_keldysh_t{g0_adaptor_t{g0_lesser}, g0_adaptor_t{g0_greater}, params.alpha, t_max}, 100);
 
  // Insert the operators to be measured.
  // We measure the density

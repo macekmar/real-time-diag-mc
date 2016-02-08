@@ -4,16 +4,9 @@
 
 namespace moves {
 
-#ifdef LATTICE 
-point get_random_point(triqs::mc_tools::random_generator &rng, const solve_parameters_t *params) {
- int rx = rng(params->L);                // x coordinate
- int ry = rng(params->L);                // y coordinate
- auto r = mindex(rx, ry, 0);             // point on the lattice
- auto t = qmc_time_t{rng(params->tmax)}; // new time
- return {r, t, 0};
+keldysh_contour_pt get_random_point(triqs::mc_tools::random_generator &rng, const solve_parameters_t *params) {
+ return {get_random_x(rng,params), qmc_time_t{rng(params->tmax)}, 0};
 }
-#endif
-
 // ------------ QMC insertion move --------------------------------------
 
 dcomplex insert::attempt() {
@@ -28,6 +21,7 @@ dcomplex insert::attempt() {
  sum_dets = recompute_sum_keldysh_indices(data, k + 1);
 
  // The Metropolis ratio
+ // FIXME: t_max_L_L_U : dans le get_random_point policy
  return t_max_L_L_U / (k + 1) * sum_dets / data->sum_keldysh_indices;
 }
 

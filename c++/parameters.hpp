@@ -7,9 +7,6 @@ struct solve_parameters_t {
  /// U
  double U;
 
- /// width of the lattice
- int L;
-
  /// tmax
  double tmax;
 

@@ -37,7 +37,7 @@ struct insert2 : common {
 // ------------ QMC removal move --------------------------------------
 
 struct remove : common {
- point removed_pt;
+ keldysh_contour_pt removed_pt;
  int p;
 
  using common::common;
@@ -49,7 +49,7 @@ struct remove : common {
 // ------------ QMC double-removal move --------------------------------------
 
 struct remove2 : common {
- point removed_pt1, removed_pt2;
+ keldysh_contour_pt removed_pt1, removed_pt2;
  int p1, p2;
 
  using common::common;

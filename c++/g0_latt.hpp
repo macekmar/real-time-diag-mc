@@ -1,5 +1,7 @@
 #pragma once
 #include <triqs/lattice/bravais_lattice.hpp>
+#include <triqs/gfs/bz.hpp>
+#include <triqs/gfs/cyclic_lattice.hpp>
 
 std::pair<gf_latt_time_t, gf_latt_time_t> make_g0_lattice(double beta, double mu, int n_freq, double t_min, double t_max, int L,
                                                           int Lk) {
