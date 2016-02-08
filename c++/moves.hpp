@@ -9,7 +9,10 @@ struct common {
  qmc_data_t *data;
  const solve_parameters_t *params;
  triqs::mc_tools::random_generator &rng;
+ 
  double t_max_L_L_U = params->tmax * params->L * params->L * params->U;
+ 
+ 
  bool quick_exit = false;
  dcomplex sum_dets = 0;
  common(qmc_data_t *data, const solve_parameters_t *params, triqs::mc_tools::random_generator &rng)

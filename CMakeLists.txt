@@ -25,6 +25,10 @@ endif()
 # We want to be installed in the TRIQS tree
 set(CMAKE_INSTALL_PREFIX ${TRIQS_PATH})
 
+# Add the compiling options (-D... ) for C++
+message(STATUS "TRIQS : Adding compilation flags detected by the library (C++11/14, libc++, etc...) ")
+add_definitions(${TRIQS_CXX_DEFINITIONS})
+
 # Compile C++ code
 add_subdirectory(c++)
 
