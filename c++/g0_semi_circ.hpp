@@ -1,6 +1,9 @@
 #pragma once
 #include <triqs/gfs.hpp>
 
+///////////////////////////////////////////////////////////////////////////
+// the semi-circular band (Xavier)
+///////////////////////////////////////////////////////////////////////////
 std::pair<gf<retime>, gf<retime>> make_g0_semi_circular(double beta, double Gamma, double tmax_gf0, long Nt_gf0, double epsilon_d,
                                                         double muL, double muR) {
 
@@ -12,12 +15,9 @@ std::pair<gf<retime>, gf<retime>> make_g0_semi_circular(double beta, double Gamm
 
  // Fermi function
  auto nf = [&](double omega) {
-  return beta > 0 ? 1 / (1 + std::exp(beta * omega)) : (beta < 0 ? ((omega < 0 ? 1 : (omega > 0 ? 0 : 0.5))) : 0.5);
+  return beta > 0 ? 1. / (1. + std::exp(beta * omega)) : (beta < 0. ? ((omega < 0. ? 1. : (omega > 0. ? 0. : 0.5))) : 0.5);
  };
 
- ///////////////////////////////////////////////////////////////////////////
- // the semi-circular band (Xavier)
- ///////////////////////////////////////////////////////////////////////////
  // Retarded self energy with semi circular sigma dos (linear chain).
  auto sigma_linear_chain = [](double omega) -> dcomplex {
   omega = omega / 2;
@@ -37,8 +37,7 @@ std::pair<gf<retime>, gf<retime>> make_g0_semi_circular(double beta, double Gamm
   return array<dcomplex, 2>{{gr + temp, temp}, {temp2, -conj(gr) + temp}};
  };
 
- ////////////////////////////////////////////////////////////////////////////
- // for one lead
+ // For one lead
  auto G0_dc_w = [&](double omega, double mu) {
   auto g = G0_dd_w(omega);                          // dot free function at omega.
   auto delta_r = Gamma * sigma_linear_chain(omega); // both chains are the same
@@ -52,7 +51,6 @@ std::pair<gf<retime>, gf<retime>> make_g0_semi_circular(double beta, double Gamm
   auto gdc11 = (g(1, 0) * delta_01 - g(1, 1) * delta_11);
   return array<dcomplex, 2>{{gdc00, gdc01}, {gdc10, gdc11}};
  };
- ///////////////////////////////////////////////////////////////////////////
 
  for (auto w : g0_dd_w.mesh()) {
   auto g0_dd = G0_dd_w(w);
@@ -66,6 +64,5 @@ std::pair<gf<retime>, gf<retime>> make_g0_semi_circular(double beta, double Gamm
  g0_greater_t = make_gf_from_inverse_fourier(g0_greater_w);
  g0_lesser_t = make_gf_from_inverse_fourier(g0_lesser_w);
 
- return { g0_lesser_t, g0_greater_t };
+ return {g0_lesser_t, g0_greater_t};
 }
-

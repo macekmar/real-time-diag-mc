@@ -108,7 +108,7 @@ dcomplex remove2::attempt() {
  // remove the lines/cols
  p1 = rng(k);        // Choose one of the operators for removal
  p2 = rng(k - 1);    //
- if (p2 >= p1) p2++; // if remove p1, and p2 is later, ?????
+ if (p2 >= p1) p2++; // if remove p1, and p2 is later, ????? FIXME
  removed_pt1 = data->matrices[0].get_x(p1);
  removed_pt2 = data->matrices[0].get_x(p2);
  for (auto &m : data->matrices) m.remove2(p1, p2, p1, p2);
@@ -129,4 +129,3 @@ void remove2::reject() {
  for (auto &m : data->matrices) m.insert2(p1, p2, p1, p2, removed_pt1, removed_pt2, removed_pt1, removed_pt2);
 }
 }
-

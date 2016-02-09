@@ -1,15 +1,12 @@
-#include "ctint.hpp"
 #include <triqs/mc_tools.hpp>
 #include <triqs/det_manip.hpp>
-#include <triqs/gfs.hpp>
-#include "./qmc_data.hpp"
 #include "./moves.hpp"
 #include "./measures.hpp"
+#include "./ctint.hpp"
 
 using namespace triqs::arrays;
-using namespace triqs::lattice;
 using namespace triqs::gfs;
-using namespace triqs::arrays;
+namespace mpi = triqs::mpi;
 using triqs::utility::mindex;
 
 // ------------ The main class of the solver ------------------------
@@ -18,7 +15,7 @@ using triqs::utility::mindex;
 // The method that runs the qmc
 std::pair<array<double, 1>, array<double, 1>> ctint_solver::solve(solve_parameters_t const &params) {
 
- auto cn = array<double, 1>(params.max_perturbation_order + 1); ///< measurement of c_n
+ auto cn = array<double, 1>(params.max_perturbation_order + 1); // measurement of c_n
  cn() = 0;
  auto sn = cn;
 
@@ -26,25 +23,25 @@ std::pair<array<double, 1>, array<double, 1>> ctint_solver::solve(solve_paramete
  auto data = qmc_data_t{};
  auto t_max = qmc_time_t{params.tmax};
 
- // Initialize the M-matrices. 100 is the initial matrix size
+ // Initialize the M-matrices. 100 is the initial matrix size //FIXME why is this size hardcoded?
  for (auto spin : {up, down})
   data.matrices.emplace_back(g0_keldysh_t{g0_adaptor_t{g0_lesser}, g0_adaptor_t{g0_greater}, params.alpha, t_max}, 100);
 
  // Insert the operators to be measured.
  // We measure the density
  // For up, we insert the fixed pair of times (t_max, t_max), Keldysh index +-.
- //FIXME: Code dependent
+ // FIXME: Code dependent
  data.matrices[up].insert_at_end({mindex(0, 0, 0), t_max, 0}, {mindex(0, 0, 0), t_max, 1}); // C^+ C
 
- cn(0)= imag(data.matrices[up].determinant() * data.matrices[down].determinant());
- sn(0)= 1;
+ cn(0) = imag(data.matrices[up].determinant() * data.matrices[down].determinant());
+ sn(0) = 1;
  if (params.max_perturbation_order == 0) return {cn, sn};
 
  // Construct a Monte Carlo loop
  auto qmc = triqs::mc_tools::mc_generic<dcomplex>(params.n_cycles, params.length_cycle, params.n_warmup_cycles,
                                                   params.random_name, params.random_seed, params.verbosity);
 
- // Register moves and measurements
+ // Register moves and measurements //FIXME -- always add single moves, no? //FIXME change to pointers
  if (params.p_dbl < 1) {
   qmc.add_move(moves::insert{&data, &params, qmc.get_rng()}, "insertion", 1. - params.p_dbl);
   qmc.add_move(moves::remove{&data, &params, qmc.get_rng()}, "removal", 1. - params.p_dbl);
@@ -57,11 +54,10 @@ std::pair<array<double, 1>, array<double, 1>> ctint_solver::solve(solve_paramete
 
  // Run
  qmc.start(1.0, triqs::utility::clock_callback(params.max_time));
- 
+
  // Collect results
  mpi::communicator world;
  qmc.collect_results(world);
  return {cn, sn};
-
 }
 

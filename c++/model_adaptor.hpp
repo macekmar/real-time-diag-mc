@@ -65,5 +65,3 @@ struct g0_adaptor_t {
 #ifdef LATTICE_MATRIX
 #error "Not implemented"
 #endif
-
-

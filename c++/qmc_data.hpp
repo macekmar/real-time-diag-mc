@@ -24,7 +24,7 @@ inline keldysh_contour_pt flip_index(keldysh_contour_pt const &t) { return {t.x,
 /**
  * Adapt G0_lesser and G0_greater into a function taking two points on the Keldysh contour
  * It is the function that appears in the calculation of the determinant (det_manip, cf below).
- * It is in fact a lambda, but I need its explicit type below to declare det_manip, so I write it explicitely here.
+ * It is in fact a lambda, but I need its explicit type below to declare det_manip, so I write it explicitly here.
  */
 struct g0_keldysh_t {
 
@@ -70,4 +70,3 @@ struct qmc_data_t {
  dcomplex sum_keldysh_indices = 0;              // g0 ? FIXME: call for once
  int perturbation_order = 0;                    // the current perturbation order
 };
-

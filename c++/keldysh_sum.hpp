@@ -1,7 +1,6 @@
 #pragma once
-#include <strings.h>
+//#include <strings.h> FIXME NOT USED
 
-// debug only
 #define CHECK_GRAY_CODE_INTEGRITY
 
  /// Gray code determinant rotation. Returns the sum of prod of det for all keldysh configurations.
@@ -29,7 +28,7 @@ dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, int k) {
 #endif
 
   dcomplex res =0 ;
-  int sign = -1; // WHY IS THIS -1 ??
+  int sign = -1; // FIXME WHY IS THIS -1 ??
   auto two_to_k = uint64_t(1) << k; //shifts the bits k time to the left
   for (uint64_t n = 0; n < two_to_k; ++n) {
 
@@ -48,24 +47,23 @@ dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, int k) {
    if (!std::isfinite(real(res))) TRIQS_RUNTIME_ERROR << "NAN for n = " << n;
   }
 
-  dcomplex i_n[4] = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}}; // powers of i !
-  res = -res * i_n[(k + 1) % 4];                        // * i^(k+1)
+  dcomplex i_n[4] = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}}; // powers of i
+  res = -res * i_n[(k + 1) % 4];                        // * i^(k+1) //FIXME -sign before res?!
 
 #ifdef CHECK_GRAY_CODE_INTEGRITY
   double precision = 1.e-12;
   if (max_element(abs(mat_up - matrices[up].matrix())) > precision)
-   TRIQS_RUNTIME_ERROR << matrix<dcomplex>(mat_up - matrices[up].matrix()) << " Not cyclic";
+   TRIQS_RUNTIME_ERROR << matrix<dcomplex>(mat_up - matrices[up].matrix()) << "Gray code: Not cyclic";
   if (max_element(abs(mat_do - matrices[down].matrix())) > precision)
-   TRIQS_RUNTIME_ERROR << matrix<dcomplex>(mat_do - matrices[down].matrix()) << " Not cyclic";
+   TRIQS_RUNTIME_ERROR << matrix<dcomplex>(mat_do - matrices[down].matrix()) << "Gray code: Not cyclic";
   // check all indices of keldysh back to 0
   for (int n = 0; n < k; ++n) {
    for (auto const& mat : matrices) {
-    if (mat.get_x(n).k_index != 0) TRIQS_RUNTIME_ERROR << " Keldysh index is not 0 !!";
-    if (mat.get_y(n).k_index != 0) TRIQS_RUNTIME_ERROR << " Keldysh index is not 0 !!";
+    if (mat.get_x(n).k_index != 0) TRIQS_RUNTIME_ERROR << "Gray code: Keldysh index is not 0 !!";
+    if (mat.get_y(n).k_index != 0) TRIQS_RUNTIME_ERROR << "Gray code: Keldysh index is not 0 !!";
    }
   }
 #endif
 
   return real(res); // FIXME : 
  }
-
