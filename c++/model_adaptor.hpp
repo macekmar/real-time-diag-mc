@@ -1,5 +1,6 @@
 #pragma once
 #include <triqs/gfs.hpp>
+#include <triqs/mc_tools.hpp>
 #include "./parameters.hpp"
 
 using namespace triqs::gfs;
@@ -21,13 +22,13 @@ using g0_t = gf<retime, scalar_valued, no_tail>;
 struct g0_adaptor_t {
  g0_t g0;
  auto operator()(x_index_t, x_index_t, double t, double tp) const { return g0(t - tp); }
-
- x_index_t get_random_x(triqs::mc_tools::random_generator &rng, qmc_data_t const * data) const { return 0; }
- int get_random_n_values() const { return 1;}
-
 };
 
-x_index_t get_random_x(triqs::mc_tools::random_generator &rng, const solve_parameters_t *params) { return rng(params->L); }
+struct random_x_generator {
+ random_x_generator(g0_t::const_view_type, solve_parameters_t const *params){};
+ x_index_t operator()(triqs::mc_tools::random_generator &rng) const { return 0; }
+ int size() const { return 1; } // size of interacting problem
+};
 #endif
 
 // ------------------ Single Impurity Matrix -----------------------
@@ -40,7 +41,14 @@ struct g0_adaptor_t {
  auto operator()(x_index_t a, x_index_t b, double t, double tp) const { return g0(t - tp)(a, b); }
 };
 
-x_index_t get_random_x(triqs::mc_tools::random_generator &rng, const solve_parameters_t *params) { return rng(params->L); }
+struct random_x_generator {
+ int L;
+ random_x_generator(g0_t::const_view_type g0, solve_parameters_t const *params) : L(get_target_shape(g0)[0]){};
+ x_index_t operator()(triqs::mc_tools::random_generator &rng) const {
+  return rng(L); // point on the lattice
+ }
+ int size() const { return L; } // size of interacting problem // FIXME modify if only a subset of sites are interacting
+};
 #endif
 
 // ------------------ Lattice, with scalar GF -----------------------
@@ -51,11 +59,15 @@ using g0_t = gf_latt_time_t;
 struct g0_adaptor_t {
  g0_t g0;
  auto operator()(x_index_t const &a, x_index_t const &b, double t, double tp) const { return g0(a - b, t - tp); }
+};
 
- x_index_t get_random_x(triqs::mc_tools::random_generator &rng, qmc_data_t const *data) {
-  auto L = data->g0_lesser_adaptor.g0_lesser.mesh();
-  return rng(L);
+struct random_x_generator {
+ int L;
+ random_x_generator(g0_t::const_view_type g0, solve_parameters_t const *params) : L(g0.mesh.size()){};
+ x_index_t operator()(triqs::mc_tools::random_generator &rng) const {
+  return mindex(rng(L), rng(L), 0); // point on the lattice
  }
+ int size() const { return L * L; } // size of interacting problem // FIXME modify if only a subset of sites are interacting
 };
 
 #endif

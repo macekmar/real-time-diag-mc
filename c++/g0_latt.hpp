@@ -20,7 +20,7 @@ std::pair<gf_latt_time_t, gf_latt_time_t> make_g0_lattice(double beta, double mu
 
  auto nf = [](double beta, auto eps_k) { return 1.0 / (1.0 + exp(beta * eps_k)); };
  auto mnf = [](double beta, auto eps_k) { return -(1.0 - 1.0 / (1.0 + exp(beta * eps_k))); };
- 
+
  auto make_gxt = [&](auto func) {
   auto gxt = gf<cartesian_product<cyclic_lattice, retime>, scalar_valued, no_tail>{{{Lk, Lk}, {t_min, t_max, n_times}}};
   auto gkt = gf<cartesian_product<brillouin_zone, retime>, scalar_valued, no_tail>{{{bz, n_bz}, {t_min, t_max, n_times}}};

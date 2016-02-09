@@ -4,9 +4,6 @@
 
 namespace moves {
 
-keldysh_contour_pt get_random_point(triqs::mc_tools::random_generator &rng, const solve_parameters_t *params) {
- return {get_random_x(rng,params), qmc_time_t{rng(params->tmax)}, 0};
-}
 // ------------ QMC insertion move --------------------------------------
 
 dcomplex insert::attempt() {
@@ -16,13 +13,13 @@ dcomplex insert::attempt() {
  if (quick_exit) return 0;
 
  // insert the new line and col.
- auto p = get_random_point(rng, params);
+ auto p = get_random_point();
  for (auto &m : data->matrices) m.insert(k, k, p, p);
  sum_dets = recompute_sum_keldysh_indices(data, k + 1);
 
  // The Metropolis ratio
- // FIXME: t_max_L_L_U : dans le get_random_point policy
- return t_max_L_L_U / (k + 1) * sum_dets / data->sum_keldysh_indices;
+ // FIXME: t_max_L_U : dans le get_random_point policy
+ return t_max_L_U / (k + 1) * sum_dets / data->sum_keldysh_indices;
 }
 
 dcomplex insert::accept() {
@@ -45,14 +42,14 @@ dcomplex insert2::attempt() {
  if (quick_exit) return 0;
 
  // insert the new lines and cols.
- auto p1 = get_random_point(rng, params);
- auto p2 = get_random_point(rng, params);
+ auto p1 = get_random_point();
+ auto p2 = get_random_point();
  for (auto &m : data->matrices) m.insert2(k, k + 1, k, k + 1, p1, p2, p1, p2);
 
  sum_dets = recompute_sum_keldysh_indices(data, k + 2);
 
  // The Metropolis ratio
- return t_max_L_L_U * t_max_L_L_U / ((k + 1) * (k + 2)) * sum_dets / data->sum_keldysh_indices;
+ return t_max_L_U * t_max_L_U / ((k + 1) * (k + 2)) * sum_dets / data->sum_keldysh_indices;
 }
 
 dcomplex insert2::accept() {
@@ -83,7 +80,7 @@ dcomplex remove::attempt() {
  sum_dets = recompute_sum_keldysh_indices(data, k - 1); // recompute sum over keldysh indices
 
  // The Metropolis ratio
- return k / t_max_L_L_U * sum_dets / data->sum_keldysh_indices;
+ return k / t_max_L_U * sum_dets / data->sum_keldysh_indices;
 }
 
 dcomplex remove::accept() {
@@ -115,7 +112,7 @@ dcomplex remove2::attempt() {
  sum_dets = recompute_sum_keldysh_indices(data, k - 2); // recompute sum over keldysh indices
 
  // The Metropolis ratio
- return k * (k - 1) / pow(t_max_L_L_U, 2) * sum_dets / data->sum_keldysh_indices;
+ return k * (k - 1) / pow(t_max_L_U, 2) * sum_dets / data->sum_keldysh_indices;
 }
 
 dcomplex remove2::accept() {

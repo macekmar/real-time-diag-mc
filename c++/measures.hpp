@@ -12,8 +12,7 @@ struct measure_cs {
  array<double, 1> &sn;
  long z = 0;
 
- measure_cs(qmc_data_t const *data, array<double, 1> *cn, array<double, 1> *sn) : data(data), cn(*cn), sn(*sn) {
-}
+ measure_cs(qmc_data_t const *data, array<double, 1> *cn, array<double, 1> *sn) : data(data), cn(*cn), sn(*sn) {}
 
  void accumulate(dcomplex sign) {
   z++;
@@ -23,10 +22,10 @@ struct measure_cs {
  }
 
  void collect_results(mpi::communicator c) {
-//FIXME
-//  z = mpi_all_reduce(z, c);
-//  cn = mpi_all_reduce(cn, c);
-//  sn = mpi_all_reduce(sn, c);
+  // FIXME
+  //  z = mpi_all_reduce(z, c);
+  //  cn = mpi_all_reduce(cn, c);
+  //  sn = mpi_all_reduce(sn, c);
   mpi_all_reduce(z, c);
   mpi_all_reduce(cn, c);
   mpi_all_reduce(sn, c);

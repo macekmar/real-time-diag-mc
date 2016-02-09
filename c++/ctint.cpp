@@ -31,7 +31,7 @@ std::pair<array<double, 1>, array<double, 1>> ctint_solver::solve(solve_paramete
  // We measure the density
  // For up, we insert the fixed pair of times (t_max, t_max), Keldysh index +-.
  // FIXME: Code dependent
- data.matrices[up].insert_at_end({mindex(0, 0, 0), t_max, 0}, {mindex(0, 0, 0), t_max, 1}); // C^+ C
+ data.matrices[up].insert_at_end({x_index_t{}, t_max, 0}, {x_index_t{}, t_max, 1}); // C^+ C
 
  cn(0) = imag(data.matrices[up].determinant() * data.matrices[down].determinant());
  sn(0) = 1;
