@@ -10,6 +10,7 @@ module.use_module('gf', 'triqs')
 
 # Add here all includes beyond what is automatically included by the triqs modules
 module.add_include("solver_core.hpp")
+module.add_include("g0_semi_circ.hpp")
 
 # Add here anything to add in the C++ code at the start, e.g. namespace using
 module.add_preamble("""

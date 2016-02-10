@@ -1,6 +1,6 @@
 from pytriqs.gf.local import *
 from pytriqs.utility import mpi
-from ctint_keldysh import SolverCore
+from ctint_keldysh import *
 import math
 
 alpha =  0.#0.5
