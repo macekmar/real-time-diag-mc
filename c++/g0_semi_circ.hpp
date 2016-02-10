@@ -1,17 +1,19 @@
 #pragma once
 #include <triqs/gfs.hpp>
 
+using namespace triqs::gfs;
+
 ///////////////////////////////////////////////////////////////////////////
 // the semi-circular band (Xavier)
 ///////////////////////////////////////////////////////////////////////////
-std::pair<gf<retime>, gf<retime>> make_g0_semi_circular(double beta, double Gamma, double tmax_gf0, long Nt_gf0, double epsilon_d,
-                                                        double muL, double muR) {
+std::pair<gf_view<retime>, gf_view<retime>> make_g0_semi_circular(double beta, double Gamma, double tmax_gf0, int Nt_gf0,
+                                                                  double epsilon_d, double muL, double muR) {
 
  // Construction of the empty GF's, with the correct number of points
- g0_greater_t = gf<retime>{{-tmax_gf0, tmax_gf0, 2 * Nt_gf0 - 1}, {1, 2}};
- g0_greater_w = make_gf_from_fourier(g0_greater_t);
- g0_lesser_t = g0_greater_t;
- g0_lesser_w = g0_greater_w;
+ auto g0_greater_t = gf<retime>{{-tmax_gf0, tmax_gf0, 2 * Nt_gf0 - 1}, {1, 2}};
+ auto g0_greater_w = make_gf_from_fourier(g0_greater_t);
+ auto g0_lesser_t = g0_greater_t;
+ auto g0_lesser_w = g0_greater_w;
 
  // Fermi function
  auto nf = [&](double omega) {
@@ -52,7 +54,7 @@ std::pair<gf<retime>, gf<retime>> make_g0_semi_circular(double beta, double Gamm
   return array<dcomplex, 2>{{gdc00, gdc01}, {gdc10, gdc11}};
  };
 
- for (auto w : g0_dd_w.mesh()) {
+ for (auto w : g0_greater_w.mesh()) {
   auto g0_dd = G0_dd_w(w);
   g0_greater_w[w](0, 0) = g0_dd(0, 1);
   g0_lesser_w[w](0, 0) = g0_dd(1, 0);

@@ -11,7 +11,6 @@ template <> struct py_converter<solve_parameters_t> {
  static PyObject *c2py(solve_parameters_t const & x) {
   PyObject * d = PyDict_New();
   PyDict_SetItemString( d, "U"                     , convert_to_python(x.U));
-  PyDict_SetItemString( d, "L"                     , convert_to_python(x.L));
   PyDict_SetItemString( d, "tmax"                  , convert_to_python(x.tmax));
   PyDict_SetItemString( d, "alpha"                 , convert_to_python(x.alpha));
   PyDict_SetItemString( d, "p_dbl"                 , convert_to_python(x.p_dbl));
@@ -44,7 +43,6 @@ template <> struct py_converter<solve_parameters_t> {
  static solve_parameters_t py2c(PyObject *dic) {
   solve_parameters_t res;
   res.U = convert_from_python<double>(PyDict_GetItemString(dic, "U"));
-  res.L = convert_from_python<int>(PyDict_GetItemString(dic, "L"));
   res.tmax = convert_from_python<double>(PyDict_GetItemString(dic, "tmax"));
   res.alpha = convert_from_python<double>(PyDict_GetItemString(dic, "alpha"));
   _get_optional(dic, "p_dbl"                 , res.p_dbl                    ,0.5);
@@ -87,7 +85,7 @@ template <> struct py_converter<solve_parameters_t> {
   std::stringstream fs, fs2; int err=0;
 
 #ifndef TRIQS_ALLOW_UNUSED_PARAMETERS
-  std::vector<std::string> ks, all_keys = {"U","L","tmax","alpha","p_dbl","max_perturbation_order","min_perturbation_order","n_cycles","length_cycle","n_warmup_cycles","random_seed","random_name","max_time","verbosity"};
+  std::vector<std::string> ks, all_keys = {"U","tmax","alpha","p_dbl","max_perturbation_order","min_perturbation_order","n_cycles","length_cycle","n_warmup_cycles","random_seed","random_name","max_time","verbosity"};
   pyref keys = PyDict_Keys(dic);
   if (!convertible_from_python<std::vector<std::string>>(keys, true)) {
    fs << "\nThe dict keys are not strings";
@@ -100,7 +98,6 @@ template <> struct py_converter<solve_parameters_t> {
 #endif
 
   _check_mandatory<double     >(dic, fs, err, "U"                     , "double");
-  _check_mandatory<int        >(dic, fs, err, "L"                     , "int");
   _check_mandatory<double     >(dic, fs, err, "tmax"                  , "double");
   _check_mandatory<double     >(dic, fs, err, "alpha"                 , "double");
   _check_optional <double     >(dic, fs, err, "p_dbl"                 , "double");

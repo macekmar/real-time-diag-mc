@@ -18,7 +18,7 @@ using qmc_time_t = double;
 
 #ifdef IMPURITY_SCALAR
 using x_index_t = int; // unused
-using g0_t = gf<retime, scalar_valued, no_tail>;
+using g0_t = gf<retime, scalar_valued>;
 struct g0_adaptor_t {
  g0_t g0;
  auto operator()(x_index_t, x_index_t, double t, double tp) const { return g0(t - tp); }
@@ -35,7 +35,7 @@ struct random_x_generator {
 
 #ifdef IMPURITY_MATRIX
 using x_index_t = int;
-using g0_t = gf<retime, matrix_valued, no_tail>;
+using g0_t = gf<retime, matrix_valued>;
 struct g0_adaptor_t {
  g0_t g0;
  auto operator()(x_index_t a, x_index_t b, double t, double tp) const { return g0(t - tp)(a, b); }

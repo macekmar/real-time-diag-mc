@@ -29,6 +29,8 @@ set(CMAKE_INSTALL_PREFIX ${TRIQS_PATH})
 message(STATUS "TRIQS : Adding compilation flags detected by the library (C++11/14, libc++, etc...) ")
 add_definitions(${TRIQS_CXX_DEFINITIONS})
 
+include_directories(c++)
+
 # Compile C++ code
 add_subdirectory(c++)
 
