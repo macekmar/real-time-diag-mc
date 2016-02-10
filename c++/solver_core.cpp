@@ -2,7 +2,7 @@
 #include <triqs/det_manip.hpp>
 #include "./moves.hpp"
 #include "./measures.hpp"
-#include "./ctint.hpp"
+#include "./solver_core.hpp"
 
 using namespace triqs::arrays;
 using namespace triqs::gfs;
@@ -13,7 +13,7 @@ using triqs::utility::mindex;
 
 // -------------------------------------------------------------------------
 // The method that runs the qmc
-std::pair<array<double, 1>, array<double, 1>> ctint_solver::solve(solve_parameters_t const &params) {
+std::pair<array<double, 1>, array<double, 1>> solver_core::solve(solve_parameters_t const &params) {
 
  auto pn = array<double, 1>(params.max_perturbation_order + 1); // measurement of c_n
  pn() = 0;

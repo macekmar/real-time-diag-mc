@@ -1,6 +1,6 @@
 // DO NOT EDIT
 // Generated automatically using libclang using the command :
-// c++2py.py ../c++/ctint.hpp -p -mpytriqs.applications.impurity_solvers.ctint_keldysh -o ctint_keldysh --moduledoc "The ctint solver"
+// c++2py.py ../c++/solver_core.hpp -p -mctint_keldysh -o ctint_keldysh --moduledoc "The ctint solver"
 
 
 // --- C++ Python converter for solve_parameters_t

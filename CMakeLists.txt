@@ -1,13 +1,12 @@
 # Version number of the application
-set (CTINT_VERSION "1.4")
-set (CTINT_RELEASE "1.4.0")
+set (CTINT_KELDYSH_VERSION "1.4")
 
 # Append triqs installed files to the cmake load path
 list(APPEND CMAKE_MODULE_PATH ${TRIQS_PATH}/share/triqs/cmake)
 
 # start configuration 
 cmake_minimum_required(VERSION 2.8)
-project(ctint CXX)
+project(ctint_keldysh CXX)
 set(CMAKE_BUILD_TYPE Release)
 enable_testing()
 
@@ -16,18 +15,21 @@ option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 
 # Load TRIQS, including all predefined variables from TRIQS installation
 find_package(TRIQS REQUIRED)
+add_definitions(${TRIQS_CXX_DEFINITIONS})
 
 # Check that versions are compatible
-if(NOT CTINT_VERSION EQUAL TRIQS_VERSION)
-  message(FATAL_ERROR "The application version is not compatible with the TRIQS library (TRIQS library version: ${TRIQS_VERSION} while this application version: ${CTINT_VERSION})")
+if(NOT CTINT_KELDYSH_VERSION EQUAL TRIQS_VERSION)
+  message(FATAL_ERROR "The application version is not compatible with the TRIQS library (TRIQS library version: ${TRIQS_VERSION} while this application version: ${CTINT_KELDYSH_VERSION})")
 endif()
 
 # We want to be installed in the TRIQS tree
 set(CMAKE_INSTALL_PREFIX ${TRIQS_PATH})
 
-# Add the compiling options (-D... ) for C++
-message(STATUS "TRIQS : Adding compilation flags detected by the library (C++11/14, libc++, etc...) ")
-add_definitions(${TRIQS_CXX_DEFINITIONS})
+# Get hash
+triqs_get_git_hash(${CMAKE_SOURCE_DIR} "CTHYB_SEGMENT")
+if(${GIT_RESULT} EQUAL 0)
+  message(STATUS "Hash: ${CTHYB_SEGMENT_GIT_HASH}")
+endif(${GIT_RESULT} EQUAL 0)
 
 include_directories(c++)
 

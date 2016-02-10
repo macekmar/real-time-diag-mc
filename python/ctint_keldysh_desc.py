@@ -1,15 +1,15 @@
 # Generated automatically using the command :
-# c++2py.py ../c++/ctint.hpp -p -mpytriqs.applications.impurity_solvers.ctint_keldysh -o ctint_keldysh --moduledoc "The ctint solver"
+# c++2py.py ../c++/solver_core.hpp -p -mctint_keldysh -o ctint_keldysh --moduledoc "The ctint solver"
 from wrap_generator import *
 
 # The module
-module = module_(full_name = "pytriqs.applications.impurity_solvers.ctint_keldysh", doc = "The ctint solver", app_name = "pytriqs.applications.impurity_solvers.ctint_keldysh")
+module = module_(full_name = "ctint_keldysh", doc = "The ctint solver", app_name = "ctint_keldysh")
 
 # All the triqs C++/Python modules
 module.use_module('gf', 'triqs')
 
 # Add here all includes beyond what is automatically included by the triqs modules
-module.add_include("ctint.hpp")
+module.add_include("solver_core.hpp")
 
 # Add here anything to add in the C++ code at the start, e.g. namespace using
 module.add_preamble("""
@@ -18,10 +18,10 @@ using namespace triqs::gfs;
 #include "./converters.hxx"
 """)
 
-# The class ctint_solver
+# The class solver_core
 c = class_(
-        py_type = "CtintSolver",  # name of the python class
-        c_type = "ctint_solver",   # name of the C++ class
+        py_type = "SolverCore",  # name of the python class
+        c_type = "solver_core",   # name of the C++ class
         doc = r"",   # doc of the C++ class
 )
 
