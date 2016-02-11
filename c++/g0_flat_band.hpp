@@ -1,10 +1,9 @@
 #pragma once
+#include <triqs/gfs.hpp>
 
 using namespace triqs::gfs;
 
-///////////////////////////////////////////////////////////////////////////
 // The flat band (Werner)
-///////////////////////////////////////////////////////////////////////////
 std::pair<gf_latt_time_t, gf_latt_time_t> make_g0_flat_band(double beta, double Gamma, double tmax_gf0, long Nt_gf0,
                                                             double epsilon_d, double muL, double muR) {
  // Prepare the non interacting GF's used to calculate the occupation or the current :

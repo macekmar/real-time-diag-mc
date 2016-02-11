@@ -3,9 +3,7 @@
 
 using namespace triqs::gfs;
 
-///////////////////////////////////////////////////////////////////////////
-// the semi-circular band (Xavier)
-///////////////////////////////////////////////////////////////////////////
+// Semi-circular band (Xavier)
 std::pair<gf_view<retime>, gf_view<retime>> make_g0_semi_circular(double beta, double Gamma, double tmax_gf0, int Nt_gf0,
                                                                   double epsilon_d, double muL, double muR) {
 

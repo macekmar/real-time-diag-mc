@@ -5,14 +5,14 @@
 using namespace triqs::gfs;
 namespace mpi = triqs::mpi;
 
-struct measure_cs {
+struct measure_pn_sn {
 
  qmc_data_t const *data; // Pointer to the MC qmc_data_t
  array<double, 1> &pn;
  array<double, 1> &sn;
  long z = 0;
 
- measure_cs(qmc_data_t const *data, array<double, 1> *pn, array<double, 1> *sn) : data(data), pn(*pn), sn(*sn) {}
+ measure_pn_sn(qmc_data_t const *data, array<double, 1> *pn, array<double, 1> *sn) : data(data), pn(*pn), sn(*sn) {}
 
  void accumulate(dcomplex sign) {
   z++;

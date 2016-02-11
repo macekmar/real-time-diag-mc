@@ -1,5 +1,4 @@
 #pragma once
-//#include <strings.h> FIXME NOT USED
 
 #define CHECK_GRAY_CODE_INTEGRITY
 
@@ -15,7 +14,6 @@ dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, int k) {
 
  // FIXME : remove imag
  if (k == 0) return imag(matrices[up].determinant() * matrices[down].determinant());
-
 
 #ifdef CHECK_GRAY_CODE_INTEGRITY
  auto mat_up = matrices[up].matrix();
