@@ -1,6 +1,7 @@
 #pragma once
 
 #define CHECK_GRAY_CODE_INTEGRITY
+#define REGENERATE_MATRIX_BEFORE_EACH_GRAY_CODE
 
 /// Gray code determinant rotation. Returns the sum of prod of det for all keldysh configurations.
 dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, int k) {

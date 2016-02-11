@@ -12,7 +12,9 @@ class solver_core {
  g0_t g0_lesser, g0_greater;
 
  public:
- solver_core(g0_t::view_type g0_lesser, g0_t::view_type g0_greater) : g0_lesser(g0_lesser), g0_greater(g0_greater){};
+//FIXME
+ solver_core(gf_view<retime, matrix_valued> g0_lesser, gf_view<retime, matrix_valued> g0_greater)
+    : g0_lesser(g0_lesser), g0_greater(g0_greater){};
 
  TRIQS_WRAP_ARG_AS_DICT // Wrap the solver parameters as a ** call in python with the clang & c++2py tool
      std::pair<array<double, 1>, array<double, 1>>

@@ -26,7 +26,7 @@ c = class_(
         doc = r"",   # doc of the C++ class
 )
 
-c.add_constructor("""(gf_view<retime,scalar_valued> g0_lesser, gf_view<retime,scalar_valued> g0_greater)""",
+c.add_constructor("""(gf_view<retime,matrix_valued> g0_lesser, gf_view<retime,matrix_valued> g0_greater)""",
                   doc = """ """)
 
 c.add_method("""std::pair<array<double,1>,array<double,1>> solve (**solve_parameters_t)""",

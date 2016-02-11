@@ -60,4 +60,3 @@ std::pair<array<double, 1>, array<double, 1>> solver_core::solve(solve_parameter
  qmc.collect_results(world);
  return {pn, sn};
 }
-

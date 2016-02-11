@@ -67,6 +67,6 @@ using triqs::det_manip::det_manip;
 /// The data of the QMC
 struct qmc_data_t {
  std::vector<det_manip<g0_keldysh_t>> matrices; // M matrices for up and down
- dcomplex sum_keldysh_indices = 0;              // g0 ? FIXME: call for once
+ dcomplex sum_keldysh_indices = 1;              // g0 ? FIXME: call for once
  int perturbation_order = 0;                    // the current perturbation order
 };

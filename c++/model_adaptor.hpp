@@ -12,7 +12,7 @@ using gf_latt_time_mat_t = gf<cartesian_product<cyclic_lattice, retime>, matrix_
 /// Storage of the value of the time. A double
 using qmc_time_t = double;
 
-#define IMPURITY_SCALAR
+#define IMPURITY_MATRIX
 
 // ------------------ Single Impurity Scalar -----------------------
 
@@ -43,7 +43,8 @@ struct g0_adaptor_t {
 
 struct random_x_generator {
  int L;
- random_x_generator(g0_t::const_view_type g0, solve_parameters_t const *params) : L(get_target_shape(g0)[0]){};
+ random_x_generator(g0_t::const_view_type g0, solve_parameters_t const *params) : L(1){};
+ //FIXME random_x_generator(g0_t::const_view_type g0, solve_parameters_t const *params) : L(get_target_shape(g0)[0]){};
  x_index_t operator()(triqs::mc_tools::random_generator &rng) const {
   return rng(L); // point on the lattice
  }

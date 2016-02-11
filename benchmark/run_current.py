@@ -2,6 +2,7 @@ from pytriqs.gf.local import *
 from pytriqs.utility import mpi
 from ctint_keldysh import *
 import math
+import numpy as np
 
 alpha =  0.#0.5
 U = 1 #5
@@ -9,11 +10,14 @@ U_qmc = 0.5
 V = 0.8
 epsilon_d = 0
 last_order = 3
+tmax = 10.
 
 g0_lesser,g0_greater = make_g0_semi_circular(beta = 200.0, Gamma = 0.25,
                                              tmax_gf0 = 10.0, Nt_gf0 = 10000,
                                              epsilon_d = epsilon_d + U*alpha,
                                              muL = V, muR = 0)
+
+qn_list,cn_list,qn_last = [],[],[]
 
 S = SolverCore(g0_lesser,g0_greater)
 
@@ -29,7 +33,7 @@ for Nmax in range(0, last_order) :
           n_cycles = 100000, n_warmup_cycles = 1000, length_cycle=10)
 
   f = 1./U_qmc
-  cn_over_Zqmc = [ x * f ** n for n, x in enumerate(pn)]
+  cn_over_Zqmc = np.array([ x * f ** n for n, x in enumerate(pn)])
   fact = cn_over_Zqmc[-2]/c_norm if Nmax > 0 else 1
   cn = cn_over_Zqmc/fact
   qn = cn * sn
