@@ -26,7 +26,7 @@ g0_lesser, g0_greater = make_g0_semi_circular(beta=beta, Gamma=gamma*gamma,
                                               epsilon_d=epsilon_d,
                                               muL=muL, muR=muR)
 
-qn_list, cn_list, qn_last = [], [], []
+on_list, cn_list, on_last = [], [], []
 
 S = SolverCore(g0_lesser, g0_greater)
 
@@ -39,30 +39,32 @@ for order in range(0, max_order):
                      tmax=tmax,
                      alpha=alpha,
                      verbosity=0,
-                     n_cycles=n_cycles, 
+                     n_cycles=n_cycles,
                      n_warmup_cycles=n_warmup_cycles,
-                     random_seed=random_seed, 
+                     random_seed=random_seed,
                      length_cycle=length_cycle)
-    print pn
-    print sn
 
-    f = 1. / U_qmc
-    cn_over_Zqmc = np.array([x * f ** n for n, x in enumerate(pn)])
-    fact = cn_over_Zqmc[-2] / c_norm if order > 0 else 1
-    cn = cn_over_Zqmc / fact
-    qn = cn * sn
-    qn_list.append(qn)
-    cn_list.append(cn)
-    qn_last.append(qn[-1])
-    c_norm = cn[-1]  # for next iter
+    print "----------- order = ", order, "---------------"
+    print " pn = ", pn
+    print " sn = ", sn
 
-    if mpi.rank == 0:
-        print "----------- order = ", order, "---------------"
-        print "cn = ", cn
-        print "sn = ", sn
-        print "qn = ", qn
-        print "qn_last = ", qn_last
-
-if mpi.rank == 0:
-    print "--------- qn ---------"
-    print qn_list
+#    inv_U_qmc = 1. / U_qmc
+#    cn_over_Zqmc = np.array([x * inv_U_qmc ** n for n, x in enumerate(pn)])
+#    fact = cn_over_Zqmc[-2] / c_norm if order > 0 else 1
+#    cn = cn_over_Zqmc / fact
+#    on = cn * sn
+#    on_list.append(on)
+#    cn_list.append(cn)
+#    on_last.append(on[-1])
+#    c_norm = cn[-1]  # for next iter
+#
+#    if mpi.rank == 0:
+#        print "----------- order = ", order, "---------------"
+#        print "cn = ", cn
+#        print "sn = ", sn
+#        print "on = ", on
+#        print "on_last = ", on_last
+#
+#if mpi.rank == 0:
+#    print "--------- on ---------"
+#    print on_list

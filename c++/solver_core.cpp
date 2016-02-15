@@ -23,6 +23,9 @@ std::pair<array<double, 1>, array<double, 1>> solver_core::solve(solve_parameter
  auto data = qmc_data_t{};
  auto t_max = qmc_time_t{params.tmax};
 
+ // FIXME
+ data.g0_lesser_0 = g0_lesser(0)(0, 0);
+
  // Initialize the M-matrices. 100 is the initial matrix size //FIXME why is this size hardcoded?
  for (auto spin : {up, down})
   data.matrices.emplace_back(g0_keldysh_t{g0_adaptor_t{g0_lesser}, g0_adaptor_t{g0_greater}, params.alpha, t_max}, 100);
@@ -41,7 +44,9 @@ std::pair<array<double, 1>, array<double, 1>> solver_core::solve(solve_parameter
  auto qmc = triqs::mc_tools::mc_generic<dcomplex>(params.n_cycles, params.length_cycle, params.n_warmup_cycles,
                                                   params.random_name, params.random_seed, params.verbosity);
 
- // Register moves and measurements //FIXME -- always add single moves, no? //FIXME change to pointers
+ // Register moves and measurements
+ // Can add single moves only, or double moves only (for the case with ph symmetry), or both simultaneously
+ //FIXME change to pointers
  if (params.p_dbl < 1) {
   qmc.add_move(moves::insert{&data, &params, qmc.get_rng()}, "insertion", 1. - params.p_dbl);
   qmc.add_move(moves::remove{&data, &params, qmc.get_rng()}, "removal", 1. - params.p_dbl);
