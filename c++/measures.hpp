@@ -29,6 +29,7 @@ struct measure_pn_sn {
    if (std::isnormal(pn(i))) sn(i) /= pn(i);
    pn(i) /= z;
   }
+  std::cout << "pn = " << pn << std::endl;
  }
 };
 

@@ -20,7 +20,7 @@ std::pair<gf_view<retime>, gf_view<retime>> make_g0_semi_circular(double beta, d
 
  // Retarded self energy with semi circular sigma dos (linear chain).
  auto sigma_linear_chain = [](double omega) -> dcomplex {
-  omega = omega / 2;
+  omega = omega / 2.;
   if (std::abs(omega) < 1) return dcomplex{omega, -std::sqrt(1 - omega * omega)};
   if (omega > 1) return omega - std::sqrt(omega * omega - 1);
   return omega + std::sqrt(omega * omega - 1);

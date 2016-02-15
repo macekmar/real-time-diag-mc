@@ -1,54 +1,68 @@
 from pytriqs.gf.local import *
 from pytriqs.utility import mpi
 from ctint_keldysh import *
-import math
 import numpy as np
 
-alpha =  0.#0.5
-U = 1 #5
-U_qmc = 0.5
-V = 0.8
-epsilon_d = 0
-last_order = 3
-tmax = 10.
+alpha = 0.0
+gamma = 0.5
+epsilon_d = 0.
+beta = 200.
+U_qmc = 2.
+n_cycles = 20000
+n_warmup_cycles = 100
+length_cycle = 1
+random_seed = 15258
+max_order = 3
+p_dbl = 0
+Nt_gf0 = 25000
+tmax_gf0 = 200.0
+tmax = 20.
+muL = 0.
+muR = 0.
+random_seed = 15258
 
-g0_lesser,g0_greater = make_g0_semi_circular(beta = 200.0, Gamma = 0.25,
-                                             tmax_gf0 = 10.0, Nt_gf0 = 10000,
-                                             epsilon_d = epsilon_d + U*alpha,
-                                             muL = V, muR = 0)
+g0_lesser, g0_greater = make_g0_semi_circular(beta=beta, Gamma=gamma*gamma,
+                                              tmax_gf0=tmax_gf0, Nt_gf0=Nt_gf0,
+                                              epsilon_d=epsilon_d,
+                                              muL=muL, muR=muR)
 
-qn_list,cn_list,qn_last = [],[],[]
+qn_list, cn_list, qn_last = [], [], []
 
-S = SolverCore(g0_lesser,g0_greater)
+S = SolverCore(g0_lesser, g0_greater)
 
-for Nmax in range(0, last_order) :
+for order in range(0, max_order):
 
-  pn, sn = S.solve(U = U_qmc,
-          max_perturbation_order = Nmax,
-          min_perturbation_order = 0,
-          p_dbl = 0,
-          tmax = tmax,
-          alpha = alpha,
-          verbosity= 0,
-          n_cycles = 100000, n_warmup_cycles = 1000, length_cycle=10)
+    pn, sn = S.solve(U=U_qmc,
+                     max_perturbation_order=order,
+                     min_perturbation_order=0,
+                     p_dbl=p_dbl,
+                     tmax=tmax,
+                     alpha=alpha,
+                     verbosity=0,
+                     n_cycles=n_cycles, 
+                     n_warmup_cycles=n_warmup_cycles,
+                     random_seed=random_seed, 
+                     length_cycle=length_cycle)
+    print pn
+    print sn
 
-  f = 1./U_qmc
-  cn_over_Zqmc = np.array([ x * f ** n for n, x in enumerate(pn)])
-  fact = cn_over_Zqmc[-2]/c_norm if Nmax > 0 else 1
-  cn = cn_over_Zqmc/fact
-  qn = cn * sn
-  qn_list.append(qn)
-  cn_list.append(cn)
-  qn_last.append(qn[-1])
-  c_norm = cn[-1] # for next iter
+    f = 1. / U_qmc
+    cn_over_Zqmc = np.array([x * f ** n for n, x in enumerate(pn)])
+    fact = cn_over_Zqmc[-2] / c_norm if order > 0 else 1
+    cn = cn_over_Zqmc / fact
+    qn = cn * sn
+    qn_list.append(qn)
+    cn_list.append(cn)
+    qn_last.append(qn[-1])
+    c_norm = cn[-1]  # for next iter
 
-  if mpi.rank == 0 :
-    print "----------- Nmax = ", Nmax, "---------------"
-    print "cn = ", cn
-    print "sn = ", sn
-    print "qn = ", qn
-    print "qn_last = ", qn_last
+    if mpi.rank == 0:
+        print "----------- order = ", order, "---------------"
+        print "cn = ", cn
+        print "sn = ", sn
+        print "qn = ", qn
+        print "qn_last = ", qn_last
 
-if mpi.rank == 0 :
-  print "--------- qn ---------"
-  print qn_list
+if mpi.rank == 0:
+    print "--------- qn ---------"
+    print qn_list

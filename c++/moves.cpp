@@ -19,6 +19,8 @@ dcomplex insert::attempt() {
 
  // The Metropolis ratio
  // FIXME: t_max_L_U : dans le get_random_point policy
+
+// std::cout << t_max_L_U << (k + 1) << sum_dets << data->sum_keldysh_indices << std::endl;
  return t_max_L_U / (k + 1) * sum_dets / data->sum_keldysh_indices;
 }
 
