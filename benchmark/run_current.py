@@ -8,18 +8,17 @@ gamma = 0.5
 epsilon_d = 0.
 beta = 200.
 U_qmc = 2.
-n_cycles = 20000
+n_cycles = 200000
 n_warmup_cycles = 100
-length_cycle = 1
+length_cycle = 10
 random_seed = 15258
 max_order = 2
 p_dbl = 0
 Nt_gf0 = 25000
-tmax_gf0 = 200.0
-tmax = 20.
+tmax_gf0 = 100.0
+tmax = 10.
 muL = 0.
 muR = 0.
-random_seed = 15258
 
 g0_lesser, g0_greater = make_g0_semi_circular(beta=beta, Gamma=gamma*gamma,
                                               tmax_gf0=tmax_gf0, Nt_gf0=Nt_gf0,
@@ -30,6 +29,7 @@ on_list, cn_list, on_last = [], [], []
 
 S = SolverCore(g0_lesser, g0_greater)
 
+
 for order in range(0, max_order):
 
     pn, sn = S.solve(U=U_qmc,
@@ -38,7 +38,7 @@ for order in range(0, max_order):
                      p_dbl=p_dbl,
                      tmax=tmax,
                      alpha=alpha,
-                     verbosity=0,
+                     verbosity=3,
                      n_cycles=n_cycles,
                      n_warmup_cycles=n_warmup_cycles,
                      random_seed=random_seed,
@@ -57,6 +57,8 @@ for order in range(0, max_order):
     cn_list.append(cn)
     on_last.append(on[-1])
     c_norm = cn[-1]  # for next iter
+
+    print "c_norm = ", c_norm  
 
     if mpi.rank == 0:
         print "----------- order = ", order, "---------------"

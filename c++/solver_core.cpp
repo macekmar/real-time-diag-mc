@@ -55,6 +55,10 @@ std::pair<array<double, 1>, array<double, 1>> solver_core::solve(solve_parameter
   qmc.add_move(moves::insert2{&data, &params, qmc.get_rng()}, "insertion2", params.p_dbl);
   qmc.add_move(moves::remove2{&data, &params, qmc.get_rng()}, "removal2", params.p_dbl);
  }
+
+//The move change
+//qmc.add_move(moves::move_change{&data,&params,qmc.get_rng()}," change ",0.2); //FIXME The value of the proposition probability is hardcoded
+
  qmc.add_measure(measure_pn_sn{&data, &pn, &sn}, "M measurement");
 
  // Run

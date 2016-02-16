@@ -14,6 +14,8 @@ dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, int k) {
  // if (k == 0) return imag(g0_lesser(mindex(0,0,0),0));
 
  //if (k == 0) return imag(matrices[up].determinant() * matrices[down].determinant());
+ 
+ //std::cout << "Green function  = " << imag(data->g0_lesser_0) << std::endl;
  if (k == 0) return imag(data->g0_lesser_0); //FIXME hardcoded for the moment
 
  // FIXME From Laura's code

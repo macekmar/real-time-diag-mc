@@ -63,4 +63,20 @@ struct remove2 : common {
  dcomplex accept();
  void reject();
 };
+
+
+
+//-----------QMC change move------------
+
+
+struct move_change : common {
+
+keldysh_contour_pt changed_pt;
+int changed_index;
+ using common::common;
+ dcomplex attempt();
+ dcomplex accept();
+ void reject();
+};
+
 }
