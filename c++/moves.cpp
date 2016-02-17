@@ -4,13 +4,47 @@
 
 namespace moves {
 
+// ------------ QMC vertex shift move --------------------------------------
+
+dcomplex shift::attempt() {
+
+ auto k = data->perturbation_order; // order
+
+ quick_exit = (k == 0); // In particular if k = 0
+ if (quick_exit) return 0;
+ p = rng(k);                              // Choose one of the operators
+ removed_pt = data->matrices[0].get_x(p); // old time, to be saved for the removal case
+
+ auto new_pt = get_random_point();               // new time
+ for (auto &m : data->matrices) m.remove(p, p); // remove the point for all matrices
+ for (auto &m : data->matrices) m.insert(p, p, new_pt, new_pt);
+ sum_dets = recompute_sum_keldysh_indices(data, k);
+
+ // The Metropolis ratio
+ return sum_dets / data->sum_keldysh_indices;
+}
+
+dcomplex shift::accept() {
+ data->sum_keldysh_indices = sum_dets;
+ return 1.0;
+}
+
+void shift::reject() {
+ if (quick_exit) return;
+ for (auto &m : data->matrices) m.remove(p, p); // remove the point for all matrices
+ for (auto &m : data->matrices) m.insert(p, p, removed_pt, removed_pt);
+}
+
 // ------------ QMC insertion move --------------------------------------
 
 dcomplex insert::attempt() {
 
  auto k = data->perturbation_order; // order before adding a time
  quick_exit = (k >= params->max_perturbation_order);
- if (quick_exit) return 0;
+ if (quick_exit) {
+  return 0;
+ }
+ // if (quick_exit) return 0;
 
  // insert the new line and col.
  auto p = get_random_point();
@@ -18,9 +52,6 @@ dcomplex insert::attempt() {
  sum_dets = recompute_sum_keldysh_indices(data, k + 1);
 
  // The Metropolis ratio
- // FIXME: t_max_L_U : dans le get_random_point policy
-
-// std::cout << t_max_L_U << (k + 1) << sum_dets << data->sum_keldysh_indices << std::endl;
  return t_max_L_U / (k + 1) * sum_dets / data->sum_keldysh_indices;
 }
 
@@ -73,7 +104,10 @@ dcomplex remove::attempt() {
 
  auto k = data->perturbation_order; // order before removal
  quick_exit = (k <= params->min_perturbation_order);
- if (quick_exit) return 0;
+ if (quick_exit) {
+  return 0;
+ }
+ // if (quick_exit) return 0;
 
  // remove the line/col
  p = rng(k);                                            // Choose one of the operators for removal
@@ -93,7 +127,8 @@ dcomplex remove::accept() {
 
 void remove::reject() {
  if (quick_exit) return;
- for (auto &m : data->matrices) m.insert(p, p, removed_pt, removed_pt);
+ // for (auto &m : data->matrices) m.insert(p, p, removed_pt, removed_pt);
+ for (auto &m : data->matrices) m.insert(data->perturbation_order - 1, data->perturbation_order - 1, removed_pt, removed_pt);
 }
 
 // ------------ QMC double-removal move --------------------------------------
@@ -127,56 +162,4 @@ void remove2::reject() {
  if (quick_exit) return;
  for (auto &m : data->matrices) m.insert2(p1, p2, p1, p2, removed_pt1, removed_pt2, removed_pt1, removed_pt2);
 }
-
-
-// ------------ QMC change move --------------------------------------
-
-dcomplex move_change::attempt() {
-
-  auto k = data->perturbation_order; // order
-
-  quick_exit = (k <= 0); //We quit if k = 0
-  if (quick_exit) return 0;
-  p_old = rng(k); // Choose one of the operators
-  changed_pt = data->matrices[down].get_x(p_old);  //old time, to be saved for the removal case
-
-  for (auto &m : data->matrices) m.remove(p_old, p_old);// remove the point for all matrices
-
-  auto p = get_random_point(); // new time
-  for (auto &m : data->matrices) m.insert(k-1,k-1, p, p); //We insert the new time
-  sum_dets = recompute_sum_keldysh_indices(data, k );
-  
-  //Old Laura code FIXME : to remove
-//  data->x_values[down][changed_index]={tau,0};
-//  data->y_values[down][changed_index]={tau,0};
-//  data->x_values[up][changed_index+1]={tau,0};
-//  data->y_values[up][changed_index+1]={tau,0};
-//  sum_dets = data->recompute_sum_keldysh_indices();
-
-  // The Metropolis ratio
-  return sum_dets / data->sum_keldysh_indices;
-  //The old one, by Laura 
-  //return data->p(changed_pt.time)*sum_dets /
-       // (data->p(tau) *data->sum_keldysh_indices);
-}
-
-dcomplex move_change::accept() {
-  data->sum_keldysh_indices = sum_dets;
-  return 1.0;
-}
-
-void move_change::reject() {
-  if(quick_exit) return;
-  auto k = data-> perturbation_order;
-  for (auto &m : data->matrices) m.remove(k-1,k-1); // remove the new point for all matrices  
-  for (auto &m : data->matrices) m.insert(p_old,p_old,changed_pt,changed_pt);
-  //We put back the old one
- 
- //Old Laura code 
-  //data->x_values[down][changed_index]=changed_pt;
-  //data->y_values[down][changed_index]=changed_pt;
-  //data->x_values[up][changed_index+1]=changed_pt;
-  //data->y_values[up][changed_index+1]=changed_pt;
-} 
-
 }

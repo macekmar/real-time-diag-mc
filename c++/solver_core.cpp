@@ -38,9 +38,10 @@ std::pair<std::pair<array<double, 1>, array<double, 1>>,std::pair<array<double, 
  // FIXME: Code dependent
  data.matrices[up].insert_at_end({x_index_t{}, t_max, 0}, {x_index_t{}, t_max, 1}); // C^+ C
 
- pn(0) = imag(data.matrices[up].determinant() * data.matrices[down].determinant());
- sn(0) = 1;
- if (params.max_perturbation_order == 0) return {{pn, sn},{pn_errors,sn_errors}};
+ pn(0) = 0;
+ sn(0) = 0;
+ if (params.max_perturbation_order == 0)
+  return {{{imag(data.matrices[up].determinant() * data.matrices[down].determinant())}, {1}},{pn_errors,sn_errors}};
 
  // Construct a Monte Carlo loop
  auto qmc = triqs::mc_tools::mc_generic<dcomplex>(params.n_cycles, params.length_cycle, params.n_warmup_cycles,
@@ -48,7 +49,7 @@ std::pair<std::pair<array<double, 1>, array<double, 1>>,std::pair<array<double, 
 
  // Register moves and measurements
  // Can add single moves only, or double moves only (for the case with ph symmetry), or both simultaneously
- //FIXME change to pointers
+ // FIXME change to pointers
  if (params.p_dbl < 1) {
   qmc.add_move(moves::insert{&data, &params, qmc.get_rng()}, "insertion", 1. - params.p_dbl);
   qmc.add_move(moves::remove{&data, &params, qmc.get_rng()}, "removal", 1. - params.p_dbl);
@@ -57,11 +58,10 @@ std::pair<std::pair<array<double, 1>, array<double, 1>>,std::pair<array<double, 
   qmc.add_move(moves::insert2{&data, &params, qmc.get_rng()}, "insertion2", params.p_dbl);
   qmc.add_move(moves::remove2{&data, &params, qmc.get_rng()}, "removal2", params.p_dbl);
  }
+ // FIXME The value of the proposition probability is hardcoded
+ qmc.add_move(moves::shift{&data, &params, qmc.get_rng()}, "shift", 0.2);
 
-//The move change
-qmc.add_move(moves::move_change{&data,&params,qmc.get_rng()}," change ",0.2); //FIXME The value of the proposition probability is hardcoded
-
- qmc.add_measure(measure_pn_sn{&data, &pn, &sn,&pn_errors,&sn_errors}, "M measurement");
+ qmc.add_measure(measure_pn_sn{&data, &pn, &sn, &pn_errors, &sn_errors}, "M measurement");
 
  // Run
  qmc.start(1.0, triqs::utility::clock_callback(params.max_time));
@@ -69,5 +69,5 @@ qmc.add_move(moves::move_change{&data,&params,qmc.get_rng()}," change ",0.2); //
  // Collect results
  mpi::communicator world;
  qmc.collect_results(world);
- return {{pn, sn},{pn_errors,sn_errors}};
+ return {{pn, sn}, {pn_errors, sn_errors}};
 }

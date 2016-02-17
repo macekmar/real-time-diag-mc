@@ -85,15 +85,5 @@ std::pair<gf_view<retime>, gf_view<retime>> make_g0_semi_circular(double beta, d
  g0_lesser_t = make_gf_from_inverse_fourier(g0_lesser_w);
  g0_greater_t = make_gf_from_inverse_fourier(g0_greater_w);
 
-//FIXME : remove all this printing  
-// std::cout << "g0_l_w(0) = " << g0_lesser_w(0)(0,0) << std::endl;
-// std::cout << "g0_l_w(0) = " << g0_lesser_w(0)(0,1) << std::endl;
-// std::cout << "g0_g_w(0) = " << g0_greater_w(0)(0,0) << std::endl;
-// std::cout << "g0_g_w(0) = " << g0_greater_w(0)(0,1) << std::endl;
-// std::cout << "g0_l_t(0) = " << g0_lesser_t(0)(0,0) << std::endl;
-// std::cout << "g0_l_t(0) = " << g0_lesser_t(0)(0,1) << std::endl;
-// std::cout << "g0_g_t(0) = " << g0_greater_t(0)(0,0) << std::endl;
-// std::cout << "g0_g_t(0) = " << g0_greater_t(0)(0,1) << std::endl;
-
  return {g0_lesser_t, g0_greater_t};
 }

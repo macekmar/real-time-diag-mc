@@ -22,6 +22,18 @@ struct common {
  keldysh_contour_pt get_random_point() { return {rxg(rng), qmc_time_t{rng(params->tmax)}, 0}; }
 };
 
+//-----------QMC vertex shift move------------
+
+struct shift : common {
+ keldysh_contour_pt removed_pt;
+ int p;
+
+ using common::common;
+ dcomplex attempt();
+ dcomplex accept();
+ void reject();
+};
+
 // ------------ QMC insertion move --------------------------------------
 
 struct insert : common {
@@ -63,20 +75,4 @@ struct remove2 : common {
  dcomplex accept();
  void reject();
 };
-
-
-
-//-----------QMC change move------------
-
-
-struct move_change : common {
-
-keldysh_contour_pt changed_pt;
-int p_old;
- using common::common;
- dcomplex attempt();
- dcomplex accept();
- void reject();
-};
-
 }

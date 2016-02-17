@@ -15,7 +15,6 @@ dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, int k) {
 
  //if (k == 0) return imag(matrices[up].determinant() * matrices[down].determinant());
  
- //std::cout << "Green function  = " << imag(data->g0_lesser_0) << std::endl;
  if (k == 0) return imag(data->g0_lesser_0); //FIXME hardcoded for the moment
 
  // FIXME From Laura's code
@@ -71,60 +70,5 @@ dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, int k) {
  }
 #endif
 
- return real(res); // FIXME :
+ return real(res);
 }
-
-////FIXME From Laura's code
-//  //---------------------------------------------------------------
-// /// Gray code determinant rotation. Returns the sum of prod of det for all keldysh configurations.
-// dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, int k) {
-//  if (k > 63) TRIQS_RUNTIME_ERROR << "k overflow";
-//
-//  //When no time is inserted, only the observable is present in the matrix
-//  if (k == 0)
-//    return current?real(g0_equal_time()):imag(g0_equal_time()); // measure i<d^+ c_k> for the current, but <d^+ d> for charge.
-//    
-//  auto two_to_N = uint64_t(1) << k; //shifts he bites from k to the left
-//  auto R_down = range(0,k);
-//  auto R_up   = range(0,k+1);
-//  dcomplex res = 0;
-//  int sign = -1;
-//  
-//  // first construction of the matrices
-//  for (size_t i=0; i<k+1;i++)
-//    for (size_t j=0; j<k+1;j++)
-//      matrices[up](i,j) = g0bar_t(x_values[up][i], y_values[up][j]);
-//    for (size_t i=0; i<k;i++)
-//      for (size_t j=0; j<k;j++)
-//        matrices[down](i,j) = g0bar_t(x_values[down][i], y_values[down][j]);
-//
-//  for (uint64_t n = 0; n < two_to_N; ++n) {
-//
-//   // The bit to flip to obtain the next element. Will be the index of line/col to be changed.
-//   int nlc = (n < two_to_N - 1 ? ffs(~n) : k) - 1; // ffs starts at 1, returns the position of the 1st (least significant) bit set to 1. ~n has bites inversed compared with n.
-//
-//   auto t = flip_index(x_values[down][nlc]);
-//   x_values[up][nlc+1]=t;
-//   y_values[up][nlc+1]=t;
-//   x_values[down][nlc]=t;
-//   y_values[down][nlc]=t;
-//   for (size_t i=0; i<k+1;i++){
-//     matrices[up](i,nlc+1) = g0bar_t(x_values[up][i], t);
-//     matrices[up](nlc+1,i) = g0bar_t(t, y_values[up][i]);
-//   }
-//   for (size_t i=0; i<k;i++){
-//     matrices[down](i,nlc) = g0bar_t(x_values[down][i], t);
-//     matrices[down](nlc,i) = g0bar_t(t, y_values[down][i]);
-//   }
-//   
-//   res += sign * determinant(matrices[up](R_up,R_up)) * determinant(matrices[down](R_down,R_down));
-//   sign *= -1;
-//
-//  }
-//  if (!std::isfinite(real(res))) TRIQS_RUNTIME_ERROR << "NAN ";
-//
-//  res = - res * i_n[(k + 1)%4]; // * i^(k+1)
-//  if (current) res *= 1_j; // measure i<d^+ c_k> for the current, but <d^+ d> for charge.
-//
-//  return real(res);
-// }

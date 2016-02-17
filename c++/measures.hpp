@@ -25,6 +25,7 @@ struct measure_pn_sn {
   int k = data->perturbation_order;
   pn(k) += 1;
   sn(k) += real(sign);
+  for (int i : range(k)) std::cout << "measure " << i << " " << data->matrices[0].get_x(i).t << std::endl;
  }
 
  void collect_results(mpi::communicator c) {
@@ -67,6 +68,9 @@ struct measure_pn_sn {
   long z_tot = mpi_all_reduce(z(0), c);
   pn = mpi_all_reduce(pn, c);
   sn = mpi_all_reduce(sn, c);
+  std::cout << "z = " << z << std::endl;
+  std::cout << "pn = " << pn << std::endl;
+  std::cout << "sn = " << sn << std::endl;
   for (int i = 0; i < first_dim(pn); ++i) {
    if (std::isnormal(pn(i))) sn(i) /= pn(i);
    pn(i) /= z_tot;
