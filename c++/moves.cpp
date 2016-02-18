@@ -135,18 +135,18 @@ dcomplex move_change::attempt() {
 
   auto k = data->perturbation_order; // order
 
-  quick_exit = (k <= 0); //In particular if k = 0
+  quick_exit = (k <= 0); //We quit if k = 0
   if (quick_exit) return 0;
-  changed_index = rng(k); // Choose one of the operators
-  changed_pt = data->matrices[down].get_x(changed_index);  //old time, to be saved for the removal case
+  p_old = rng(k); // Choose one of the operators
+  changed_pt = data->matrices[down].get_x(p_old);  //old time, to be saved for the removal case
 
-  
-  for (auto &m : data->matrices) m.remove(changed_index, changed_index);         // remove the point for all matrices
+  for (auto &m : data->matrices) m.remove(p_old, p_old);// remove the point for all matrices
 
   auto p = get_random_point(); // new time
-  for (auto &m : data->matrices) m.insert(k-1,k-1, p, p);
+  for (auto &m : data->matrices) m.insert(k-1,k-1, p, p); //We insert the new time
   sum_dets = recompute_sum_keldysh_indices(data, k );
-  //Insert it now
+  
+  //Old Laura code FIXME : to remove
 //  data->x_values[down][changed_index]={tau,0};
 //  data->y_values[down][changed_index]={tau,0};
 //  data->x_values[up][changed_index+1]={tau,0};
@@ -154,8 +154,6 @@ dcomplex move_change::attempt() {
 //  sum_dets = data->recompute_sum_keldysh_indices();
 
   // The Metropolis ratio
-  
-  
   return sum_dets / data->sum_keldysh_indices;
   //The old one, by Laura 
   //return data->p(changed_pt.time)*sum_dets /
@@ -170,10 +168,11 @@ dcomplex move_change::accept() {
 void move_change::reject() {
   if(quick_exit) return;
   auto k = data-> perturbation_order;
-  for (auto &m : data->matrices) m.remove(k-1,k-1);         // remove the point for all matrices  
-  for (auto &m : data->matrices) m.insert(changed_index,changed_index,changed_pt,changed_pt);
-  //Insert the old one
-  
+  for (auto &m : data->matrices) m.remove(k-1,k-1); // remove the new point for all matrices  
+  for (auto &m : data->matrices) m.insert(p_old,p_old,changed_pt,changed_pt);
+  //We put back the old one
+ 
+ //Old Laura code 
   //data->x_values[down][changed_index]=changed_pt;
   //data->y_values[down][changed_index]=changed_pt;
   //data->x_values[up][changed_index+1]=changed_pt;

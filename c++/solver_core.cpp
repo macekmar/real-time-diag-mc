@@ -13,11 +13,13 @@ using triqs::utility::mindex;
 
 // -------------------------------------------------------------------------
 // The method that runs the qmc
-std::pair<array<double, 1>, array<double, 1>> solver_core::solve(solve_parameters_t const &params) {
+std::pair<std::pair<array<double, 1>, array<double, 1>>,std::pair<array<double, 1>, array<double, 1>>> solver_core::solve(solve_parameters_t const &params) {
 
  auto pn = array<double, 1>(params.max_perturbation_order + 1); // measurement of c_n
  pn() = 0;
  auto sn = pn;
+ auto pn_errors = pn;
+ auto sn_errors = sn;
 
  // Prepare the data
  auto data = qmc_data_t{};
@@ -38,7 +40,7 @@ std::pair<array<double, 1>, array<double, 1>> solver_core::solve(solve_parameter
 
  pn(0) = imag(data.matrices[up].determinant() * data.matrices[down].determinant());
  sn(0) = 1;
- if (params.max_perturbation_order == 0) return {pn, sn};
+ if (params.max_perturbation_order == 0) return {{pn, sn},{pn_errors,sn_errors}};
 
  // Construct a Monte Carlo loop
  auto qmc = triqs::mc_tools::mc_generic<dcomplex>(params.n_cycles, params.length_cycle, params.n_warmup_cycles,
@@ -57,9 +59,9 @@ std::pair<array<double, 1>, array<double, 1>> solver_core::solve(solve_parameter
  }
 
 //The move change
-//qmc.add_move(moves::move_change{&data,&params,qmc.get_rng()}," change ",0.2); //FIXME The value of the proposition probability is hardcoded
+qmc.add_move(moves::move_change{&data,&params,qmc.get_rng()}," change ",0.2); //FIXME The value of the proposition probability is hardcoded
 
- qmc.add_measure(measure_pn_sn{&data, &pn, &sn}, "M measurement");
+ qmc.add_measure(measure_pn_sn{&data, &pn, &sn,&pn_errors,&sn_errors}, "M measurement");
 
  // Run
  qmc.start(1.0, triqs::utility::clock_callback(params.max_time));
@@ -67,5 +69,5 @@ std::pair<array<double, 1>, array<double, 1>> solver_core::solve(solve_parameter
  // Collect results
  mpi::communicator world;
  qmc.collect_results(world);
- return {pn, sn};
+ return {{pn, sn},{pn_errors,sn_errors}};
 }

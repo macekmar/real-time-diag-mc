@@ -72,7 +72,7 @@ struct remove2 : common {
 struct move_change : common {
 
 keldysh_contour_pt changed_pt;
-int changed_index;
+int p_old;
  using common::common;
  dcomplex attempt();
  dcomplex accept();

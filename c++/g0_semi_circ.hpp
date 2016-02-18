@@ -1,5 +1,6 @@
 #pragma once
 #include <triqs/gfs.hpp>
+#include <triqs/arrays.hpp>
 
 using namespace triqs::gfs;
 
@@ -15,12 +16,17 @@ std::pair<gf_view<retime>, gf_view<retime>> make_g0_semi_circular(double beta, d
 
  // Fermi function
  auto nf = [&](double omega) {
-  return beta > 0 ? 1. / (1. + std::exp(beta * omega)) : (beta < 0. ? ((omega < 0. ? 1. : (omega > 0. ? 0. : 0.5))) : 0.5);
+  return beta > 0 ? 1 / (1 + std::exp(beta * omega)) : (beta < 0 ? ((omega < 0 ? 1 : (omega > 0 ? 0 : 0.5))) : 0.5);
  };
+// // Fermi function
+// auto nf = [&](double omega) {
+//  return beta > 0 ? 1. / (1. + std::exp(beta * omega)) : (beta < 0. ? ((omega < 0. ? 1. : (omega > 0. ? 0. : 0.5))) : 0.5);
+// };
 
  // Retarded self energy with semi circular sigma dos (linear chain).
  auto sigma_linear_chain = [](double omega) -> dcomplex {
-  omega = omega / 2.;
+  omega = omega / 2;
+//  omega = omega / 2.;
   if (std::abs(omega) < 1) return dcomplex{omega, -std::sqrt(1 - omega * omega)};
   if (omega > 1) return omega - std::sqrt(omega * omega - 1);
   return omega + std::sqrt(omega * omega - 1);
@@ -49,7 +55,8 @@ std::pair<gf_view<retime>, gf_view<retime>> make_g0_semi_circular(double beta, d
   auto gdc01 = (g(0, 0) * delta_01 - g(0, 1) * delta_11);
   auto gdc10 = (g(1, 0) * delta_00 - g(1, 1) * delta_10);
   auto gdc11 = (g(1, 0) * delta_01 - g(1, 1) * delta_11);
-  return array<dcomplex, 2>{{gdc00, gdc01}, {gdc10, gdc11}};
+  return array<dcomplex, 2>{{0_j, gdc01}, {gdc10,0_j}};
+//  return array<dcomplex, 2>{{gdc00, gdc01}, {gdc10, gdc11}};
  };
 
  for (auto w : g0_greater_w.mesh()) {
@@ -65,9 +72,28 @@ std::pair<gf_view<retime>, gf_view<retime>> make_g0_semi_circular(double beta, d
   g0_lesser_w[w](1, 0) = 0.0;
   g0_lesser_w[w](1, 1) = 0.0;
  }
+
+ // Compute the high frequency expansion, order 1/omega, and 1/omega^2
+ //g0_lesser_w.singularity()(1) = triqs::arrays::matrix<double>{{0., 0.}, {0., 0.}};
+ //g0_lesser_w.singularity()(2) = triqs::arrays::matrix<dcomplex>{{1_j * Gamma, 0.}, {0., 0.}};
+ g0_lesser_w.singularity()(2)(0,0) = 1_j * Gamma;
+ //g0_greater_w.singularity()(1) = triqs::arrays::matrix<double>{{0., 0.}, {0., 0.}};
+ //g0_greater_w.singularity()(2) = triqs::arrays::matrix<dcomplex>{{-1_j * Gamma, 0.}, {0., 0.}};
+ g0_greater_w.singularity()(2)(0,0) = -1_j * Gamma;
+
  // The non interacting GF in time, obtained from the exact expression in frequency
- g0_greater_t = make_gf_from_inverse_fourier(g0_greater_w);
  g0_lesser_t = make_gf_from_inverse_fourier(g0_lesser_w);
+ g0_greater_t = make_gf_from_inverse_fourier(g0_greater_w);
+
+//FIXME : remove all this printing  
+// std::cout << "g0_l_w(0) = " << g0_lesser_w(0)(0,0) << std::endl;
+// std::cout << "g0_l_w(0) = " << g0_lesser_w(0)(0,1) << std::endl;
+// std::cout << "g0_g_w(0) = " << g0_greater_w(0)(0,0) << std::endl;
+// std::cout << "g0_g_w(0) = " << g0_greater_w(0)(0,1) << std::endl;
+// std::cout << "g0_l_t(0) = " << g0_lesser_t(0)(0,0) << std::endl;
+// std::cout << "g0_l_t(0) = " << g0_lesser_t(0)(0,1) << std::endl;
+// std::cout << "g0_g_t(0) = " << g0_greater_t(0)(0,0) << std::endl;
+// std::cout << "g0_g_t(0) = " << g0_greater_t(0)(0,1) << std::endl;
 
  return {g0_lesser_t, g0_greater_t};
 }
