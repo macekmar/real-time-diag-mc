@@ -34,7 +34,7 @@ solver_core::solve(solve_parameters_t const &params) {
   data.matrices.emplace_back(g0_keldysh_t{g0_adaptor_t{g0_lesser}, g0_adaptor_t{g0_greater}, params.alpha, t_max}, 100);
 
  // FIXME
- std::cout << " matrices = " << data.matrices[up].matrix() << std::endl;
+ //std::cout << " matrices = " << data.matrices[up].matrix() << std::endl;
 
  // Insert the operators to be measured.
  // We measure the density
@@ -43,7 +43,7 @@ solver_core::solve(solve_parameters_t const &params) {
  data.matrices[up].insert_at_end({x_index_t{}, t_max, 0}, {x_index_t{}, t_max, 1}); // C^+ C
  
  //For the double density (do not forget that there is also a factor of -i in the keldysh_sum.hpp)
- data.matrices[down].insert_at_end({x_index_t{}, t_max, 0}, {x_index_t{}, t_max, 1}); 
+// data.matrices[down].insert_at_end({x_index_t{}, t_max, 0}, {x_index_t{}, t_max, 1}); 
 
  //For the double density FIXME hardcoded
  //pn(0) = - real(data.matrices[up].determinant() * data.matrices[down].determinant());

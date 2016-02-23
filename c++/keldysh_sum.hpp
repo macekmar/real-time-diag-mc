@@ -51,7 +51,7 @@ dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, int k) {
  dcomplex i_n[4] = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}}; // powers of i
  res = res * -i_n[(k + 1) % 4];                        // * - i^(k+1)
 
- res = res * (- i_n[1]); // FOR THE DOUBLE DENSITY
+ //res = res * (- i_n[1]); // FOR THE DOUBLE DENSITY
 
 #ifdef CHECK_GRAY_CODE_INTEGRITY
  double precision = 1.e-12;
