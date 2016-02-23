@@ -9,7 +9,7 @@ using gf_latt_time_mat_t = gf<cartesian_product<cyclic_lattice, retime>, matrix_
 
 // --------------  time --------------------------------------
 
-/// Storage of the value of the time. A double
+/// Storage of the value of the time.
 using qmc_time_t = double;
 
 #define IMPURITY_MATRIX

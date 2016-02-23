@@ -16,17 +16,12 @@ std::pair<gf_view<retime>, gf_view<retime>> make_g0_semi_circular(double beta, d
 
  // Fermi function
  auto nf = [&](double omega) {
-  return beta > 0 ? 1 / (1 + std::exp(beta * omega)) : (beta < 0 ? ((omega < 0 ? 1 : (omega > 0 ? 0 : 0.5))) : 0.5);
+  return beta > 0 ? 1. / (1. + std::exp(beta * omega)) : (beta < 0. ? ((omega < 0. ? 1. : (omega > 0. ? 0. : 0.5))) : 0.5);
  };
-// // Fermi function
-// auto nf = [&](double omega) {
-//  return beta > 0 ? 1. / (1. + std::exp(beta * omega)) : (beta < 0. ? ((omega < 0. ? 1. : (omega > 0. ? 0. : 0.5))) : 0.5);
-// };
 
  // Retarded self energy with semi circular sigma dos (linear chain).
  auto sigma_linear_chain = [](double omega) -> dcomplex {
-  omega = omega / 2;
-//  omega = omega / 2.;
+  omega = omega / 2.;
   if (std::abs(omega) < 1) return dcomplex{omega, -std::sqrt(1 - omega * omega)};
   if (omega > 1) return omega - std::sqrt(omega * omega - 1);
   return omega + std::sqrt(omega * omega - 1);
@@ -73,13 +68,7 @@ std::pair<gf_view<retime>, gf_view<retime>> make_g0_semi_circular(double beta, d
   g0_lesser_w[w](1, 1) = 0.0;
  }
 
- // Compute the high frequency expansion, order 1/omega, and 1/omega^2
- //g0_lesser_w.singularity()(1) = triqs::arrays::matrix<double>{{0., 0.}, {0., 0.}};
- //g0_lesser_w.singularity()(2) = triqs::arrays::matrix<dcomplex>{{1_j * Gamma, 0.}, {0., 0.}};
- g0_lesser_w.singularity()(2)(0,0) = 1_j * Gamma;
- //g0_greater_w.singularity()(1) = triqs::arrays::matrix<double>{{0., 0.}, {0., 0.}};
- //g0_greater_w.singularity()(2) = triqs::arrays::matrix<dcomplex>{{-1_j * Gamma, 0.}, {0., 0.}};
- g0_greater_w.singularity()(2)(0,0) = -1_j * Gamma;
+ // No singularity information needed.
 
  // The non interacting GF in time, obtained from the exact expression in frequency
  g0_lesser_t = make_gf_from_inverse_fourier(g0_lesser_w);

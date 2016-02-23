@@ -13,8 +13,11 @@ struct solve_parameters_t {
  /// Alpha term
  double alpha;
 
- /// probability to jump by 2 orders (insert2 and remove2)
+ /// Probability to jump by 2 orders (insert2 and remove2)
  double p_dbl = 0.5;
+
+ /// Probability to change time of vertex
+ double p_shift = 1.0;
 
  // ----   QMC parameters
 

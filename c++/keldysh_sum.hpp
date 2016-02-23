@@ -11,16 +11,10 @@ dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, int k) {
  auto& matrices = data->matrices;
 
  // When no time is inserted, only the observable is present in the matrix
- // if (k == 0) return imag(g0_lesser(mindex(0,0,0),0));
+ // if (k == 0) return imag(g0_lesser(mindex(0,0,0),0)); //FIXME for the lattice
 
  //if (k == 0) return imag(matrices[up].determinant() * matrices[down].determinant());
- 
  if (k == 0) return imag(data->g0_lesser_0); //FIXME hardcoded for the moment
-
- // FIXME From Laura's code
- // When no time is inserted, only the observable is present in the matrix
- // measure i<d^+ c_k> for the current, but <d^+ d> for charge.
- //if (N == 0) return current ? real(g0_equal_time()) : imag(g0_equal_time());
 
 #ifdef CHECK_GRAY_CODE_INTEGRITY
  auto mat_up = matrices[up].matrix();
@@ -33,7 +27,7 @@ dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, int k) {
 #endif
 
  dcomplex res = 0;
- int sign = -1; // FIXME WHY IS THIS -1 ??
+ int sign = -1; // Starting with a flip, so -1 -> 1, which is needed in the first iteration 
  auto two_to_k = uint64_t(1) << k; // shifts the bits k time to the left
  for (uint64_t n = 0; n < two_to_k; ++n) {
 
@@ -53,7 +47,7 @@ dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, int k) {
  }
 
  dcomplex i_n[4] = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}}; // powers of i
- res = -res * i_n[(k + 1) % 4];                        // * i^(k+1) //FIXME -sign before res?!
+ res = res * -i_n[(k + 1) % 4];                        // * - i^(k+1)
 
 #ifdef CHECK_GRAY_CODE_INTEGRITY
  double precision = 1.e-12;
