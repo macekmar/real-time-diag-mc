@@ -41,7 +41,13 @@ solver_core::solve(solve_parameters_t const &params) {
  // For up, we insert the fixed pair of times (t_max, t_max), Keldysh index +-.
  // FIXME: Code dependent
  data.matrices[up].insert_at_end({x_index_t{}, t_max, 0}, {x_index_t{}, t_max, 1}); // C^+ C
+ 
+ //For the double density (do not forget that there is also a factor of -i in the keldysh_sum.hpp)
+ data.matrices[down].insert_at_end({x_index_t{}, t_max, 0}, {x_index_t{}, t_max, 1}); 
 
+ //For the double density FIXME hardcoded
+ //pn(0) = - real(data.matrices[up].determinant() * data.matrices[down].determinant());
+ //sn(0) = 1;
  if (params.max_perturbation_order == 0)
   return {{{imag(data.matrices[up].determinant() * data.matrices[down].determinant())}, {1}}, {pn_errors, sn_errors}};
 

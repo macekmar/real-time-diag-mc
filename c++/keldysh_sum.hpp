@@ -1,7 +1,7 @@
 #pragma once
 
 #define CHECK_GRAY_CODE_INTEGRITY
-#define REGENERATE_MATRIX_BEFORE_EACH_GRAY_CODE
+//#define REGENERATE_MATRIX_BEFORE_EACH_GRAY_CODE
 
 /// Gray code determinant rotation. Returns the sum of prod of det for all keldysh configurations.
 dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, int k) {
@@ -15,7 +15,9 @@ dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, int k) {
 
  //if (k == 0) return imag(matrices[up].determinant() * matrices[down].determinant());
  if (k == 0) return imag(data->g0_lesser_0); //FIXME hardcoded for the moment
-
+ //For the double density
+ //if (k == 0) return imag(data->g0_lesser_0)*imag(data->g0_lesser_0); //FIXME hardcoded for the momen
+ 
 #ifdef CHECK_GRAY_CODE_INTEGRITY
  auto mat_up = matrices[up].matrix();
  auto mat_do = matrices[down].matrix();
@@ -48,6 +50,8 @@ dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, int k) {
 
  dcomplex i_n[4] = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}}; // powers of i
  res = res * -i_n[(k + 1) % 4];                        // * - i^(k+1)
+
+ res = res * (- i_n[1]); // FOR THE DOUBLE DENSITY
 
 #ifdef CHECK_GRAY_CODE_INTEGRITY
  double precision = 1.e-12;
