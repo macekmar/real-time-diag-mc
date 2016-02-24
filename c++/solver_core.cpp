@@ -23,8 +23,6 @@ solver_core::solve(solve_parameters_t const &params) {
  auto sn = pn;
  auto pn_errors = pn;
  auto sn_errors = sn;
- auto observable_pn = array<observable<double> ,1>(params.max_perturbation_order + 1);
- auto observable_sn = array<observable<double> ,1>(params.max_perturbation_order + 1);
 
  // Prepare the data
  auto data = qmc_data_t{};
@@ -70,8 +68,7 @@ solver_core::solve(solve_parameters_t const &params) {
  }
  qmc.add_move(moves::shift{&data, &params, qmc.get_rng()}, "shift", params.p_shift);
 
-
- qmc.add_measure(measure_pn_sn{&data, &observable_pn, &observable_sn}, "M measurement");
+ qmc.add_measure(measure_pn_sn{&data, &pn, &sn, &pn_errors, &sn_errors}, "M measurement");
 
  // Run
  qmc.start(1.0, triqs::utility::clock_callback(params.max_time));
@@ -80,18 +77,5 @@ solver_core::solve(solve_parameters_t const &params) {
  mpi::communicator world;
  qmc.collect_results(world);
 
-
- //Now we treat the data to get the correct average values and errors.
- for (int i = 0; i <= params.max_perturbation_order;i++) 
- {
-    auto aver_and_err_pn =average_and_error(observable_pn(i));
-    auto aver_and_err_sn =average_and_error(observable_sn(i));
-    pn(i) = aver_and_err_pn.value;
-    sn(i) = aver_and_err_sn.value;
-    pn_errors(i) = aver_and_err_pn.error_bar;
-    sn_errors(i) = aver_and_err_sn.error_bar;
- }
-
- 
  return {{pn, sn}, {pn_errors, sn_errors}};
 }

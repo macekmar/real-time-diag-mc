@@ -2,7 +2,7 @@
 triqs_prepare_local_pytriqs(${CMAKE_PROJECT_NAME})
 
 # Build the cython module
-triqs_python_extension(ctint_keldysh)
+triqs_python_extension_and_install(ctint_keldysh)
 target_link_libraries(ctint_keldysh ctint_keldysh_c)
 include_directories(${TRIQS_INCLUDE_ALL} ${CMAKE_CURRENT_SOURCE_DIR})
 triqs_set_rpath_for_target(ctint_keldysh)
