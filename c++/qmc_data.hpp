@@ -39,29 +39,17 @@ struct g0_keldysh_t {
   // do not put alpha for the time_max even at equal time
   if (a == b) return g0_lesser(a.x, b.x, a.t, b.t) - ((b.t == t_max) ? 0_j : 1_j * alpha);
 
-//FIXME why is the shortcut not working
-
-//  // mapping: is it lesser or greater?
-//  //  a    b    (a.time > b.time)   L/G ?
-//  //  0    0           1             G
-//  //  0    0           0             L
-//  //  1    1           1             L
-//  //  1    1           0             G
-//  //
-//  //  0    1           *             L
-//  //  1    0           *             G
-    bool is_greater = (a.k_index == b.k_index ? (a.k_index xor (a.t > b.t)) : a.k_index);
-    return (is_greater ? g0_greater(a.x, b.x, a.t, b.t) : g0_lesser(a.x, b.x, a.t, b.t));
-
-  // old code. slower because more tests FIXME: REMOVE AFTER DEBUG
-  // if (a.k_index == 0 && b.k_index == 0) return (a.t > b.t ? g0_greater(a.x, b.x, a.t, b.t) : g0_lesser(a.x, b.x, a.t, b.t));
-  // if (a.k_index == 1 && b.k_index == 1) return (a.t > b.t ? g0_lesser(a.x, b.x, a.t, b.t) : g0_greater(a.x, b.x, a.t, b.t));
-  // if (a.k_index == 1 && b.k_index == 0) return g0_greater(a.x, b.x, a.t, b.t);
-  // return g0_lesser(a.x, b.x, a.t, b.t);
-  // if (x.k_index == 0 && y.k_index == 0) return (x.time > y.time ? g0_greater(dr, dt) : g0_lesser(dr, dt));
-  // if (x.k_index == 1 && y.k_index == 1) return (x.time > y.time ? g0_lesser(dr, dt) : g0_greater(dr, dt));
-  // if (x.k_index == 1 && y.k_index == 0) return g0_greater(dr, dt);
-  // return g0_lesser(dr, dt);
+  //  // mapping: is it lesser or greater?
+  //  //  a    b    (a.time > b.time)   L/G ?
+  //  //  0    0           1             G
+  //  //  0    0           0             L
+  //  //  1    1           1             L
+  //  //  1    1           0             G
+  //  //
+  //  //  0    1           *             L
+  //  //  1    0           *             G
+  bool is_greater = (a.k_index == b.k_index ? (a.k_index xor (a.t > b.t)) : a.k_index);
+  return (is_greater ? g0_greater(a.x, b.x, a.t, b.t) : g0_lesser(a.x, b.x, a.t, b.t));
  }
 };
 
