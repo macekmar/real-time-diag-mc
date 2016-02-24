@@ -7,69 +7,54 @@
 
 using namespace triqs::gfs;
 namespace mpi = triqs::mpi;
+using namespace triqs::statistics;
 
 struct measure_pn_sn {
 
  qmc_data_t const *data; // Pointer to the MC qmc_data_t
- array<double, 1> &pn;
- array<double, 1> &sn;
- array<int, 1> z{0};                 // z is an array with 1 element to use with mpi_all_gather
- array<double, 1> &pn_over_z_errors; // An array with for each value of n the error associated to pn
- array<double, 1> &sn_errors;
+ 
+ //Creating an array of observables 
+ array<observable<double>, 1 > &observable_pn;
+ array<observable<double>, 1> &observable_sn;
 
- measure_pn_sn(qmc_data_t const *data, array<double, 1> *pn, array<double, 1> *sn, array<double, 1> *pn_over_z_errors,
-               array<double, 1> *sn_errors)
-    : data(data), pn(*pn), sn(*sn), pn_over_z_errors(*pn_over_z_errors), sn_errors(*sn_errors) {}
-
+ //With the new observable type
+ measure_pn_sn(qmc_data_t const *data, array<observable<double>, 1> *observable_pn, array<observable<double>, 1> *observable_sn)
+    : data(data), observable_pn(*observable_pn), observable_sn(*observable_sn) {}
+ 
  void accumulate(dcomplex sign) {
-  z(0) += 1;
+  
   int k = data->perturbation_order;
-  pn(k) += 1;
-  sn(k) += real(sign);
+
+  //Accumulating in pn
+  for(int i = 0; i < first_dim(observable_pn); i++)
+  {
+          if (i==k) observable_pn(i) <<1; 
+          else observable_pn(i) << 0;
+  }
+
+  //Accumulating in sn
+  observable_sn(k) << real(sign);
  }
 
  void collect_results(mpi::communicator c) {
+  
+  //NEW CODE
+  //Putting the values from all cores together
+  auto observable_pn_gathered =  array<observable<double>, 1 >(first_dim(observable_pn)); 
+  auto observable_sn_gathered =  array<observable<double>, 1 >(first_dim(observable_sn)); 
+  for (int i = 0;i < first_dim(observable_pn_gathered);i++) 
+    {
+        auto &&series_pn = observable_pn(i).get_series();
+        auto &&series_sn = observable_sn(i).get_series();
 
-  int number_cores = c.size();
-  std::vector<std::vector<double>> list_pn_over_z; // array n rows x #core columns
-  std::vector<std::vector<double>> list_sn;        // as above
+        observable_pn_gathered(i) = observable<double>(mpi_all_gather(series_pn,c));
+        observable_sn_gathered(i) = observable<double>(mpi_all_gather(series_sn,c));
+    }
+ 
+  //We replace pn and sn by the gathered observables, to make then the treatment of the mean values and average errors in 
+  //solver_core.cpp
+  observable_pn = observable_pn_gathered;
+  observable_sn = observable_sn_gathered;
 
-  // FIXME : do not do the loop over the cores, use directly a placeholder -- shorten code below
-  for (int n = 0; n < first_dim(pn); n++) {
-   // First for pn
-   array<double, 1> pn_over_z_n{pn(n) / z(0)}; // The values of pn/z over the cores, array with 1 element
-   array<double, 1> list_temp_pn = mpi_all_gather(pn_over_z_n, c);
-   list_pn_over_z.push_back(std::vector<double>(number_cores, 0)); // Push a line of 0 and with size the number of cores
-   for (int j = 0; j < number_cores; j++) list_pn_over_z[n][j] = list_temp_pn(j); // Fill the line
-
-   // Now for sn
-   array<double, 1> sn_n{sn(n) / pn(n)};
-   array<double, 1> list_temp_sn = mpi_all_gather(sn_n, c);
-   list_sn.push_back(std::vector<double>(number_cores, 0)); // Push a line of 0 and size the number of cores
-   for (int j = 0; j < number_cores; j++) list_sn[n][j] = list_temp_sn(j);
-  }
-
-  // Computation of the error values
-  for (int n = 0; n < first_dim(pn); n++) {
-   triqs::statistics::observable<double> observable_pn_over_z;
-   triqs::statistics::observable<double> observable_sn;
-// FIXME add to triqs/statistics a constructor for observable starting from 1d array/vector/range container
-   for (int j = 0; j < number_cores; j++) // Loop over all the cores
-   {
-    observable_pn_over_z << list_pn_over_z[n][j];
-    observable_sn << list_sn[n][j];
-   }
-
-   pn_over_z_errors(n) = triqs::statistics::average_and_error(observable_pn_over_z).error_bar;
-   sn_errors(n) = triqs::statistics::average_and_error(observable_sn).error_bar;
-  }
-
-  int z_tot = mpi_all_reduce(z(0), c);
-  pn = mpi_all_reduce(pn, c);
-  sn = mpi_all_reduce(sn, c);
-  for (int i = 0; i < first_dim(pn); ++i) {
-   if (std::isnormal(pn(i))) sn(i) /= pn(i);
-   pn(i) /= z_tot;
-  }
  }
 };

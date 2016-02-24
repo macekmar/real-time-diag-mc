@@ -1,5 +1,6 @@
 #include <triqs/mc_tools.hpp>
 #include <triqs/det_manip.hpp>
+#include <triqs/statistics.hpp>
 #include "./moves.hpp"
 #include "./measures.hpp"
 #include "./solver_core.hpp"
@@ -8,6 +9,7 @@ using namespace triqs::arrays;
 using namespace triqs::gfs;
 namespace mpi = triqs::mpi;
 using triqs::utility::mindex;
+using namespace triqs::statistics;
 
 // ------------ The main class of the solver ------------------------
 
@@ -16,11 +18,13 @@ using triqs::utility::mindex;
 std::pair<std::pair<array<double, 1>, array<double, 1>>, std::pair<array<double, 1>, array<double, 1>>>
 solver_core::solve(solve_parameters_t const &params) {
 
- auto pn = array<double, 1>(params.max_perturbation_order + 1); // measurement of c_n
+ auto pn = array<double, 1>(params.max_perturbation_order + 1); // measurement of p_n
  pn() = 0;
  auto sn = pn;
  auto pn_errors = pn;
  auto sn_errors = sn;
+ auto observable_pn = array<observable<double> ,1>(params.max_perturbation_order + 1);
+ auto observable_sn = array<observable<double> ,1>(params.max_perturbation_order + 1);
 
  // Prepare the data
  auto data = qmc_data_t{};
@@ -32,9 +36,6 @@ solver_core::solve(solve_parameters_t const &params) {
  // Initialize the M-matrices. 100 is the initial matrix size //FIXME why is this size hardcoded?
  for (auto spin : {up, down})
   data.matrices.emplace_back(g0_keldysh_t{g0_adaptor_t{g0_lesser}, g0_adaptor_t{g0_greater}, params.alpha, t_max}, 100);
-
- // FIXME
- //std::cout << " matrices = " << data.matrices[up].matrix() << std::endl;
 
  // Insert the operators to be measured.
  // We measure the density
@@ -48,6 +49,7 @@ solver_core::solve(solve_parameters_t const &params) {
  //For the double density FIXME hardcoded
  //pn(0) = - real(data.matrices[up].determinant() * data.matrices[down].determinant());
  //sn(0) = 1;
+ 
  if (params.max_perturbation_order == 0)
   return {{{imag(data.matrices[up].determinant() * data.matrices[down].determinant())}, {1}}, {pn_errors, sn_errors}};
 
@@ -55,7 +57,7 @@ solver_core::solve(solve_parameters_t const &params) {
  auto qmc = triqs::mc_tools::mc_generic<dcomplex>(params.n_cycles, params.length_cycle, params.n_warmup_cycles,
                                                   params.random_name, params.random_seed, params.verbosity);
 
- // Register moves and measurements
+ // Regeister moves and measurements
  // Can add single moves only, or double moves only (for the case with ph symmetry), or both simultaneously
  // FIXME change to pointers
  if (params.p_dbl < 1) {
@@ -68,7 +70,8 @@ solver_core::solve(solve_parameters_t const &params) {
  }
  qmc.add_move(moves::shift{&data, &params, qmc.get_rng()}, "shift", params.p_shift);
 
- qmc.add_measure(measure_pn_sn{&data, &pn, &sn, &pn_errors, &sn_errors}, "M measurement");
+
+ qmc.add_measure(measure_pn_sn{&data, &observable_pn, &observable_sn}, "M measurement");
 
  // Run
  qmc.start(1.0, triqs::utility::clock_callback(params.max_time));
@@ -76,5 +79,19 @@ solver_core::solve(solve_parameters_t const &params) {
  // Collect results
  mpi::communicator world;
  qmc.collect_results(world);
+
+
+ //Now we treat the data to get the correct average values and errors.
+ for (int i = 0; i <= params.max_perturbation_order;i++) 
+ {
+    auto aver_and_err_pn =average_and_error(observable_pn(i));
+    auto aver_and_err_sn =average_and_error(observable_sn(i));
+    pn(i) = aver_and_err_pn.value;
+    sn(i) = aver_and_err_sn.value;
+    pn_errors(i) = aver_and_err_pn.error_bar;
+    sn_errors(i) = aver_and_err_sn.error_bar;
+ }
+
+ 
  return {{pn, sn}, {pn_errors, sn_errors}};
 }
