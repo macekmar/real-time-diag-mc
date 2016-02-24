@@ -1,0 +1,11 @@
+#For the cthyb results
+
+beta = 200.0
+eps_d = 0.0
+gamma = 0.5
+U_min = 0.
+U_max = 3.
+U_mesh_size = 13
+n_cycles = 10000
+length_cycle=10
+n_warmup_cycles=10000

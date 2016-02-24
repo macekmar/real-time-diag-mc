@@ -1,0 +1,11 @@
+length_cycle = 10
+n_cycles = 20 000
+n_warmup = 10 000
+max_order = 16
+tmax = 10
+beta = 200 
+epsilon_d = 0
+gamma = 0.5
+alpha = 0
+U_qmc = 2
+V = 0
