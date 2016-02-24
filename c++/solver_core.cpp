@@ -1,6 +1,5 @@
 #include <triqs/mc_tools.hpp>
 #include <triqs/det_manip.hpp>
-#include <triqs/statistics.hpp>
 #include "./moves.hpp"
 #include "./measures.hpp"
 #include "./solver_core.hpp"
@@ -9,7 +8,6 @@ using namespace triqs::arrays;
 using namespace triqs::gfs;
 namespace mpi = triqs::mpi;
 using triqs::utility::mindex;
-using namespace triqs::statistics;
 
 // ------------ The main class of the solver ------------------------
 
