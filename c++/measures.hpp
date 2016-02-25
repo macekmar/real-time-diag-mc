@@ -12,10 +12,10 @@ namespace mpi = triqs::mpi;
 struct measure_pn_sn {
 
  qmc_data_t* data; // Pointer to the MC qmc_data_t
- array<double, 1> pn;
- array<double, 1> sn;
- array<double, 1> pn_errors;
- array<double, 1> sn_errors;
+ array<double, 1> &pn;
+ array<double, 1> &sn;
+ array<double, 1> &pn_errors;
+ array<double, 1> &sn_errors;
  int size_n;
 
  // Creating an array of observables
