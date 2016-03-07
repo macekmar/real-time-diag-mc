@@ -26,9 +26,6 @@ solver_core::solve(solve_parameters_t const &params) {
  auto data = qmc_data_t{};
  auto t_max = qmc_time_t{params.tmax};
 
- // FIXME
- data.g0_lesser_0 = g0_lesser(0)(0, 0);
-
  // Initialize the M-matrices. 100 is the initial matrix size //FIXME why is this size hardcoded?
  for (auto spin : {up, down})
   data.matrices.emplace_back(g0_keldysh_t{g0_adaptor_t{g0_lesser}, g0_adaptor_t{g0_greater}, params.alpha, t_max}, 100);

@@ -13,8 +13,7 @@ dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, int k) {
  // When no time is inserted, only the observable is present in the matrix
  // if (k == 0) return imag(g0_lesser(mindex(0,0,0),0)); //FIXME for the lattice
 
- //if (k == 0) return imag(matrices[up].determinant() * matrices[down].determinant());
- if (k == 0) return imag(data->g0_lesser_0); //FIXME hardcoded for the moment
+ if (k == 0) return imag(matrices[up].determinant() * matrices[down].determinant());
  //For the double density
  //if (k == 0) return imag(data->g0_lesser_0)*imag(data->g0_lesser_0); //FIXME hardcoded for the momen
  
