@@ -77,5 +77,7 @@ solver_core::solve(solve_parameters_t const &params) {
  mpi::communicator world;
  qmc.collect_results(world);
 
+ _solve_duration = qmc.get_duration();
+
  return {{pn, sn}, {pn_errors, sn_errors}};
 }
