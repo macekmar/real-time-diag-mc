@@ -1,6 +1,5 @@
 #include "./moves.hpp"
 #include <triqs/det_manip.hpp>
-#include "./keldysh_sum.hpp"
 
 namespace moves {
 
@@ -15,7 +14,7 @@ dcomplex insert::attempt() {
  // insert the new line and col.
  auto p = get_random_point();
  for (auto &m : data->matrices) m.insert(k, k, p, p);
- sum_dets = recompute_sum_keldysh_indices(data, k + 1);
+ sum_dets = recompute_sum_keldysh_indices(data, params, k + 1);
 
  // The Metropolis ratio
  return t_max_L_U / (k + 1) * sum_dets / data->sum_keldysh_indices;
@@ -45,7 +44,7 @@ dcomplex insert2::attempt() {
  auto p2 = get_random_point();
  for (auto &m : data->matrices) m.insert2(k, k + 1, k, k + 1, p1, p2, p1, p2);
 
- sum_dets = recompute_sum_keldysh_indices(data, k + 2);
+ sum_dets = recompute_sum_keldysh_indices(data, params, k + 2);
 
  // The Metropolis ratio
  return t_max_L_U * t_max_L_U / ((k + 1) * (k + 2)) * sum_dets / data->sum_keldysh_indices;
@@ -73,10 +72,10 @@ dcomplex remove::attempt() {
  if (quick_exit) return 0;
 
  // remove the line/col
- p = rng(k);                                            // Choose one of the operators for removal
- removed_pt = data->matrices[0].get_x(p);               // store the point to be remove for later reject
- for (auto &m : data->matrices) m.remove(p, p);         // remove the point for all matrices
- sum_dets = recompute_sum_keldysh_indices(data, k - 1); // recompute sum over keldysh indices
+ p = rng(k);                                                    // Choose one of the operators for removal
+ removed_pt = data->matrices[0].get_x(p);                       // store the point to be remove for later reject
+ for (auto &m : data->matrices) m.remove(p, p);                 // remove the point for all matrices
+ sum_dets = recompute_sum_keldysh_indices(data, params, k - 1); // recompute sum over keldysh indices
 
  // The Metropolis ratio
  return k / t_max_L_U * sum_dets / data->sum_keldysh_indices;
@@ -108,7 +107,7 @@ dcomplex remove2::attempt() {
  removed_pt1 = data->matrices[0].get_x(p1);
  removed_pt2 = data->matrices[0].get_x(p2);
  for (auto &m : data->matrices) m.remove2(p1, p2, p1, p2);
- sum_dets = recompute_sum_keldysh_indices(data, k - 2); // recompute sum over keldysh indices
+ sum_dets = recompute_sum_keldysh_indices(data, params, k - 2); // recompute sum over keldysh indices
 
  // The Metropolis ratio
  return k * (k - 1) / pow(t_max_L_U, 2) * sum_dets / data->sum_keldysh_indices;
@@ -139,7 +138,7 @@ dcomplex shift::attempt() {
  auto new_pt = get_random_point();              // new time
  for (auto &m : data->matrices) m.remove(p, p); // remove the point for all matrices
  for (auto &m : data->matrices) m.insert(p, p, new_pt, new_pt);
- sum_dets = recompute_sum_keldysh_indices(data, k);
+ sum_dets = recompute_sum_keldysh_indices(data, params, k);
 
  // The Metropolis ratio
  return sum_dets / data->sum_keldysh_indices;

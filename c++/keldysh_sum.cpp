@@ -1,22 +1,21 @@
-#pragma once
+#include "./qmc_data.hpp"
 
-#define CHECK_GRAY_CODE_INTEGRITY
+//#define CHECK_GRAY_CODE_INTEGRITY
 //#define REGENERATE_MATRIX_BEFORE_EACH_GRAY_CODE
 
 /// Gray code determinant rotation. Returns the sum of prod of det for all keldysh configurations.
-dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, int k) {
+dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, const solve_parameters_t *params, int k) {
 
- // int k = perturbation_order();
  if (k > 63) TRIQS_RUNTIME_ERROR << "k overflow";
  auto& matrices = data->matrices;
 
- // When no time is inserted, only the observable is present in the matrix
- // if (k == 0) return imag(g0_lesser(mindex(0,0,0),0)); //FIXME for the lattice
+ if (k == 0) {
+  if ((params->measure == "n") or (params->measure == "nn"))
+   return imag(matrices[up].determinant() * matrices[down].determinant());
+  else if (params->measure == "I")
+   return real(matrices[up].determinant() * matrices[down].determinant());
+ }
 
- if (k == 0) return imag(matrices[up].determinant() * matrices[down].determinant());
- //For the double density
- //if (k == 0) return imag(data->g0_lesser_0)*imag(data->g0_lesser_0); //FIXME hardcoded for the momen
- 
 #ifdef CHECK_GRAY_CODE_INTEGRITY
  auto mat_up = matrices[up].matrix();
  auto mat_do = matrices[down].matrix();
@@ -28,7 +27,7 @@ dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, int k) {
 #endif
 
  dcomplex res = 0;
- int sign = -1; // Starting with a flip, so -1 -> 1, which is needed in the first iteration 
+ int sign = -1;                    // Starting with a flip, so -1 -> 1, which is needed in the first iteration
  auto two_to_k = uint64_t(1) << k; // shifts the bits k time to the left
  for (uint64_t n = 0; n < two_to_k; ++n) {
 
@@ -49,8 +48,10 @@ dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, int k) {
 
  dcomplex i_n[4] = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}}; // powers of i
  res = res * -i_n[(k + 1) % 4];                        // * - i^(k+1)
-
- //res = res * (- i_n[1]); // FOR THE DOUBLE DENSITY
+ if (params->measure == "nn")
+  res *= i_n[3]; // additional factor of -i
+ else if (params->measure == "I")
+  res *= i_n[1]; // additional factor of i
 
 #ifdef CHECK_GRAY_CODE_INTEGRITY
  double precision = 1.e-12;

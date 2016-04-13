@@ -6,14 +6,14 @@
 
 /// A point in time on the double contour, with an additionnal index x_index_t
 struct keldysh_contour_pt {
- x_index_t x;  // position on the lattice.
+ x_index_t x;  // position on the lattice or orbital index
  qmc_time_t t; // time, in [0, t_max].
  int k_index;  // Keldysh index : 0 (upper contour), or 1 (lower contour)
 };
 
 /// Comparison (Float is ok in == since we are not doing any operations on them, just store them and compare them in this code).
 inline bool operator==(keldysh_contour_pt const &x, keldysh_contour_pt const &y) {
- return (x.t == y.t) and (x.k_index == y.k_index) and (x.x == y.x);
+ return (x.t == y.t) and (x.k_index == y.k_index); // and (x.x == y.x); //FIXME
 }
 
 /// flip the Keldysh index
@@ -61,6 +61,9 @@ using triqs::det_manip::det_manip;
 /// The data of the QMC
 struct qmc_data_t {
  std::vector<det_manip<g0_keldysh_t>> matrices; // M matrices for up and down
- dcomplex sum_keldysh_indices = 1;              // g0 ? FIXME: call for once
+ dcomplex sum_keldysh_indices;                  // Sum of determinants of the last accepted config
  int perturbation_order = 0;                    // the current perturbation order
 };
+
+// ------------ keldysh sum gray code ------------------------------
+dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, const solve_parameters_t *params, int perturbation_order);

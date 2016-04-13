@@ -50,8 +50,8 @@ std::pair<gf_view<retime>, gf_view<retime>> make_g0_semi_circular(double beta, d
   auto gdc01 = (g(0, 0) * delta_01 - g(0, 1) * delta_11);
   auto gdc10 = (g(1, 0) * delta_00 - g(1, 1) * delta_10);
   auto gdc11 = (g(1, 0) * delta_01 - g(1, 1) * delta_11);
-  return array<dcomplex, 2>{{0_j, gdc01}, {gdc10,0_j}};
-//  return array<dcomplex, 2>{{gdc00, gdc01}, {gdc10, gdc11}};
+  return array<dcomplex, 2>{{0_j, gdc01}, {gdc10, 0_j}};
+  //  return array<dcomplex, 2>{{gdc00, gdc01}, {gdc10, gdc11}};
  };
 
  for (auto w : g0_greater_w.mesh()) {
@@ -61,7 +61,7 @@ std::pair<gf_view<retime>, gf_view<retime>> make_g0_semi_circular(double beta, d
   auto g0_dc = G0_dc_w(w, muL); // we only need the left lead GF to calculate the current
   g0_lesser_w[w](0, 1) = g0_dc(0, 1);
   g0_greater_w[w](0, 1) = g0_dc(1, 0);
-  //FIXME set lower components to zero
+  // FIXME set lower components to zero
   g0_greater_w[w](1, 0) = 0.0;
   g0_greater_w[w](1, 1) = 0.0;
   g0_lesser_w[w](1, 0) = 0.0;

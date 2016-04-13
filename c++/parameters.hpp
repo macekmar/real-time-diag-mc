@@ -19,6 +19,9 @@ struct solve_parameters_t {
  /// Probability to change time of vertex
  double p_shift = 1.0;
 
+ /// Which measure? density n, double occupation nn or current I.
+ std::string measure = "n";
+
  // ----   QMC parameters
 
  /// Maximum order in U
@@ -47,5 +50,4 @@ struct solve_parameters_t {
 
  /// Verbosity level
  int verbosity = ((triqs::mpi::communicator().rank() == 0) ? 3 : 0); // silence the slave nodes
-
 };

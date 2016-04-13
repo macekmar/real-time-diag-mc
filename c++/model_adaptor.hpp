@@ -14,23 +14,6 @@ using qmc_time_t = double;
 
 #define IMPURITY_MATRIX
 
-// ------------------ Single Impurity Scalar -----------------------
-
-#ifdef IMPURITY_SCALAR
-using x_index_t = int; // unused
-using g0_t = gf<retime, scalar_valued>;
-struct g0_adaptor_t {
- g0_t g0;
- auto operator()(x_index_t, x_index_t, double t, double tp) const { return g0(t - tp); }
-};
-
-struct random_x_generator {
- random_x_generator(g0_t::const_view_type, solve_parameters_t const *params){};
- x_index_t operator()(triqs::mc_tools::random_generator &rng) const { return 0; }
- int size() const { return 1; } // size of interacting problem
-};
-#endif
-
 // ------------------ Single Impurity Matrix -----------------------
 
 #ifdef IMPURITY_MATRIX
@@ -44,7 +27,7 @@ struct g0_adaptor_t {
 struct random_x_generator {
  int L;
  random_x_generator(g0_t::const_view_type g0, solve_parameters_t const *params) : L(1){};
- //FIXME random_x_generator(g0_t::const_view_type g0, solve_parameters_t const *params) : L(get_target_shape(g0)[0]){};
+ // FIXME random_x_generator(g0_t::const_view_type g0, solve_parameters_t const *params) : L(get_target_shape(g0)[0]){};
  x_index_t operator()(triqs::mc_tools::random_generator &rng) const {
   return rng(L); // point on the lattice
  }
