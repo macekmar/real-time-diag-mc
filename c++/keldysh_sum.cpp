@@ -10,8 +10,10 @@ dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, const solve_parameters_
  auto& matrices = data->matrices;
 
  if (k == 0) {
-  if ((params->measure == "n") or (params->measure == "nn"))
+  if (params->measure == "n")
    return imag(matrices[up].determinant() * matrices[down].determinant());
+   else if (params->measure == "nn")
+   return imag(matrices[up].determinant())*imag(matrices[up].determinant());
   else if (params->measure == "I")
    return real(matrices[up].determinant() * matrices[down].determinant());
  }
