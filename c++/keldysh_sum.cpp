@@ -4,11 +4,12 @@
 //#define REGENERATE_MATRIX_BEFORE_EACH_GRAY_CODE
 
 /// Gray code determinant rotation. Returns the sum of prod of det for all keldysh configurations.
-dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, const solve_parameters_t *params, int k) {
+dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, const solve_parameters_t* params, int k) {
 
  if (k > 63) TRIQS_RUNTIME_ERROR << "k overflow";
  auto& matrices = data->matrices;
 
+ /*
  if (k == 0) {
   if (params->measure == "n")
    return imag(matrices[up].determinant() * matrices[down].determinant());
@@ -16,6 +17,16 @@ dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, const solve_parameters_
    return imag(matrices[up].determinant())*imag(matrices[up].determinant());
   else if (params->measure == "I")
    return real(matrices[up].determinant() * matrices[down].determinant());
+ }
+ */
+
+ if (k == 0) {
+  if (data->nb_operators == 2)
+   return imag(matrices[up].determinant() * matrices[down].determinant());
+  else if (data->nb_operators == 4)
+   return imag(matrices[up].determinant()) * imag(matrices[up].determinant());
+  else
+   TRIQS_RUNTIME_ERROR << "Operator to measure not recognised.";
  }
 
 #ifdef CHECK_GRAY_CODE_INTEGRITY
@@ -49,11 +60,14 @@ dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, const solve_parameters_
  }
 
  dcomplex i_n[4] = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}}; // powers of i
- res = res * -i_n[(k + 1) % 4];                        // * - i^(k+1)
- if (params->measure == "nn")
+ res = res * i_n[k % 4];                               // * i^(k)
+
+ if (data->nb_operators == 2)
   res *= i_n[3]; // additional factor of -i
- else if (params->measure == "I")
-  res *= i_n[1]; // additional factor of i
+ else if (data->nb_operators == 4)
+  res *= i_n[2]; // additional factor of -1
+ else
+  TRIQS_RUNTIME_ERROR << "Operator to measure not recognised.";
 
 #ifdef CHECK_GRAY_CODE_INTEGRITY
  double precision = 1.e-12;

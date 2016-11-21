@@ -1,6 +1,6 @@
 #pragma once
-#include <triqs/det_manip.hpp>
 #include "./model_adaptor.hpp"
+#include <triqs/det_manip.hpp>
 
 // --------------   Point on the Keldysh contour   --------------------------------------
 
@@ -10,6 +10,10 @@ struct keldysh_contour_pt {
  qmc_time_t t; // time, in [0, t_max].
  int k_index;  // Keldysh index : 0 (upper contour), or 1 (lower contour)
 };
+
+inline keldysh_contour_pt make_keldysh_contour_pt(std::tuple<x_index_t, double, int> const &t) {
+ return {std::get<0>(t), std::get<1>(t), std::get<2>(t)};
+}
 
 /// Comparison (Float is ok in == since we are not doing any operations on them, just store them and compare them in this code).
 inline bool operator==(keldysh_contour_pt const &x, keldysh_contour_pt const &y) {
@@ -63,7 +67,20 @@ struct qmc_data_t {
  std::vector<det_manip<g0_keldysh_t>> matrices; // M matrices for up and down
  dcomplex sum_keldysh_indices;                  // Sum of determinants of the last accepted config
  int perturbation_order = 0;                    // the current perturbation order
+ const double tmax;                             // time boundary
+ const int nb_operators;                        // number of creat/anihil operators in the operator to measure
+
+ qmc_data_t(solve_parameters_t const &params)
+    : tmax([&params] {
+
+       std::vector<qmc_time_t> times;
+       for (auto spin : {up, down})
+        for (auto const &point : params.op_to_measure[spin]) times.push_back(std::get<1>(point));
+       return *std::max_element(times.begin(), times.end());
+
+      }()),
+      nb_operators([&params] { return params.op_to_measure[up].size() + params.op_to_measure[down].size(); }()) {}
 };
 
 // ------------ keldysh sum gray code ------------------------------
-dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, const solve_parameters_t *params, int perturbation_order);
+dcomplex recompute_sum_keldysh_indices(qmc_data_t *data, const solve_parameters_t *params, int perturbation_order);

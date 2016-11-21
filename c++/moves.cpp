@@ -16,7 +16,7 @@ dcomplex insert::attempt() {
  for (auto &m : data->matrices) m.insert(k, k, p, p);
  sum_dets = recompute_sum_keldysh_indices(data, params, k + 1);
 
- // The Metropolis ratio
+ // The Metropolis ratio;
  return t_max_L_U / (k + 1) * sum_dets / data->sum_keldysh_indices;
 }
 

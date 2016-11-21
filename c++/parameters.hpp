@@ -1,14 +1,24 @@
 #pragma once
+
+#define IMPURITY_MATRIX
+
+#ifdef IMPURITY_MATRIX
+using x_index_t = int;
+#endif
+
 using namespace triqs::utility;
 
 // All the arguments of the solve function
 struct solve_parameters_t {
 
+ /// operator to measure
+ std::vector<std::vector<std::tuple<x_index_t, double, int>>> op_to_measure;
+
  /// U
  double U;
 
  /// tmax
- double tmax;
+ // double tmax;
 
  /// Alpha term
  double alpha;
@@ -20,7 +30,7 @@ struct solve_parameters_t {
  double p_shift = 1.0;
 
  /// Which measure? density n, double occupation nn or current I.
- std::string measure = "n";
+ // std::string measure = "n";
 
  // ----   QMC parameters
 

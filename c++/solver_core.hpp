@@ -10,7 +10,7 @@ using namespace triqs::gfs;
 class solver_core {
 
  g0_t g0_lesser, g0_greater;
- double _solve_duration;
+ double _solve_duration = 0;
 
  public:
  // FIXME change type of arguments after olivier fixes wrapper

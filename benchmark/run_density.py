@@ -43,10 +43,10 @@ for order in range(0, max_order):
         print "----------- order = ", order, "---------------"
 
     (pn, sn), (pn_error, sn_error) = S.solve(U=U_qmc,
+                                             op_to_measure=[[(0, tmax, 0), (0, tmax, 1)], []],
                                              max_perturbation_order=order,
                                              min_perturbation_order=0,
                                              p_dbl=p_dbl,
-                                             tmax=tmax,
                                              alpha=alpha,
                                              n_cycles=n_cycles,
                                              n_warmup_cycles=n_warmup_cycles,

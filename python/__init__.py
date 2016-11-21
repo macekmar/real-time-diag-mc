@@ -23,6 +23,7 @@ r"""
 DOC
 
 """
-from ctint_keldysh import SolverCore, make_g0_semi_circular
+from ctint_keldysh import SolverCore
+from g0_semi_circ import make_g0_semi_circular
 
 __all__ = ['SolverCore','make_g0_semi_circular']

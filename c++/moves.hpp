@@ -1,6 +1,6 @@
 #pragma once
-#include "./qmc_data.hpp"
 #include "./parameters.hpp"
+#include "./qmc_data.hpp"
 
 namespace moves {
 
@@ -15,11 +15,11 @@ struct common {
 
  common(qmc_data_t *data, const solve_parameters_t *params, triqs::mc_tools::random_generator &rng)
     : data(data), params(params), rng(rng), rxg{data->matrices[0].get_function().g0_lesser.g0, params} {
-  t_max_L_U = params->tmax * rxg.size() * params->U;
+  t_max_L_U = data->tmax * rxg.size() * params->U;
  }
 
  /// Construct random point with space/orbital index, time and alpha
- keldysh_contour_pt get_random_point() { return {rxg(rng), qmc_time_t{rng(params->tmax)}, 0}; }
+ keldysh_contour_pt get_random_point() { return {rxg(rng), qmc_time_t{rng(data->tmax)}, 0}; }
 };
 
 // ------------ QMC insertion move --------------------------------------
