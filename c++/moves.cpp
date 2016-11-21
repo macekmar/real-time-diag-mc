@@ -1,5 +1,5 @@
-#include "./moves.hpp"
 #include <triqs/det_manip.hpp>
+#include "./moves.hpp"
 
 namespace moves {
 

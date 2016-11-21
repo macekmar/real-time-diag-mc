@@ -1,8 +1,8 @@
+#include <triqs/det_manip.hpp>
+#include <triqs/mc_tools.hpp>
 #include "./solver_core.hpp"
 #include "./measures.hpp"
 #include "./moves.hpp"
-#include <triqs/det_manip.hpp>
-#include <triqs/mc_tools.hpp>
 
 using namespace triqs::arrays;
 using namespace triqs::gfs;
@@ -42,36 +42,16 @@ solver_core::solve(solve_parameters_t const& params) {
  else
   TRIQS_RUNTIME_ERROR << "Operator to measure not recognised.";
 
-
- /*
-  // Insert the operators to be measured
-  // Set pn(0) and sn(0)
-  if (params.measure == "n") { // Measure the density d_up^+ d_up
-   // For up, we insert the fixed pair of times (t_max, t_max), Keldysh index +-.
-   data.matrices[up].insert_at_end({x_index_t{}, t_max, 0}, {x_index_t{}, t_max, 1});
-   pn(0) = imag(data.matrices[up].determinant() * data.matrices[down].determinant());
-  } else if (params.measure == "nn") { // Measure the double occupation d_up^+ d_up d_dn^+ d_dn, factor of -i in keldysh sum
-   data.matrices[up].insert_at_end({x_index_t{}, t_max, 0}, {x_index_t{}, t_max, 1});
-   data.matrices[down].insert_at_end({x_index_t{}, t_max, 0}, {x_index_t{}, t_max, 1});
-   pn(0) = -real(data.matrices[up].determinant() * data.matrices[down].determinant());
-  } else if (params.measure == "I") { // Measure the current
-   data.matrices[up].insert_at_end({x_index_t{0}, t_max, 0}, {x_index_t{1}, t_max, 1});
-   pn(0) = 2. * real(data.matrices[up].determinant() * data.matrices[down].determinant());
-  } else {
-   TRIQS_RUNTIME_ERROR << "Measure '" << params.measure << "' not recognised.";
-  }
- */
-
  if (params.max_perturbation_order == 0) return {{pn, {1}}, {pn_errors, sn_errors}};
 
- // Compute initial sum of determinants
- data.sum_keldysh_indices = recompute_sum_keldysh_indices(&data, &params, 0); // FIXME useless
+ // Compute initial sum of determinants (needed for the first MC move)
+ data.sum_keldysh_indices = recompute_sum_keldysh_indices(&data, &params, 0);
 
  // Construct a Monte Carlo loop
  auto qmc = triqs::mc_tools::mc_generic<dcomplex>(params.n_cycles, params.length_cycle, params.n_warmup_cycles,
                                                   params.random_name, params.random_seed, params.verbosity);
 
- // Regeister moves and measurements
+ // Register moves and measurements
  // Can add single moves only, or double moves only (for the case with ph symmetry), or both simultaneously
  if (params.p_dbl < 1) {
   qmc.add_move(moves::insert{&data, &params, qmc.get_rng()}, "insertion", 1. - params.p_dbl);

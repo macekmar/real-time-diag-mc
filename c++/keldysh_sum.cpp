@@ -9,17 +9,6 @@ dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, const solve_parameters_
  if (k > 63) TRIQS_RUNTIME_ERROR << "k overflow";
  auto& matrices = data->matrices;
 
- /*
- if (k == 0) {
-  if (params->measure == "n")
-   return imag(matrices[up].determinant() * matrices[down].determinant());
-   else if (params->measure == "nn")
-   return imag(matrices[up].determinant())*imag(matrices[up].determinant());
-  else if (params->measure == "I")
-   return real(matrices[up].determinant() * matrices[down].determinant());
- }
- */
-
  if (k == 0) {
   if (data->nb_operators == 2)
    return imag(matrices[up].determinant() * matrices[down].determinant());

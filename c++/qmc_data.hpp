@@ -1,6 +1,6 @@
 #pragma once
-#include "./model_adaptor.hpp"
 #include <triqs/det_manip.hpp>
+#include "./model_adaptor.hpp"
 
 // --------------   Point on the Keldysh contour   --------------------------------------
 
