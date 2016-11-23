@@ -17,18 +17,18 @@ p["muR"] = 0
 g0_lesser, g0_greater = make_g0_semi_circular(**p)
 
 S = SolverCore(g0_lesser, g0_greater)
+tmax = 3.
 
 p = {}
+p["op_to_measure"] = [[(0, tmax ,0), (0, tmax, 1)], []]
 p["U"] = 2.5 # U_qmc
 p["max_perturbation_order"] = 7
 p["min_perturbation_order"] = 0
 p["alpha"] = 0.5
-p["tmax"] = 3.
 p["n_warmup_cycles"] = 1000
 p["length_cycle"] = 10
 p["n_cycles"] = 5000
 p["p_dbl"] = 0
-p["measure"] = 'n'
 
 (pn, sn), (pn_error, sn_error) = S.solve(**p)
 
