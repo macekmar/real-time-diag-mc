@@ -18,7 +18,7 @@ class solver_core {
     : g0_lesser(g0_lesser), g0_greater(g0_greater){};
 
  TRIQS_WRAP_ARG_AS_DICT // Wrap the solver parameters as a ** call in python with the clang & c++2py tool
-     std::pair<std::pair<array<double, 1>, array<double, 1>>, std::pair<array<double, 1>, array<double, 1>>>
+     std::pair<std::pair<array<double, 1>, array<dcomplex, 1>>, std::pair<array<double, 1>, array<double, 1>>>
      solve(solve_parameters_t const& params);
  
  double get_solve_duration() const {return _solve_duration;}

@@ -10,12 +10,7 @@ dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, const solve_parameters_
  auto& matrices = data->matrices;
 
  if (k == 0) {
-  if (data->nb_operators == 2)
-   return imag(matrices[up].determinant() * matrices[down].determinant());
-  else if (data->nb_operators == 4)
-   return imag(matrices[up].determinant()) * imag(matrices[up].determinant());
-  else
-   TRIQS_RUNTIME_ERROR << "Operator to measure not recognised.";
+    return matrices[up].determinant() * matrices[down].determinant() * dcomplex({0, -1});
  }
 
 #ifdef CHECK_GRAY_CODE_INTEGRITY
@@ -30,7 +25,7 @@ dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, const solve_parameters_
 
  dcomplex res = 0;
  int sign = -1;                    // Starting with a flip, so -1 -> 1, which is needed in the first iteration
- auto two_to_k = uint64_t(1) << k; // shifts the bits k time to the left
+ auto two_to_k = uint64_t(1) << k; // shifts the bits k times to the left
  for (uint64_t n = 0; n < two_to_k; ++n) {
 
   // The bit to flip to obtain the next element. Will be the index of line/col to be changed.
@@ -45,16 +40,16 @@ dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, const solve_parameters_
   res += sign * matrices[up].determinant() * matrices[down].determinant();
   sign = -sign;
 
-  if (!std::isfinite(real(res))) TRIQS_RUNTIME_ERROR << "NAN for n = " << n;
+  if (!(std::isfinite(real(res)) & std::isfinite(imag(res)))) TRIQS_RUNTIME_ERROR << "NAN for n = " << n;
  }
 
  dcomplex i_n[4] = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}}; // powers of i
  res = res * i_n[k % 4];                               // * i^(k)
 
  if (data->nb_operators == 2)
-  res *= i_n[3]; // additional factor of -i
+  res *= dcomplex({0, -1}); // additional factor of -i
  else if (data->nb_operators == 4)
-  res *= i_n[2]; // additional factor of -1
+  res *= i_n[2]; // additional factor of -1=i^6
  else
   TRIQS_RUNTIME_ERROR << "Operator to measure not recognised.";
 
@@ -73,5 +68,5 @@ dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, const solve_parameters_
  }
 #endif
 
- return real(res);
+ return res;
 }

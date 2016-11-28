@@ -13,14 +13,15 @@ using triqs::utility::mindex;
 
 // -------------------------------------------------------------------------
 // The method that runs the qmc
-std::pair<std::pair<array<double, 1>, array<double, 1>>, std::pair<array<double, 1>, array<double, 1>>>
+std::pair<std::pair<array<double, 1>, array<dcomplex, 1>>, std::pair<array<double, 1>, array<double, 1>>>
 solver_core::solve(solve_parameters_t const& params) {
 
  auto pn = array<double, 1>(params.max_perturbation_order + 1); // measurement of p_n
  pn() = 0;
- auto sn = pn;
+ auto sn = array<dcomplex, 1>(params.max_perturbation_order + 1); // measurement of s_n
+ sn() = 0;
  auto pn_errors = pn;
- auto sn_errors = sn;
+ auto sn_errors = pn;
 
  // Prepare the data
  auto data = qmc_data_t{params};
@@ -35,14 +36,14 @@ solver_core::solve(solve_parameters_t const& params) {
   if (v.size() == 2) data.matrices[spin].insert_at_end(make_keldysh_contour_pt(v[0]), make_keldysh_contour_pt(v[1]));
  }
 
- if (data.nb_operators == 2)
-  pn(0) = imag(data.matrices[up].determinant() * data.matrices[down].determinant());
- else if (data.nb_operators == 4)
-  pn(0) = -real(data.matrices[up].determinant() * data.matrices[down].determinant());
- else
-  TRIQS_RUNTIME_ERROR << "Operator to measure not recognised.";
+if (params.max_perturbation_order == 0) { 
+ auto order_zero_value = data.matrices[up].determinant() * data.matrices[down].determinant();
+ pn(0) = std::abs(order_zero_value);
+ sn(0) = order_zero_value / pn(0) * dcomplex({0, -1}); // FIXME not accurate if pn(0) is very small
+ _solve_duration = 0.0;
 
- if (params.max_perturbation_order == 0) return {{pn, {1}}, {pn_errors, sn_errors}};
+ return {{pn, sn}, {pn_errors, sn_errors}};
+}
 
  // Compute initial sum of determinants (needed for the first MC move)
  data.sum_keldysh_indices = recompute_sum_keldysh_indices(&data, &params, 0);

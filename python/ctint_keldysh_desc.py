@@ -1,5 +1,5 @@
 # Generated automatically using the command :
-# c++2py.py ../c++/solver_core.hpp -p -mctint_keldysh -o ctint_keldysh --moduledoc "The ctint solver"
+# c++2py.py ../c++/solver_core.hpp -p -mctint_keldysh -o ctint_keldysh --moduledoc "The ctint solver" --libclang_location /usr/lib/llvm-3.8/lib/libclang-3.8.so
 from wrap_generator import *
 
 # The module
@@ -31,7 +31,7 @@ c = class_(
 c.add_constructor("""(gf_view<retime,matrix_valued> g0_lesser, gf_view<retime,matrix_valued> g0_greater)""",
                   doc = """ """)
 
-c.add_method("""std::pair<std::pair<array<double,1>,array<double,1>>,std::pair<array<double,1>,array<double,1>>> solve (**solve_parameters_t)""",
+c.add_method("""std::pair<std::pair<array<double,1>,array<dcomplex,1>>,std::pair<array<double,1>,array<double,1>>> solve (**solve_parameters_t)""",
              doc = """+------------------------+----------------------------------------------------------------+------------------------------------------------+--------------------------------------------------------+
 | Parameter Name         | Type                                                           | Default                                        | Documentation                                          |
 +========================+================================================================+================================================+========================================================+
