@@ -1,8 +1,8 @@
-#include <triqs/det_manip.hpp>
-#include <triqs/mc_tools.hpp>
 #include "./solver_core.hpp"
 #include "./measures.hpp"
 #include "./moves.hpp"
+#include <triqs/det_manip.hpp>
+#include <triqs/mc_tools.hpp>
 
 using namespace triqs::arrays;
 using namespace triqs::gfs;
@@ -27,7 +27,7 @@ solver_core::solve(solve_parameters_t const& params) {
  auto data = qmc_data_t{params};
  auto t_max = qmc_time_t{data.tmax};
 
- // Initialize the M-matrices. 100 is the initial matrix size
+ // Initialize the M-matrices. 100 is the initial alocated space.
  for (auto spin : {up, down})
   data.matrices.emplace_back(g0_keldysh_t{g0_adaptor_t{g0_lesser}, g0_adaptor_t{g0_greater}, params.alpha, t_max}, 100);
 
@@ -36,14 +36,14 @@ solver_core::solve(solve_parameters_t const& params) {
   if (v.size() == 2) data.matrices[spin].insert_at_end(make_keldysh_contour_pt(v[0]), make_keldysh_contour_pt(v[1]));
  }
 
-if (params.max_perturbation_order == 0) { 
- auto order_zero_value = data.matrices[up].determinant() * data.matrices[down].determinant();
- pn(0) = std::abs(order_zero_value);
- sn(0) = order_zero_value / pn(0) * dcomplex({0, -1}); // FIXME not accurate if pn(0) is very small
- _solve_duration = 0.0;
+ if (params.max_perturbation_order == 0) {
+  auto order_zero_value = data.matrices[up].determinant() * data.matrices[down].determinant();
+  pn(0) = std::abs(order_zero_value);
+  sn(0) = order_zero_value / pn(0) * dcomplex({0, -1}); // FIXME not accurate if pn(0) is very small
+  _solve_duration = 0.0;
 
- return {{pn, sn}, {pn_errors, sn_errors}};
-}
+  return {{pn, sn}, {pn_errors, sn_errors}};
+ }
 
  // Compute initial sum of determinants (needed for the first MC move)
  data.sum_keldysh_indices = recompute_sum_keldysh_indices(&data, &params, 0);
@@ -62,9 +62,9 @@ if (params.max_perturbation_order == 0) {
   qmc.add_move(moves::insert2{&data, &params, qmc.get_rng()}, "insertion2", params.p_dbl);
   qmc.add_move(moves::remove2{&data, &params, qmc.get_rng()}, "removal2", params.p_dbl);
  }
- qmc.add_move(moves::shift{&data, &params, qmc.get_rng()}, "shift", params.p_shift);
+ //qmc.add_move(moves::shift{&data, &params, qmc.get_rng()}, "shift", params.p_shift);
 
- qmc.add_measure(measure_pn_sn{&data, &pn, &sn, &pn_errors, &sn_errors}, "M measurement");
+ qmc.add_measure(measure_pn_sn{&data, &pn, &sn, &pn_errors, &sn_errors, &_nb_measures}, "M measurement");
 
  // Run
  qmc.start(1.0, triqs::utility::clock_callback(params.max_time));

@@ -1,7 +1,7 @@
 #include "./qmc_data.hpp"
 
 //#define CHECK_GRAY_CODE_INTEGRITY
-//#define REGENERATE_MATRIX_BEFORE_EACH_GRAY_CODE
+#define REGENERATE_MATRIX_BEFORE_EACH_GRAY_CODE
 
 /// Gray code determinant rotation. Returns the sum of prod of det for all keldysh configurations.
 dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, const solve_parameters_t* params, int k) {
@@ -10,7 +10,7 @@ dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, const solve_parameters_
  auto& matrices = data->matrices;
 
  if (k == 0) {
-    return matrices[up].determinant() * matrices[down].determinant() * dcomplex({0, -1});
+  return matrices[up].determinant() * matrices[down].determinant() * dcomplex({0, -1});
  }
 
 #ifdef CHECK_GRAY_CODE_INTEGRITY
