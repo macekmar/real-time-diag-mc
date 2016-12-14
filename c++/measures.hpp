@@ -22,7 +22,7 @@ struct measure_pn_sn {
 
  // Creating an histogram
  histogram histogram_pn;
- triqs::arrays::vector<dcomplex> phase_n;
+ triqs::arrays::vector<dcomplex> sign_n;
 
  // ----------
  measure_pn_sn(qmc_data_t* data, array<double, 1>* pn, array<dcomplex, 1>* sn, array<double, 1>* pn_errors,
@@ -30,15 +30,15 @@ struct measure_pn_sn {
     : data(data), pn(*pn), sn(*sn), pn_errors(*pn_errors), sn_errors(*sn_errors), nb_measures(*nb_measures) {
   size_n = first_dim(*pn);
   histogram_pn = histogram(0, size_n - 1);
-  phase_n = triqs::arrays::vector<dcomplex>(size_n, 0.0);
+  sign_n = triqs::arrays::vector<dcomplex>(size_n, 0.0);
  }
 
  // ----------
- void accumulate(dcomplex phase) {
+ void accumulate(dcomplex sign) {
 
   int k = data->perturbation_order;
   histogram_pn << k;
-  phase_n(k) += phase;
+  sign_n(k) += sign;
  }
 
  // ----------
@@ -49,14 +49,14 @@ struct measure_pn_sn {
   auto data_histogram_pn = histogram_pn_full.data();
   nb_measures = histogram_pn_full.n_data_pts();
 
-  triqs::arrays::vector<dcomplex> phase_n_full = mpi::reduce(phase_n, c);
+  triqs::arrays::vector<dcomplex> sign_n_full = mpi::reduce(sign_n, c);
 
   // Computing the average and error values
   // For pn
   for (int i = 0; i < size_n; i++) {
    pn(i) = data_histogram_pn(i) / nb_measures; // Average
    //sn(i) = 2 * (data_histogram_sn(i) / (data_histogram_pn(i))) - 1;
-   sn(i) = phase_n_full(i) / data_histogram_pn(i);
+   sn(i) = sign_n_full(i) / data_histogram_pn(i);
 
    // FIXME : explicit formula for the error bar jacknife of a series of 0 and 1
    pn_errors(i) =
