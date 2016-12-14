@@ -10,7 +10,7 @@ dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, const solve_parameters_
  auto& matrices = data->matrices;
 
  if (k == 0) {
-  return matrices[up].determinant() * matrices[down].determinant() * dcomplex({0, -1});
+  return matrices[up].determinant() * matrices[down].determinant();
  }
 
 #ifdef CHECK_GRAY_CODE_INTEGRITY
@@ -42,16 +42,6 @@ dcomplex recompute_sum_keldysh_indices(qmc_data_t* data, const solve_parameters_
 
   if (!(std::isfinite(real(res)) & std::isfinite(imag(res)))) TRIQS_RUNTIME_ERROR << "NAN for n = " << n;
  }
-
- dcomplex i_n[4] = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}}; // powers of i
- res = res * i_n[k % 4];                               // * i^(k)
-
- if (data->nb_operators == 2)
-  res *= dcomplex({0, -1}); // additional factor of -i
- else if (data->nb_operators == 4)
-  res *= i_n[2]; // additional factor of -1=i^6
- else
-  TRIQS_RUNTIME_ERROR << "Operator to measure not recognised.";
 
 #ifdef CHECK_GRAY_CODE_INTEGRITY
  double precision = 1.e-12;

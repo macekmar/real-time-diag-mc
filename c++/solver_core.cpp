@@ -50,8 +50,7 @@ solver_core::solve(solve_parameters_t const& params) {
  dcomplex first_sign = (abs(data.sum_keldysh_indices) > 1.e-14 ? data.sum_keldysh_indices / abs(data.sum_keldysh_indices) : 1);
 
  // Construct a Monte Carlo loop
- auto qmc = triqs::mc_tools::mc_generic<dcomplex>(params.n_cycles, params.length_cycle, params.n_warmup_cycles,
-                                                  params.random_name, params.random_seed, params.verbosity);
+ auto qmc = triqs::mc_tools::mc_generic<dcomplex>(params.random_name, params.random_seed, first_sign, params.verbosity);
 
  // Register moves and measurements
  // Can add single moves only, or double moves only (for the case with ph symmetry), or both simultaneously
@@ -68,11 +67,25 @@ solver_core::solve(solve_parameters_t const& params) {
  qmc.add_measure(measure_pn_sn{&data, &pn, &sn, &pn_errors, &sn_errors, &_nb_measures}, "M measurement");
 
  // Run
- qmc.start(first_sign, triqs::utility::clock_callback(params.max_time));
+ qmc.warmup_and_accumulate(params.n_warmup_cycles, params.n_cycles, params.length_cycle,
+                           triqs::utility::clock_callback(params.max_time));
 
  // Collect results
  mpi::communicator world;
  qmc.collect_results(world);
+
+ // Prefactor
+ dcomplex i_n[4] = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}}; // powers of i
+
+ for (int k = 0; k <= params.max_perturbation_order; ++k) {
+  sn(k) *= i_n[k % 4]; // * i^(k)
+  if (data.nb_operators == 2)
+   sn(k) *= dcomplex({0, -1}); // additional factor of -i
+  else if (data.nb_operators == 4)
+   sn(k) *= i_n[2]; // additional factor of -1=i^6
+  else
+   TRIQS_RUNTIME_ERROR << "Operator to measure not recognised.";
+ }
 
  _solve_duration = qmc.get_duration();
 
