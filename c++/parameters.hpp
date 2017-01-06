@@ -1,4 +1,7 @@
 #pragma once
+#include <vector>
+#include <string>
+#include <triqs/gfs.hpp>
 
 #define IMPURITY_MATRIX
 
@@ -6,13 +9,19 @@
 using x_index_t = int;
 #endif
 
-using namespace triqs::utility;
+//using namespace triqs::utility;
 
 // All the arguments of the solve function
 struct solve_parameters_t {
 
  /// operator to measure
- std::vector<std::vector<std::tuple<x_index_t, double, int>>> op_to_measure;
+ std::vector<std::vector<std::tuple<x_index_t, int>>> op_to_measure;
+
+ /// measure times
+ std::pair<double, double> measure_times;
+
+ /// fixed weight times
+ std::pair<double, double> ref_times;
 
  /// U
  double U;
@@ -54,4 +63,5 @@ struct solve_parameters_t {
 
  /// Verbosity level
  int verbosity = ((triqs::mpi::communicator().rank() == 0) ? 3 : 0); // silence the slave nodes
+ 
 };

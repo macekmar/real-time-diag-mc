@@ -14,6 +14,8 @@ template <> struct py_converter<solve_parameters_t> {
  static PyObject *c2py(solve_parameters_t const & x) {
   PyObject * d = PyDict_New();
   PyDict_SetItemString( d, "op_to_measure"         , convert_to_python(x.op_to_measure));
+  PyDict_SetItemString( d, "measure_times"         , convert_to_python(x.measure_times));
+  PyDict_SetItemString( d, "ref_times"             , convert_to_python(x.ref_times));
   PyDict_SetItemString( d, "U"                     , convert_to_python(x.U));
   PyDict_SetItemString( d, "alpha"                 , convert_to_python(x.alpha));
   PyDict_SetItemString( d, "p_dbl"                 , convert_to_python(x.p_dbl));
@@ -46,7 +48,9 @@ template <> struct py_converter<solve_parameters_t> {
 
  static solve_parameters_t py2c(PyObject *dic) {
   solve_parameters_t res;
-  res.op_to_measure = convert_from_python<std::vector<std::vector<std::tuple<x_index_t, double, int> > >>(PyDict_GetItemString(dic, "op_to_measure"));
+  res.op_to_measure = convert_from_python<std::vector<std::vector<std::tuple<x_index_t, int> > >>(PyDict_GetItemString(dic, "op_to_measure"));
+  res.measure_times = convert_from_python<std::pair<double, double>>(PyDict_GetItemString(dic, "measure_times"));
+  res.ref_times = convert_from_python<std::pair<double, double>>(PyDict_GetItemString(dic, "ref_times"));
   res.U = convert_from_python<double>(PyDict_GetItemString(dic, "U"));
   res.alpha = convert_from_python<double>(PyDict_GetItemString(dic, "alpha"));
   _get_optional(dic, "p_dbl"                 , res.p_dbl                    ,0.5);
@@ -90,7 +94,7 @@ template <> struct py_converter<solve_parameters_t> {
   std::stringstream fs, fs2; int err=0;
 
 #ifndef TRIQS_ALLOW_UNUSED_PARAMETERS
-  std::vector<std::string> ks, all_keys = {"op_to_measure","U","alpha","p_dbl","p_shift","max_perturbation_order","min_perturbation_order","n_cycles","length_cycle","n_warmup_cycles","random_seed","random_name","max_time","verbosity"};
+  std::vector<std::string> ks, all_keys = {"op_to_measure","measure_times","ref_times","U","alpha","p_dbl","p_shift","max_perturbation_order","min_perturbation_order","n_cycles","length_cycle","n_warmup_cycles","random_seed","random_name","max_time","verbosity"};
   pyref keys = PyDict_Keys(dic);
   if (!convertible_from_python<std::vector<std::string>>(keys, true)) {
    fs << "\nThe dict keys are not strings";
@@ -102,20 +106,22 @@ template <> struct py_converter<solve_parameters_t> {
     fs << "\n"<< ++err << " The parameter '" << k << "' is not recognized.";
 #endif
 
-  _check_mandatory<std::vector<std::vector<std::tuple<x_index_t, double, int> > >>(dic, fs, err, "op_to_measure"         , "std::vector<std::vector<std::tuple<x_index_t, double, int> > >");
-  _check_mandatory<double                                                        >(dic, fs, err, "U"                     , "double");
-  _check_mandatory<double                                                        >(dic, fs, err, "alpha"                 , "double");
-  _check_optional <double                                                        >(dic, fs, err, "p_dbl"                 , "double");
-  _check_optional <double                                                        >(dic, fs, err, "p_shift"               , "double");
-  _check_optional <int                                                           >(dic, fs, err, "max_perturbation_order", "int");
-  _check_optional <int                                                           >(dic, fs, err, "min_perturbation_order", "int");
-  _check_mandatory<int                                                           >(dic, fs, err, "n_cycles"              , "int");
-  _check_optional <int                                                           >(dic, fs, err, "length_cycle"          , "int");
-  _check_optional <int                                                           >(dic, fs, err, "n_warmup_cycles"       , "int");
-  _check_optional <int                                                           >(dic, fs, err, "random_seed"           , "int");
-  _check_optional <std::string                                                   >(dic, fs, err, "random_name"           , "std::string");
-  _check_optional <int                                                           >(dic, fs, err, "max_time"              , "int");
-  _check_optional <int                                                           >(dic, fs, err, "verbosity"             , "int");
+  _check_mandatory<std::vector<std::vector<std::tuple<x_index_t, int> > >>(dic, fs, err, "op_to_measure"         , "std::vector<std::vector<std::tuple<x_index_t, int> > >");
+  _check_mandatory<std::pair<double, double>                             >(dic, fs, err, "measure_times"         , "std::pair<double, double>");
+  _check_mandatory<std::pair<double, double>                             >(dic, fs, err, "ref_times"             , "std::pair<double, double>");
+  _check_mandatory<double                                                >(dic, fs, err, "U"                     , "double");
+  _check_mandatory<double                                                >(dic, fs, err, "alpha"                 , "double");
+  _check_optional <double                                                >(dic, fs, err, "p_dbl"                 , "double");
+  _check_optional <double                                                >(dic, fs, err, "p_shift"               , "double");
+  _check_optional <int                                                   >(dic, fs, err, "max_perturbation_order", "int");
+  _check_optional <int                                                   >(dic, fs, err, "min_perturbation_order", "int");
+  _check_mandatory<int                                                   >(dic, fs, err, "n_cycles"              , "int");
+  _check_optional <int                                                   >(dic, fs, err, "length_cycle"          , "int");
+  _check_optional <int                                                   >(dic, fs, err, "n_warmup_cycles"       , "int");
+  _check_optional <int                                                   >(dic, fs, err, "random_seed"           , "int");
+  _check_optional <std::string                                           >(dic, fs, err, "random_name"           , "std::string");
+  _check_optional <int                                                   >(dic, fs, err, "max_time"              , "int");
+  _check_optional <int                                                   >(dic, fs, err, "verbosity"             , "int");
   if (err) goto _error;
   return true;
 

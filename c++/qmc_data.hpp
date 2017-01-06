@@ -12,8 +12,8 @@ struct keldysh_contour_pt {
  int k_index;  // Keldysh index : 0 (upper contour), or 1 (lower contour)
 };
 
-inline keldysh_contour_pt make_keldysh_contour_pt(std::tuple<x_index_t, double, int> const &t) {
- return {std::get<0>(t), std::get<1>(t), std::get<2>(t)};
+inline keldysh_contour_pt make_keldysh_contour_pt(std::tuple<x_index_t, int> const &t, double const time) {
+ return {std::get<0>(t), time, std::get<1>(t)};
 }
 
 /// Comparison (Float is ok in == since we are not doing any operations on them, just store them and compare them in this code).
@@ -64,24 +64,17 @@ enum spin { up, down };
 using triqs::det_manip::det_manip;
 
 /// The data of the QMC
-struct qmc_data_t {
- std::vector<det_manip<g0_keldysh_t>> matrices; // M matrices for up and down
- dcomplex sum_keldysh_indices;                  // Sum of determinants of the last accepted config
- int perturbation_order = 0;                    // the current perturbation order
- const double tmax;                             // time boundary
- const int nb_operators;                        // number of creat/anihil operators in the operator to measure
+//struct qmc_data_t {
+// std::vector<det_manip<g0_keldysh_t>> matrices; // M matrices for up and down
+// dcomplex sum_keldysh_indices;                  // Sum of determinants of the last accepted config
+// int perturbation_order = 0;                    // the current perturbation order
+// //const double tmax;                             // time boundary
+// //const int nb_operators;                        // number of creat/anihil operators in the operator to measure
 
- qmc_data_t(solve_parameters_t const &params)
-    : tmax([&params] {
-
-       std::vector<qmc_time_t> times;
-       for (auto spin : {up, down})
-        for (auto const &point : params.op_to_measure[spin]) times.push_back(std::get<1>(point));
-       return *std::max_element(times.begin(), times.end());
-
-      }()),
-      nb_operators([&params] { return params.op_to_measure[up].size() + params.op_to_measure[down].size(); }()) {}
-};
+// //qmc_data_t(solve_parameters_t const &params)
+// //   : tmax([&params] { return *std::max_element(params.times_list.begin(), params.times_list.end()); }()),
+// //     nb_operators([&params] { return params.op_to_measure[up].size() + params.op_to_measure[down].size(); }()) {}
+//};
 
 // ------------ keldysh sum gray code ------------------------------
-dcomplex recompute_sum_keldysh_indices(qmc_data_t *data, const solve_parameters_t *params, int perturbation_order);
+dcomplex recompute_sum_keldysh_indices(det_manip<g0_keldysh_t>& matrix_up, det_manip<g0_keldysh_t>& matrix_down, int perturbation_order);

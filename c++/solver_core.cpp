@@ -1,6 +1,7 @@
 #include "./solver_core.hpp"
-#include "./measures.hpp"
+#include "./measure.hpp"
 #include "./moves.hpp"
+#include "./weight.hpp"
 #include <triqs/det_manip.hpp>
 #include <triqs/mc_tools.hpp>
 
@@ -8,6 +9,7 @@ using namespace triqs::arrays;
 using namespace triqs::gfs;
 namespace mpi = triqs::mpi;
 using triqs::utility::mindex;
+using triqs::arrays::range;
 
 // ------------ The main class of the solver ------------------------
 
@@ -16,55 +18,52 @@ using triqs::utility::mindex;
 std::pair<std::pair<array<double, 1>, array<dcomplex, 1>>, std::pair<array<double, 1>, array<double, 1>>>
 solver_core::solve(solve_parameters_t const& params) {
 
- auto pn = array<double, 1>(params.max_perturbation_order + 1); // measurement of p_n
+ int nb_orders = params.max_perturbation_order - params.min_perturbation_order + 1;
+
+ auto pn = array<double, 1>(nb_orders);   // measurement of p_n
+ auto sn = array<dcomplex, 1>(nb_orders); // measurement of s_n
+ auto pn_errors = array<double, 1>(nb_orders);
+ auto sn_errors = array<double, 1>(nb_orders);
  pn() = 0;
- auto sn = array<dcomplex, 1>(params.max_perturbation_order + 1); // measurement of s_n
  sn() = 0;
- auto pn_errors = pn;
- auto sn_errors = pn;
+ pn_errors() = 0;
+ sn_errors() = 0;
 
  // Prepare the data
- auto data = qmc_data_t{params};
- auto t_max = qmc_time_t{data.tmax};
+ // auto t_max = *std::max_element(params.measure_times.begin(), params.measure_times.end());
+ auto t_max = std::max(params.measure_times.first, params.measure_times.second);
+ int nb_operators = params.op_to_measure[up].size() + params.op_to_measure[down].size();
 
- // Initialize the M-matrices. 100 is the initial alocated space.
- for (auto spin : {up, down})
-  data.matrices.emplace_back(g0_keldysh_t{g0_adaptor_t{g0_lesser}, g0_adaptor_t{g0_greater}, params.alpha, t_max}, 100);
+ // Construct a Monte Carlo loop
+ auto qmc = triqs::mc_tools::mc_generic<dcomplex>(params.random_name, params.random_seed, 1.0, params.verbosity);
 
- for (auto spin : {up, down}) {
-  auto const& v = params.op_to_measure[spin];
-  if (v.size() == 2) data.matrices[spin].insert_at_end(make_keldysh_contour_pt(v[0]), make_keldysh_contour_pt(v[1]));
- }
+ qmc_weight weight(t_max, &params, &g0_lesser, &g0_greater);
+ qmc_measure measure(&weight, t_max, &params, &g0_lesser, &g0_greater);
+
+ // Compute initial sum of determinants (needed for the first MC move)
+ measure.evaluate();
 
  if (params.max_perturbation_order == 0) {
-  auto order_zero_value = data.matrices[up].determinant() * data.matrices[down].determinant() * dcomplex({0, -1});
-  pn(0) = std::abs(order_zero_value);
-  sn(0) = (pn(0) > 1.e-14 ? order_zero_value / pn(0) : 1);
+  pn(0) = 1;
+  sn(0) = measure.value(0);
   _solve_duration = 0.0;
 
   return {{pn, sn}, {pn_errors, sn_errors}};
  }
 
- // Compute initial sum of determinants (needed for the first MC move)
- data.sum_keldysh_indices = recompute_sum_keldysh_indices(&data, &params, 0);
- dcomplex first_sign = (abs(data.sum_keldysh_indices) > 1.e-14 ? data.sum_keldysh_indices / abs(data.sum_keldysh_indices) : 1);
-
- // Construct a Monte Carlo loop
- auto qmc = triqs::mc_tools::mc_generic<dcomplex>(params.random_name, params.random_seed, first_sign, params.verbosity);
-
  // Register moves and measurements
  // Can add single moves only, or double moves only (for the case with ph symmetry), or both simultaneously
  if (params.p_dbl < 1) {
-  qmc.add_move(moves::insert{&data, &params, qmc.get_rng()}, "insertion", 1. - params.p_dbl);
-  qmc.add_move(moves::remove{&data, &params, qmc.get_rng()}, "removal", 1. - params.p_dbl);
+  qmc.add_move(moves::insert{&measure, &weight, t_max, &params, qmc.get_rng()}, "insertion", 1. - params.p_dbl);
+  qmc.add_move(moves::remove{&measure, &weight, t_max, &params, qmc.get_rng()}, "removal", 1. - params.p_dbl);
  }
  if (params.p_dbl > 0) {
-  qmc.add_move(moves::insert2{&data, &params, qmc.get_rng()}, "insertion2", params.p_dbl);
-  qmc.add_move(moves::remove2{&data, &params, qmc.get_rng()}, "removal2", params.p_dbl);
+  qmc.add_move(moves::insert2{&measure, &weight, t_max, &params, qmc.get_rng()}, "insertion2", params.p_dbl);
+  qmc.add_move(moves::remove2{&measure, &weight, t_max, &params, qmc.get_rng()}, "removal2", params.p_dbl);
  }
- qmc.add_move(moves::shift{&data, &params, qmc.get_rng()}, "shift", params.p_shift);
+ qmc.add_move(moves::shift{&measure, &weight, t_max, &params, qmc.get_rng()}, "shift", params.p_shift);
 
- qmc.add_measure(measure_pn_sn{&data, &pn, &sn, &pn_errors, &sn_errors, &_nb_measures}, "M measurement");
+ qmc.add_measure(qmc_accumulator(&measure, &pn, &sn, &pn_errors, &sn_errors, &_nb_measures), "M measurement");
 
  // Run
  qmc.warmup_and_accumulate(params.n_warmup_cycles, params.n_cycles, params.length_cycle,
@@ -79,9 +78,9 @@ solver_core::solve(solve_parameters_t const& params) {
 
  for (int k = 0; k <= params.max_perturbation_order; ++k) {
   sn(k) *= i_n[k % 4]; // * i^(k)
-  if (data.nb_operators == 2)
+  if (nb_operators == 2)
    sn(k) *= dcomplex({0, -1}); // additional factor of -i
-  else if (data.nb_operators == 4)
+  else if (nb_operators == 4)
    sn(k) *= i_n[2]; // additional factor of -1=i^6
   else
    TRIQS_RUNTIME_ERROR << "Operator to measure not recognised.";
