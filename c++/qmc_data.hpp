@@ -61,20 +61,11 @@ struct g0_keldysh_t {
 // --------------   data   --------------------------------------
 
 enum spin { up, down };
-using triqs::det_manip::det_manip;
-
-/// The data of the QMC
-//struct qmc_data_t {
-// std::vector<det_manip<g0_keldysh_t>> matrices; // M matrices for up and down
-// dcomplex sum_keldysh_indices;                  // Sum of determinants of the last accepted config
-// int perturbation_order = 0;                    // the current perturbation order
-// //const double tmax;                             // time boundary
-// //const int nb_operators;                        // number of creat/anihil operators in the operator to measure
-
-// //qmc_data_t(solve_parameters_t const &params)
-// //   : tmax([&params] { return *std::max_element(params.times_list.begin(), params.times_list.end()); }()),
-// //     nb_operators([&params] { return params.op_to_measure[up].size() + params.op_to_measure[down].size(); }()) {}
-//};
 
 // ------------ keldysh sum gray code ------------------------------
-dcomplex recompute_sum_keldysh_indices(det_manip<g0_keldysh_t>& matrix_up, det_manip<g0_keldysh_t>& matrix_down, int perturbation_order);
+dcomplex recompute_sum_keldysh_indices(std::vector<det_manip<g0_keldysh_t>>& matrices, int k, int v, int p);
+dcomplex recompute_sum_keldysh_indices(std::vector<det_manip<g0_keldysh_t>>& matrices, int k);
+dcomplex recompute_sum_keldysh_indices(det_manip<g0_keldysh_t>& matrix, int k, int p);
+dcomplex recompute_sum_keldysh_indices(det_manip<g0_keldysh_t>& matrix, int k);
+
+void nice_print(det_manip<g0_keldysh_t> det, int p);

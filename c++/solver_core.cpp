@@ -37,8 +37,11 @@ solver_core::solve(solve_parameters_t const& params) {
  // Construct a Monte Carlo loop
  auto qmc = triqs::mc_tools::mc_generic<dcomplex>(params.random_name, params.random_seed, 1.0, params.verbosity);
 
- qmc_weight weight(t_max, &params, &g0_lesser, &g0_greater);
- qmc_measure measure(&weight, t_max, &params, &g0_lesser, &g0_greater);
+ // non interacting Green function
+ auto green_function = g0_keldysh_t{g0_adaptor_t{g0_lesser}, g0_adaptor_t{g0_greater}, params.alpha, t_max};
+
+ qmc_weight weight(&params, &green_function);
+ qmc_measure measure(&params, &green_function);
 
  // Compute initial sum of determinants (needed for the first MC move)
  measure.evaluate();
@@ -63,7 +66,7 @@ solver_core::solve(solve_parameters_t const& params) {
  }
  qmc.add_move(moves::shift{&measure, &weight, t_max, &params, qmc.get_rng()}, "shift", params.p_shift);
 
- qmc.add_measure(qmc_accumulator(&measure, &pn, &sn, &pn_errors, &sn_errors, &_nb_measures), "M measurement");
+ qmc.add_measure(qmc_accumulator(&measure, &weight, &pn, &sn, &pn_errors, &sn_errors, &_nb_measures), "M measurement");
 
  // Run
  qmc.warmup_and_accumulate(params.n_warmup_cycles, params.n_cycles, params.length_cycle,

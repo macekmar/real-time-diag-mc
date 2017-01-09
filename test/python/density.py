@@ -34,8 +34,6 @@ p["p_dbl"] = 0
 
 (pn, sn), (pn_error, sn_error) = S.solve(**p)
 
-sn = sn.real
-
 if mpi.is_master_node():
     with HDFArchive('density.out.h5', 'a') as ar:  # A file to store the results
         ar['pn_values'] = pn
