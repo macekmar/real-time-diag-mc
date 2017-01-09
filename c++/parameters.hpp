@@ -18,7 +18,7 @@ struct solve_parameters_t {
  std::vector<std::vector<std::tuple<x_index_t, int>>> op_to_measure;
 
  /// measure times
- std::pair<double, double> measure_times;
+ std::pair<std::vector<double>, double> measure_times;
 
  /// fixed weight times
  std::pair<double, double> ref_times;

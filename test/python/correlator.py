@@ -22,7 +22,7 @@ t2 = 5.
 
 p = {}
 p["op_to_measure"] = [[(0, 0), (0, 1)], []] # lesser
-p["measure_times"] = (t1, t2)
+p["measure_times"] = ([t1], t2)
 p["ref_times"] = (t1, t2)
 p["U"] = 2.5 # U_qmc
 p["max_perturbation_order"] = 7

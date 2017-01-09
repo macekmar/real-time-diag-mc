@@ -49,7 +49,7 @@ template <> struct py_converter<solve_parameters_t> {
  static solve_parameters_t py2c(PyObject *dic) {
   solve_parameters_t res;
   res.op_to_measure = convert_from_python<std::vector<std::vector<std::tuple<x_index_t, int> > >>(PyDict_GetItemString(dic, "op_to_measure"));
-  res.measure_times = convert_from_python<std::pair<double, double>>(PyDict_GetItemString(dic, "measure_times"));
+  res.measure_times = convert_from_python<std::pair<std::vector<double>, double>>(PyDict_GetItemString(dic, "measure_times"));
   res.ref_times = convert_from_python<std::pair<double, double>>(PyDict_GetItemString(dic, "ref_times"));
   res.U = convert_from_python<double>(PyDict_GetItemString(dic, "U"));
   res.alpha = convert_from_python<double>(PyDict_GetItemString(dic, "alpha"));
@@ -107,7 +107,7 @@ template <> struct py_converter<solve_parameters_t> {
 #endif
 
   _check_mandatory<std::vector<std::vector<std::tuple<x_index_t, int> > >>(dic, fs, err, "op_to_measure"         , "std::vector<std::vector<std::tuple<x_index_t, int> > >");
-  _check_mandatory<std::pair<double, double>                             >(dic, fs, err, "measure_times"         , "std::pair<double, double>");
+  _check_mandatory<std::pair<std::vector<double>, double>                >(dic, fs, err, "measure_times"         , "std::pair<std::vector<double>, double>");
   _check_mandatory<std::pair<double, double>                             >(dic, fs, err, "ref_times"             , "std::pair<double, double>");
   _check_mandatory<double                                                >(dic, fs, err, "U"                     , "double");
   _check_mandatory<double                                                >(dic, fs, err, "alpha"                 , "double");

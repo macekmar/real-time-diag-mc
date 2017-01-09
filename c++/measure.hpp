@@ -10,22 +10,28 @@
 using namespace triqs::gfs;
 using namespace triqs::statistics;
 using triqs::arrays::range;
+using triqs::det_manip::det_manip;
 namespace mpi = triqs::mpi;
 
 
 // --------------- Measure ----------------
 
-struct qmc_measure {
+class qmc_measure {
 
- g0_keldysh_t* green_function;
- int perturbation_order = 0;                    // the current perturbation order
+ private:
  std::vector<det_manip<g0_keldysh_t>> matrices; // M matrices for up and down
- array<dcomplex, 1> value;                      // Sum of determinants of the last accepted config
+ g0_keldysh_t* green_function;
+ keldysh_contour_pt taup;
+ std::vector<keldysh_contour_pt> tau_list;
  int op_to_measure_spin;
+
+ array<dcomplex, 1> value;   // Sum of determinants of the last accepted config
+ int perturbation_order = 0; // the current perturbation order
 
  qmc_measure(const qmc_measure&) = delete;    // non construction-copyable
  void operator=(const qmc_measure&) = delete; // non copyable
 
+ public:
  // ----------
  qmc_measure(const solve_parameters_t* params, g0_keldysh_t* green_function) : green_function(green_function) {
 
@@ -38,11 +44,17 @@ struct qmc_measure {
    auto const& ops = params->op_to_measure[spin];
    if (ops.size() == 2) {
     op_to_measure_spin = spin;
-    matrices[spin].insert_at_end(make_keldysh_contour_pt(ops[0], params->measure_times.first),
-                                 make_keldysh_contour_pt(ops[1], params->measure_times.second));
+    taup = make_keldysh_contour_pt(ops[1], params->measure_times.second);
+    for (auto time : params->measure_times.first) {
+     tau_list.emplace_back(make_keldysh_contour_pt(ops[0], time));
+    }
    }
   }
  }
+
+ array<dcomplex, 1> get_value() { return value; }
+
+ int get_perturbation_order() { return perturbation_order; }
 
  // ----------
  void insert(int k, keldysh_contour_pt pt) {
@@ -78,45 +90,46 @@ struct qmc_measure {
   // Remarks:
   // - why not using the inverse ?
   dcomplex new_value = 0;
-  keldysh_contour_pt tau, taup, alpha_p_right, alpha_tmp;
+  keldysh_contour_pt tau, alpha_p_right, alpha_tmp;
   auto matrix_0 = &matrices[op_to_measure_spin];
   auto matrix_1 = &matrices[1 - op_to_measure_spin];
   dcomplex kernel;
   int sign[2] = {1, -1};
   int n = perturbation_order; // shorter name
+  tau = tau_list[0];          // eg
 
   matrix_0->regenerate();
   matrix_1->regenerate();
 
   if (n == 0) {
 
-   value(0) = matrix_0->determinant();
+   value(0) = (*green_function)(tau, taup);
 
   } else {
 
-   tau = matrix_0->get_x(n);
-   taup = matrix_0->get_y(n);
-   alpha_p_right = matrix_0->get_y(0);
-   alpha_tmp = matrix_0->get_y(n);
-   matrix_0->remove(n, 0);
+   alpha_tmp = taup;
+   matrix_0->roll_matrix(det_manip<g0_keldysh_t>::RollDirection::Left);
 
    for (int p = 0; p < n; ++p) {
-    for (int k_index : {0, 1}) {
+    for (int k_index : {1, 0}) {
+     if (k_index == 1) alpha_p_right = matrix_0->get_y((p - 1 + n) % n);
+     alpha_p_right = flip_index(alpha_p_right);
+     matrix_0->change_one_row_and_one_col(p, (p - 1 + n) % n, flip_index(matrix_0->get_x(p)),
+                                          alpha_tmp); // change p keldysh index on the left and p point on the right. p point on
+                                                      // the right is effectively changed only when k_index=?.
+     matrix_1->change_one_row_and_one_col(p, p, flip_index(matrix_1->get_x(p)), flip_index(matrix_1->get_y(p)));
+
+     // nice_print(*matrix_0, p);
      kernel = recompute_sum_keldysh_indices(matrices, n - 1, op_to_measure_spin, p);
      new_value += (*green_function)(tau, alpha_p_right) * kernel * sign[(n + p + k_index) % 2];
-     alpha_p_right = flip_index(alpha_p_right);
-     if (k_index == 1) {
+
+     if (k_index == 0) {
       alpha_tmp = alpha_p_right;
-      alpha_p_right = matrix_0->get_y(p);
      }
-     matrix_0->change_one_row_and_one_col(p, (p - 1 + k_index + n) % n, flip_index(matrix_0->get_x(p)),
-                                          alpha_tmp); // change p keldysh index on the left and p point on the right. p point on
-                                                      // the right is effectively changed only when k_index=1.
-     matrix_1->change_one_row_and_one_col(p, p, flip_index(matrix_1->get_x(p)), flip_index(matrix_1->get_y(p)));
     }
    }
+   matrix_0->change_col(n - 1, alpha_tmp);
    value(0) = new_value;
-   matrix_0->insert(n, n, tau, taup);
   }
  }
 };
@@ -125,8 +138,9 @@ struct qmc_measure {
 // --------------- Accumulator ----------------
 // Implements the measure concept for triqs/mc_generic
 
-struct qmc_accumulator {
+class qmc_accumulator {
 
+ private:
  qmc_measure* measure;
  qmc_weight* weight;
  array<double, 1>& pn;
@@ -138,6 +152,7 @@ struct qmc_accumulator {
  histogram histogram_pn;
  array<dcomplex, 1> sign_n;
 
+ public:
  // ----------
  qmc_accumulator(qmc_measure* measure, qmc_weight* weight, array<double, 1>* pn, array<dcomplex, 1>* sn,
                  array<double, 1>* pn_errors, array<double, 1>* sn_errors, int* nb_measures)
@@ -159,8 +174,8 @@ struct qmc_accumulator {
  void accumulate(dcomplex sign) {
   measure->evaluate();
 
-  histogram_pn << measure->perturbation_order;
-  sign_n(measure->perturbation_order) += measure->value(0) / std::abs(weight->value);
+  histogram_pn << measure->get_perturbation_order();
+  sign_n(measure->get_perturbation_order()) += measure->get_value()(0) / std::abs(weight->value);
  }
 
  // ----------

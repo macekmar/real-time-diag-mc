@@ -30,8 +30,8 @@ solver_core::solve(solve_parameters_t const& params) {
  sn_errors() = 0;
 
  // Prepare the data
- // auto t_max = *std::max_element(params.measure_times.begin(), params.measure_times.end());
- auto t_max = std::max(params.measure_times.first, params.measure_times.second);
+ auto t_max = *std::max_element(params.measure_times.first.begin(), params.measure_times.first.end());
+ t_max = std::max(t_max, params.measure_times.second);
  int nb_operators = params.op_to_measure[up].size() + params.op_to_measure[down].size();
 
  // Construct a Monte Carlo loop
@@ -48,7 +48,7 @@ solver_core::solve(solve_parameters_t const& params) {
 
  if (params.max_perturbation_order == 0) {
   pn(0) = 1;
-  sn(0) = measure.value(0);
+  sn(0) = measure.get_value()(0);
   _solve_duration = 0.0;
 
   return {{pn, sn}, {pn_errors, sn_errors}};
