@@ -20,10 +20,11 @@ class qmc_measure {
 
  private:
  std::vector<det_manip<g0_keldysh_t>> matrices; // M matrices for up and down
- g0_keldysh_t* green_function;
+ g0_keldysh_t green_function;
  keldysh_contour_pt taup;
  std::vector<keldysh_contour_pt> tau_list;
  int op_to_measure_spin;
+ int nb_times;
 
  array<dcomplex, 1> value;   // Sum of determinants of the last accepted config
  int perturbation_order = 0; // the current perturbation order
@@ -33,12 +34,13 @@ class qmc_measure {
 
  public:
  // ----------
- qmc_measure(const solve_parameters_t* params, g0_keldysh_t* green_function) : green_function(green_function) {
+ qmc_measure(const solve_parameters_t* params, g0_keldysh_t green_function) : green_function(green_function) {
 
-  value = array<dcomplex, 1>(1);
+  nb_times = params->measure_times.first.size();
+  value = array<dcomplex, 1>(nb_times);
   value() = 0;
 
-  for (auto spin : {up, down}) matrices.emplace_back(*green_function, 100);
+  for (auto spin : {up, down}) matrices.emplace_back(green_function, 100);
 
   for (auto spin : {up, down}) {
    auto const& ops = params->op_to_measure[spin];
@@ -89,23 +91,24 @@ class qmc_measure {
  void evaluate() {
   // Remarks:
   // - why not using the inverse ?
-  dcomplex new_value = 0;
-  keldysh_contour_pt tau, alpha_p_right, alpha_tmp;
+  keldysh_contour_pt alpha_p_right, alpha_tmp;
   auto matrix_0 = &matrices[op_to_measure_spin];
   auto matrix_1 = &matrices[1 - op_to_measure_spin];
   dcomplex kernel;
   int sign[2] = {1, -1};
   int n = perturbation_order; // shorter name
-  tau = tau_list[0];          // eg
-
-  matrix_0->regenerate();
-  matrix_1->regenerate();
 
   if (n == 0) {
 
-   value(0) = (*green_function)(tau, taup);
+   for (int i = 0; i < nb_times; ++i) {
+    value(i) = green_function(tau_list[i], taup);
+   }
 
   } else {
+
+   matrix_0->regenerate();
+   matrix_1->regenerate();
+   value() = 0;
 
    alpha_tmp = taup;
    matrix_0->roll_matrix(det_manip<g0_keldysh_t>::RollDirection::Left);
@@ -120,16 +123,16 @@ class qmc_measure {
      matrix_1->change_one_row_and_one_col(p, p, flip_index(matrix_1->get_x(p)), flip_index(matrix_1->get_y(p)));
 
      // nice_print(*matrix_0, p);
-     kernel = recompute_sum_keldysh_indices(matrices, n - 1, op_to_measure_spin, p);
-     new_value += (*green_function)(tau, alpha_p_right) * kernel * sign[(n + p + k_index) % 2];
+     kernel = recompute_sum_keldysh_indices(matrices, n - 1, op_to_measure_spin, p) * sign[(n + p + k_index) % 2];
 
-     if (k_index == 0) {
-      alpha_tmp = alpha_p_right;
+     for (int i = 0; i < nb_times; ++i) {
+      value(i) += green_function(tau_list[i], alpha_p_right) * kernel;
      }
+
+     if (k_index == 0) alpha_tmp = alpha_p_right;
     }
    }
    matrix_0->change_col(n - 1, alpha_tmp);
-   value(0) = new_value;
   }
  }
 };
@@ -144,17 +147,17 @@ class qmc_accumulator {
  qmc_measure* measure;
  qmc_weight* weight;
  array<double, 1>& pn;
- array<dcomplex, 1>& sn;
+ array<dcomplex, 2>& sn;
  array<double, 1>& pn_errors;
  array<double, 1>& sn_errors;
  int size_n;
  int& nb_measures;
  histogram histogram_pn;
- array<dcomplex, 1> sign_n;
+ array<dcomplex, 2> sn_node;
 
  public:
  // ----------
- qmc_accumulator(qmc_measure* measure, qmc_weight* weight, array<double, 1>* pn, array<dcomplex, 1>* sn,
+ qmc_accumulator(qmc_measure* measure, qmc_weight* weight, array<double, 1>* pn, array<dcomplex, 2>* sn,
                  array<double, 1>* pn_errors, array<double, 1>* sn_errors, int* nb_measures)
     : measure(measure),
       weight(weight),
@@ -162,12 +165,12 @@ class qmc_accumulator {
       sn(*sn),
       pn_errors(*pn_errors),
       sn_errors(*sn_errors),
-      nb_measures(*nb_measures) {
+      nb_measures(*nb_measures),
+      sn_node(*sn) {
 
   size_n = first_dim(*pn);
   histogram_pn = histogram(0, size_n - 1);
-  sign_n = array<dcomplex, 1>(size_n);
-  sign_n() = 0;
+  sn_node() = 0;
  }
 
  // ----------
@@ -175,7 +178,7 @@ class qmc_accumulator {
   measure->evaluate();
 
   histogram_pn << measure->get_perturbation_order();
-  sign_n(measure->get_perturbation_order()) += measure->get_value()(0) / std::abs(weight->value);
+  sn_node(measure->get_perturbation_order(), range()) += measure->get_value() / std::abs(weight->value);
  }
 
  // ----------
@@ -186,12 +189,12 @@ class qmc_accumulator {
   auto data_histogram_pn = histogram_pn_full.data();
   nb_measures = histogram_pn_full.n_data_pts();
 
-  array<dcomplex, 1> sign_n_full = mpi::reduce(sign_n, c);
+  sn = mpi::reduce(sn_node, c);
 
   // Computing the average and error values
   for (int k = 0; k < size_n; k++) {
    pn(k) = data_histogram_pn(k) / nb_measures; // Average
-   sn(k) = sign_n_full(k) / data_histogram_pn(k);
+   sn(k, range()) = sn(k, range()) / data_histogram_pn(k);
 
    // FIXME : explicit formula for the error bar jacknife of a series of 0 and 1
    pn_errors(k) =

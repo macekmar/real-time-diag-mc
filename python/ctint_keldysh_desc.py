@@ -31,7 +31,7 @@ c = class_(
 c.add_constructor("""(gf_view<retime,matrix_valued> g0_lesser, gf_view<retime,matrix_valued> g0_greater)""",
                   doc = """ """)
 
-c.add_method("""std::pair<std::pair<array<double,1>,array<dcomplex,1>>,std::pair<array<double,1>,array<double,1>>> solve (**solve_parameters_t)""",
+c.add_method("""std::pair<std::pair<array<double,1>,array<dcomplex,2>>,std::pair<array<double,1>,array<double,1>>> solve (**solve_parameters_t)""",
              doc = """+------------------------+--------------------------------------------------------+------------------------------------------------+--------------------------------------------------------+
 | Parameter Name         | Type                                                   | Default                                        | Documentation                                          |
 +========================+========================================================+================================================+========================================================+

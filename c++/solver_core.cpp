@@ -15,13 +15,13 @@ using triqs::arrays::range;
 
 // -------------------------------------------------------------------------
 // The method that runs the qmc
-std::pair<std::pair<array<double, 1>, array<dcomplex, 1>>, std::pair<array<double, 1>, array<double, 1>>>
+std::pair<std::pair<array<double, 1>, array<dcomplex, 2>>, std::pair<array<double, 1>, array<double, 1>>>
 solver_core::solve(solve_parameters_t const& params) {
 
  int nb_orders = params.max_perturbation_order - params.min_perturbation_order + 1;
 
  auto pn = array<double, 1>(nb_orders);   // measurement of p_n
- auto sn = array<dcomplex, 1>(nb_orders); // measurement of s_n
+ auto sn = array<dcomplex, 2>(nb_orders, params.measure_times.first.size()); // measurement of s_n
  auto pn_errors = array<double, 1>(nb_orders);
  auto sn_errors = array<double, 1>(nb_orders);
  pn() = 0;
@@ -41,14 +41,14 @@ solver_core::solve(solve_parameters_t const& params) {
  auto green_function = g0_keldysh_t{g0_adaptor_t{g0_lesser}, g0_adaptor_t{g0_greater}, params.alpha, t_max};
 
  qmc_weight weight(&params, &green_function);
- qmc_measure measure(&params, &green_function);
+ qmc_measure measure(&params, green_function);
 
  // Compute initial sum of determinants (needed for the first MC move)
  measure.evaluate();
 
  if (params.max_perturbation_order == 0) {
   pn(0) = 1;
-  sn(0) = measure.get_value()(0);
+  sn(0, range()) = measure.get_value();
   _solve_duration = 0.0;
 
   return {{pn, sn}, {pn_errors, sn_errors}};
@@ -80,11 +80,11 @@ solver_core::solve(solve_parameters_t const& params) {
  dcomplex i_n[4] = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}}; // powers of i
 
  for (int k = 0; k <= params.max_perturbation_order; ++k) {
-  sn(k) *= i_n[k % 4]; // * i^(k)
+  sn(k, range()) *= i_n[k % 4]; // * i^(k)
   if (nb_operators == 2)
-   sn(k) *= dcomplex({0, -1}); // additional factor of -i
+   sn(k, range()) *= dcomplex({0, -1}); // additional factor of -i
   else if (nb_operators == 4)
-   sn(k) *= i_n[2]; // additional factor of -1=i^6
+   sn(k, range()) *= i_n[2]; // additional factor of -1=i^6
   else
    TRIQS_RUNTIME_ERROR << "Operator to measure not recognised.";
  }
