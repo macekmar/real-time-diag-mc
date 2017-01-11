@@ -20,8 +20,8 @@ struct solve_parameters_t {
  /// measure times
  std::pair<std::vector<double>, double> measure_times;
 
- /// fixed weight times
- std::pair<double, double> ref_times;
+ /// fixed weight time
+ double weight_time;
 
  /// U
  double U;
@@ -29,11 +29,14 @@ struct solve_parameters_t {
  /// Alpha term
  double alpha;
 
- /// Probability to jump by 2 orders (insert2 and remove2)
+ // weight of insert2 and remove2 compared to insert and remove
  double p_dbl = 0.5;
 
- /// Probability to change time of vertex
+ // weight of the shift move
  double p_shift = 1.0;
+
+ //weight of the weight_time_swap move
+ double p_weight_time_swap = 1.0;
 
  // ----   QMC parameters
 

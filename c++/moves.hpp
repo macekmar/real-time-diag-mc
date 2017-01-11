@@ -15,7 +15,7 @@ struct common {
  random_x_generator rxg;
  double t_max_L_U;
  bool quick_exit = false;
- dcomplex sum_dets = 0;
+ dcomplex new_weight = 0;
 
  common(qmc_measure *measure, qmc_weight *weight, double t_max, const solve_parameters_t *params,
         triqs::mc_tools::random_generator &rng)
@@ -83,6 +83,19 @@ struct remove2 : common {
 struct shift : common {
  keldysh_contour_pt removed_pt;
  keldysh_contour_pt new_pt;
+ int p;
+
+ using common::common;
+ dcomplex attempt();
+ dcomplex accept();
+ void reject();
+};
+
+//-----------QMC additional time swap move------------
+
+struct weight_time_swap : common {
+ keldysh_contour_pt save_swap_pt, swap_pt;
+ keldysh_contour_pt save_tau;
  int p;
 
  using common::common;

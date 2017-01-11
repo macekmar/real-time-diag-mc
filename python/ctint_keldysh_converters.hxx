@@ -15,11 +15,12 @@ template <> struct py_converter<solve_parameters_t> {
   PyObject * d = PyDict_New();
   PyDict_SetItemString( d, "op_to_measure"         , convert_to_python(x.op_to_measure));
   PyDict_SetItemString( d, "measure_times"         , convert_to_python(x.measure_times));
-  PyDict_SetItemString( d, "ref_times"             , convert_to_python(x.ref_times));
+  PyDict_SetItemString( d, "weight_time"           , convert_to_python(x.weight_time));
   PyDict_SetItemString( d, "U"                     , convert_to_python(x.U));
   PyDict_SetItemString( d, "alpha"                 , convert_to_python(x.alpha));
   PyDict_SetItemString( d, "p_dbl"                 , convert_to_python(x.p_dbl));
   PyDict_SetItemString( d, "p_shift"               , convert_to_python(x.p_shift));
+  PyDict_SetItemString( d, "p_weight_time_swap"    , convert_to_python(x.p_weight_time_swap));
   PyDict_SetItemString( d, "max_perturbation_order", convert_to_python(x.max_perturbation_order));
   PyDict_SetItemString( d, "min_perturbation_order", convert_to_python(x.min_perturbation_order));
   PyDict_SetItemString( d, "n_cycles"              , convert_to_python(x.n_cycles));
@@ -50,11 +51,12 @@ template <> struct py_converter<solve_parameters_t> {
   solve_parameters_t res;
   res.op_to_measure = convert_from_python<std::vector<std::vector<std::tuple<x_index_t, int> > >>(PyDict_GetItemString(dic, "op_to_measure"));
   res.measure_times = convert_from_python<std::pair<std::vector<double>, double>>(PyDict_GetItemString(dic, "measure_times"));
-  res.ref_times = convert_from_python<std::pair<double, double>>(PyDict_GetItemString(dic, "ref_times"));
+  res.weight_time = convert_from_python<double>(PyDict_GetItemString(dic, "weight_time"));
   res.U = convert_from_python<double>(PyDict_GetItemString(dic, "U"));
   res.alpha = convert_from_python<double>(PyDict_GetItemString(dic, "alpha"));
   _get_optional(dic, "p_dbl"                 , res.p_dbl                    ,0.5);
   _get_optional(dic, "p_shift"               , res.p_shift                  ,1.0);
+  _get_optional(dic, "p_weight_time_swap"    , res.p_weight_time_swap       ,1.0);
   _get_optional(dic, "max_perturbation_order", res.max_perturbation_order   ,3);
   _get_optional(dic, "min_perturbation_order", res.min_perturbation_order   ,0);
   res.n_cycles = convert_from_python<int>(PyDict_GetItemString(dic, "n_cycles"));
@@ -94,7 +96,7 @@ template <> struct py_converter<solve_parameters_t> {
   std::stringstream fs, fs2; int err=0;
 
 #ifndef TRIQS_ALLOW_UNUSED_PARAMETERS
-  std::vector<std::string> ks, all_keys = {"op_to_measure","measure_times","ref_times","U","alpha","p_dbl","p_shift","max_perturbation_order","min_perturbation_order","n_cycles","length_cycle","n_warmup_cycles","random_seed","random_name","max_time","verbosity"};
+  std::vector<std::string> ks, all_keys = {"op_to_measure","measure_times","weight_time","U","alpha","p_dbl","p_shift","p_weight_time_swap","max_perturbation_order","min_perturbation_order","n_cycles","length_cycle","n_warmup_cycles","random_seed","random_name","max_time","verbosity"};
   pyref keys = PyDict_Keys(dic);
   if (!convertible_from_python<std::vector<std::string>>(keys, true)) {
    fs << "\nThe dict keys are not strings";
@@ -108,11 +110,12 @@ template <> struct py_converter<solve_parameters_t> {
 
   _check_mandatory<std::vector<std::vector<std::tuple<x_index_t, int> > >>(dic, fs, err, "op_to_measure"         , "std::vector<std::vector<std::tuple<x_index_t, int> > >");
   _check_mandatory<std::pair<std::vector<double>, double>                >(dic, fs, err, "measure_times"         , "std::pair<std::vector<double>, double>");
-  _check_mandatory<std::pair<double, double>                             >(dic, fs, err, "ref_times"             , "std::pair<double, double>");
+  _check_mandatory<double                                                >(dic, fs, err, "weight_time"           , "double");
   _check_mandatory<double                                                >(dic, fs, err, "U"                     , "double");
   _check_mandatory<double                                                >(dic, fs, err, "alpha"                 , "double");
   _check_optional <double                                                >(dic, fs, err, "p_dbl"                 , "double");
   _check_optional <double                                                >(dic, fs, err, "p_shift"               , "double");
+  _check_optional <double                                                >(dic, fs, err, "p_weight_time_swap"    , "double");
   _check_optional <int                                                   >(dic, fs, err, "max_perturbation_order", "int");
   _check_optional <int                                                   >(dic, fs, err, "min_perturbation_order", "int");
   _check_mandatory<int                                                   >(dic, fs, err, "n_cycles"              , "int");

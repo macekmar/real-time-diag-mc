@@ -20,7 +20,7 @@ solver_core::solve(solve_parameters_t const& params) {
 
  int nb_orders = params.max_perturbation_order - params.min_perturbation_order + 1;
 
- auto pn = array<double, 1>(nb_orders);   // measurement of p_n
+ auto pn = array<double, 1>(nb_orders);                                      // measurement of p_n
  auto sn = array<dcomplex, 2>(nb_orders, params.measure_times.first.size()); // measurement of s_n
  auto pn_errors = array<double, 1>(nb_orders);
  auto sn_errors = array<double, 1>(nb_orders);
@@ -65,6 +65,9 @@ solver_core::solve(solve_parameters_t const& params) {
   qmc.add_move(moves::remove2{&measure, &weight, t_max, &params, qmc.get_rng()}, "removal2", params.p_dbl);
  }
  qmc.add_move(moves::shift{&measure, &weight, t_max, &params, qmc.get_rng()}, "shift", params.p_shift);
+ if (params.measure_times.first.size() > 1) // no additional integral if only one time to measure
+  qmc.add_move(moves::weight_time_swap{&measure, &weight, t_max, &params, qmc.get_rng()}, "weight time swap",
+               params.p_weight_time_swap);
 
  qmc.add_measure(qmc_accumulator(&measure, &weight, &pn, &sn, &pn_errors, &sn_errors, &_nb_measures), "M measurement");
 
@@ -89,7 +92,10 @@ solver_core::solve(solve_parameters_t const& params) {
    TRIQS_RUNTIME_ERROR << "Operator to measure not recognised.";
  }
 
- _solve_duration = qmc.get_duration();
+ if (params.measure_times.first.size() > 1)
+  sn() /= (weight.t_left_max - weight.t_left_min);
+
+      _solve_duration = qmc.get_duration();
 
  return {{pn, sn}, {pn_errors, sn_errors}};
 }

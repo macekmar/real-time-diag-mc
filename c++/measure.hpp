@@ -23,7 +23,8 @@ class qmc_measure {
  g0_keldysh_t green_function;
  keldysh_contour_pt taup;
  std::vector<keldysh_contour_pt> tau_list;
- int op_to_measure_spin;
+ int op_to_measure_spin; // spin of the operator to measure. Not needed when up/down symmetry. Is used to know which determinant
+                         // is the big one.
  int nb_times;
 
  array<dcomplex, 1> value;   // Sum of determinants of the last accepted config
@@ -85,6 +86,12 @@ class qmc_measure {
    matrices[spin].remove2(k1, k2, k1, k2);
   }
   perturbation_order -= 2;
+ }
+
+ void change_one_row_and_one_col(int k1, int k2, keldysh_contour_pt pt1, keldysh_contour_pt pt2) {
+  for (auto spin : {up, down}) {
+   matrices[spin].change_one_row_and_one_col(k1, k2, pt1, pt2);
+  }
  }
 
  // ----------

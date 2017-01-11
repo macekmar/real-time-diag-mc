@@ -22,7 +22,7 @@ tmax = 3.
 p = {}
 p["op_to_measure"] = [[(0, 0), (0, 1)], []]
 p["measure_times"] = ([tmax], tmax)
-p["ref_times"] = (tmax, tmax)
+p["weight_time"] = tmax
 p["U"] = 2.5 # U_qmc
 p["max_perturbation_order"] = 7
 p["min_perturbation_order"] = 0
@@ -31,6 +31,7 @@ p["n_warmup_cycles"] = 1000
 p["length_cycle"] = 10
 p["n_cycles"] = 5000
 p["p_dbl"] = 0
+p["p_weight_time_swap"] = 1.0
 
 (pn, sn), (pn_error, sn_error) = S.solve(**p)
 
