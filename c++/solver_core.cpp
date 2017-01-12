@@ -48,7 +48,7 @@ solver_core::solve(solve_parameters_t const& params) {
 
  if (params.max_perturbation_order == 0) {
   pn(0) = 1;
-  sn(0, range()) = measure.get_value();
+  sn(0, range()) = measure.get_value() * dcomplex({0, -1});
   _solve_duration = 0.0;
 
   return {{pn, sn}, {pn_errors, sn_errors}};
