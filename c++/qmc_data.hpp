@@ -60,14 +60,88 @@ struct g0_keldysh_t {
 
 // --------------   data   --------------------------------------
 
+using triqs::arrays::range;
+
 enum spin { up, down };
+
+struct input_physics_data {
+
+ g0_keldysh_t green_function;
+ std::vector<keldysh_contour_pt> tau_list;
+ keldysh_contour_pt taup;
+ double t_max;
+ double t_left_min, t_left_max;
+ int nb_times = 0;
+ int nb_operators;
+ int min_perturbation_order, max_perturbation_order;
+ spin op_to_measure_spin; // spin of the operator to measure. Not needed when up/down symmetry. Is used to know which determinant
+                          // is the big one.
+ array<dcomplex, 1> order_zero_values;
+
+ input_physics_data(const solve_parameters_t *params, g0_t g0_lesser, g0_t g0_greater) {
+
+  // boundaries
+  t_max = *std::max_element(params->measure_times.first.begin(), params->measure_times.first.end());
+  t_max = std::max(t_max, params->measure_times.second);
+  t_left_max = *std::max_element(params->measure_times.first.begin(), params->measure_times.first.end());
+  t_left_min = *std::min_element(params->measure_times.first.begin(), params->measure_times.first.end());
+
+  // non interacting Green function
+  green_function = g0_keldysh_t{g0_adaptor_t{g0_lesser}, g0_adaptor_t{g0_greater}, params->alpha, t_max};
+
+  // number of operators in the correlator to measure. For now only 2 is supported
+  nb_operators = params->op_to_measure[up].size() + params->op_to_measure[down].size();
+
+  // input times
+  for (auto spin : {up, down}) {
+   auto const &ops = params->op_to_measure[spin];
+   if (ops.size() == 2) {
+    op_to_measure_spin = spin;
+    taup = make_keldysh_contour_pt(ops[1], params->measure_times.second);
+    for (auto time : params->measure_times.first) {
+     tau_list.emplace_back(make_keldysh_contour_pt(ops[0], time));
+     nb_times++;
+    }
+   }
+  }
+
+  // order zero values
+  order_zero_values = array<dcomplex, 1>(nb_times);
+  for (int i = 0; i < nb_times; ++i) {
+   order_zero_values(i) = green_function(tau_list[i], taup);
+  }
+ };
+
+ double left_time_normalize(double left_time) {
+  return (left_time - t_left_min) / (t_left_max - t_left_min); // no divide by zero check !
+ };
+
+ double left_time_denormalize(double norm_time) { return norm_time * (t_left_max - t_left_min) + t_left_min; };
+
+ void prefactor(array<dcomplex, 2> *sn) {
+  if (nb_times > 1) (*sn)(range(), range()) /= (t_left_max - t_left_min);
+
+  dcomplex i_n[4] = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}}; // powers of i
+
+  for (int k = 0; k <= max_perturbation_order - min_perturbation_order; ++k) {
+   (*sn)(k, range()) *= i_n[(k + min_perturbation_order) % 4]; // * i^(k)
+  }
+
+  if (nb_operators == 2)
+   (*sn)(range(), range()) *= i_n[3]; // additional factor of -i
+  else if (nb_operators == 4)
+   (*sn)(range(), range()) *= i_n[2]; // additional factor of -1=i^6
+  else
+   TRIQS_RUNTIME_ERROR << "Operator to measure not recognised.";
+ };
+};
 
 // ------------ keldysh sum gray code ------------------------------
 using triqs::det_manip::det_manip;
 
-dcomplex recompute_sum_keldysh_indices(std::vector<det_manip<g0_keldysh_t>>& matrices, int k, int v, int p);
-dcomplex recompute_sum_keldysh_indices(std::vector<det_manip<g0_keldysh_t>>& matrices, int k);
-dcomplex recompute_sum_keldysh_indices(det_manip<g0_keldysh_t>& matrix, int k, int p);
-dcomplex recompute_sum_keldysh_indices(det_manip<g0_keldysh_t>& matrix, int k);
+dcomplex recompute_sum_keldysh_indices(std::vector<det_manip<g0_keldysh_t>> &matrices, int k, int v, int p);
+dcomplex recompute_sum_keldysh_indices(std::vector<det_manip<g0_keldysh_t>> &matrices, int k);
+dcomplex recompute_sum_keldysh_indices(det_manip<g0_keldysh_t> &matrix, int k, int p);
+dcomplex recompute_sum_keldysh_indices(det_manip<g0_keldysh_t> &matrix, int k);
 
 void nice_print(det_manip<g0_keldysh_t> det, int p);

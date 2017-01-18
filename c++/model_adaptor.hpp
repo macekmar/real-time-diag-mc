@@ -22,7 +22,7 @@ struct g0_adaptor_t {
 
 struct random_x_generator {
  int L;
- random_x_generator(g0_t::const_view_type g0, solve_parameters_t const *params) : L(1){};
+ random_x_generator() : L(1){};
  // FIXME random_x_generator(g0_t::const_view_type g0, solve_parameters_t const *params) : L(get_target_shape(g0)[0]){};
  x_index_t operator()(triqs::mc_tools::random_generator &rng) const {
   return 0; // there is only one point on the lattice
