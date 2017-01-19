@@ -80,6 +80,9 @@ struct input_physics_data {
 
  input_physics_data(const solve_parameters_t *params, g0_t g0_lesser, g0_t g0_greater) {
 
+  min_perturbation_order = params->min_perturbation_order;
+  max_perturbation_order = params->max_perturbation_order;
+
   // boundaries
   t_max = *std::max_element(params->measure_times.first.begin(), params->measure_times.first.end());
   t_max = std::max(t_max, params->measure_times.second);
@@ -112,27 +115,32 @@ struct input_physics_data {
   }
  };
 
- double left_time_normalize(double left_time) {
+ double left_time_normalize(double left_time) const {
   return (left_time - t_left_min) / (t_left_max - t_left_min); // no divide by zero check !
  };
 
- double left_time_denormalize(double norm_time) { return norm_time * (t_left_max - t_left_min) + t_left_min; };
+ double left_time_denormalize(double norm_time) const { return norm_time * (t_left_max - t_left_min) + t_left_min; };
 
- void prefactor(array<dcomplex, 2> *sn) {
-  if (nb_times > 1) (*sn)(range(), range()) /= (t_left_max - t_left_min);
+ array<dcomplex, 1> prefactor() {
+  auto output = array<dcomplex, 1>(max_perturbation_order - min_perturbation_order + 1);
+  output() = 1.0;
+
+  if (nb_times > 1) output() /= (t_left_max - t_left_min);
 
   dcomplex i_n[4] = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}}; // powers of i
 
   for (int k = 0; k <= max_perturbation_order - min_perturbation_order; ++k) {
-   (*sn)(k, range()) *= i_n[(k + min_perturbation_order) % 4]; // * i^(k)
+   output(k) *= i_n[(k + min_perturbation_order) % 4]; // * i^(k)
   }
 
   if (nb_operators == 2)
-   (*sn)(range(), range()) *= i_n[3]; // additional factor of -i
+   output() *= i_n[3]; // additional factor of -i
   else if (nb_operators == 4)
-   (*sn)(range(), range()) *= i_n[2]; // additional factor of -1=i^6
+   output() *= i_n[2]; // additional factor of -1=i^6
   else
    TRIQS_RUNTIME_ERROR << "Operator to measure not recognised.";
+
+  return output;
  };
 };
 

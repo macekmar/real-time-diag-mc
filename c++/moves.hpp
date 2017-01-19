@@ -1,24 +1,25 @@
 #pragma once
-#include "./measure.hpp"
 #include "./integrand.hpp"
+#include "./measure.hpp"
 #include "./parameters.hpp"
 #include "./qmc_data.hpp"
-#include "./weight.hpp"
 
 namespace moves {
 
 struct common {
  Integrand *integrand;
  const solve_parameters_t *params;
- input_physics_data* physics_params;
+ const input_physics_data *physics_params;
  triqs::mc_tools::random_generator &rng;
  random_x_generator rxg;
  double t_max_L_U;
  bool quick_exit = false;
  dcomplex new_weight = 0;
 
- common(Integrand *integrand, const solve_parameters_t *params, const input_physics_data* physics_params, triqs::mc_tools::random_generator &rng)
-    : integrand(integrand), params(params), rng(rng), rxg{} {
+ common(Integrand *integrand, const solve_parameters_t *params, const input_physics_data *physics_params,
+        triqs::mc_tools::random_generator &rng)
+    : integrand(integrand), params(params), physics_params(physics_params), rng(rng) {
+  rxg = random_x_generator();
   t_max_L_U = physics_params->t_max * rxg.size() * params->U;
  }
 

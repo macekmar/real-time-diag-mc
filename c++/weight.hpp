@@ -7,17 +7,17 @@ class Weight {
  public:
  dcomplex value; // Sum of determinants of the last accepted config
 
- void insert(int k, keldysh_contour_pt pt);
- void insert2(int k1, int k2, keldysh_contour_pt pt1, keldysh_contour_pt pt2);
- void remove(int k);
- void remove2(int k1, int k2);
- void change_config(int k, keldysh_contour_pt pt);
- void change_left_input(keldysh_contour_pt tau);
- void change_right_input(keldysh_contour_pt taup);
- keldysh_contour_pt get_config(int p);
- keldysh_contour_pt get_left_input();
- keldysh_contour_pt get_right_input();
- dcomplex evaluate();
+ virtual void insert(int k, keldysh_contour_pt pt) = 0;
+ virtual void insert2(int k1, int k2, keldysh_contour_pt pt1, keldysh_contour_pt pt2) = 0;
+ virtual void remove(int k) = 0;
+ virtual void remove2(int k1, int k2) = 0;
+ virtual void change_config(int k, keldysh_contour_pt pt) = 0;
+ virtual void change_left_input(keldysh_contour_pt tau) = 0;
+ virtual void change_right_input(keldysh_contour_pt taup) = 0;
+ virtual keldysh_contour_pt get_config(int p) = 0;
+ virtual keldysh_contour_pt get_left_input() = 0;
+ virtual keldysh_contour_pt get_right_input() = 0;
+ virtual dcomplex evaluate() = 0;
 };
 
 // ------------------------
@@ -52,23 +52,23 @@ class two_det_weight : public Weight {
  }
 
  void insert(int k, keldysh_contour_pt pt) {
-  for (auto m : matrices) m.insert(k, k, pt, pt);
+  for (auto& m : matrices) m.insert(k, k, pt, pt);
  };
 
  void insert2(int k1, int k2, keldysh_contour_pt pt1, keldysh_contour_pt pt2) {
-  for (auto m : matrices) m.insert2(k1, k2, k1, k2, pt1, pt2, pt1, pt2);
+  for (auto& m : matrices) m.insert2(k1, k2, k1, k2, pt1, pt2, pt1, pt2);
  };
 
  void remove(int k) {
-  for (auto m : matrices) m.remove(k, k);
+  for (auto& m : matrices) m.remove(k, k);
  };
 
  void remove2(int k1, int k2) {
-  for (auto m : matrices) m.remove2(k1, k2, k1, k2);
+  for (auto& m : matrices) m.remove2(k1, k2, k1, k2);
  };
 
  void change_config(int k, keldysh_contour_pt pt) {
-  for (auto m : matrices) m.change_one_row_and_one_col(k, k, pt, pt);
+  for (auto& m : matrices) m.change_one_row_and_one_col(k, k, pt, pt);
  };
 
  void change_left_input(keldysh_contour_pt tau) {
@@ -85,9 +85,7 @@ class two_det_weight : public Weight {
 
  keldysh_contour_pt get_right_input() { return matrices[op_to_measure_spin].get_y(matrices[op_to_measure_spin].size() - 1); };
 
- dcomplex evaluate() {
-  return recompute_sum_keldysh_indices(matrices, matrices[1 - op_to_measure_spin].size());
- }
+ dcomplex evaluate() { return recompute_sum_keldysh_indices(matrices, matrices[1 - op_to_measure_spin].size()); }
 };
 
 

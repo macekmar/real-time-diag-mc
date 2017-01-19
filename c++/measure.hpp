@@ -12,14 +12,13 @@ using triqs::det_manip::det_manip;
 class Measure {
 
  public:
- array<dcomplex, 1> get_value();
- void evaluate();
-
- void insert(int k, keldysh_contour_pt pt);
- void insert2(int k1, int k2, keldysh_contour_pt pt1, keldysh_contour_pt pt2);
- void remove(int k);
- void remove2(int k1, int k2);
- void change_config(int k, keldysh_contour_pt pt);
+ virtual array<dcomplex, 1> get_value() = 0;
+ virtual void evaluate() = 0;
+ virtual void insert(int k, keldysh_contour_pt pt) = 0;
+ virtual void insert2(int k1, int k2, keldysh_contour_pt pt1, keldysh_contour_pt pt2) = 0;
+ virtual void remove(int k) = 0;
+ virtual void remove2(int k1, int k2) = 0;
+ virtual void change_config(int k, keldysh_contour_pt pt) = 0;
 };
 
 // ---------------

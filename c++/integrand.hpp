@@ -15,14 +15,13 @@ class Integrand {
  Integrand() : weight(NULL){};
  Integrand(Weight* weight) : weight(weight){};
 
- array<dcomplex, 1> get_measure_value();
- void measure_evaluate();
-
- void measure_insert(int k, keldysh_contour_pt pt);
- void measure_insert2(int k1, int k2, keldysh_contour_pt pt1, keldysh_contour_pt pt2);
- void measure_remove(int k);
- void measure_remove2(int k1, int k2);
- void measure_change_config(int k, keldysh_contour_pt pt);
+ virtual array<dcomplex, 1> get_measure_value() = 0;
+ virtual void measure_evaluate() = 0;
+ virtual void measure_insert(int k, keldysh_contour_pt pt) = 0;
+ virtual void measure_insert2(int k1, int k2, keldysh_contour_pt pt1, keldysh_contour_pt pt2) = 0;
+ virtual void measure_remove(int k) = 0;
+ virtual void measure_remove2(int k1, int k2) = 0;
+ virtual void measure_change_config(int k, keldysh_contour_pt pt) = 0;
 };
 
 // ------------------
@@ -53,7 +52,6 @@ class separated_integrand : public Integrand {
 
  array<dcomplex, 1> get_measure_value() { return measure->get_value(); };
  void measure_evaluate() { measure->evaluate(); };
-
  void measure_insert(int k, keldysh_contour_pt pt) { measure->insert(k, pt); };
  void measure_insert2(int k1, int k2, keldysh_contour_pt pt1, keldysh_contour_pt pt2) { measure->insert2(k1, k2, pt1, pt2); };
  void measure_remove(int k) { measure->remove(k); };
