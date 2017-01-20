@@ -66,5 +66,8 @@ struct solve_parameters_t {
 
  /// Verbosity level
  int verbosity = ((triqs::mpi::communicator().rank() == 0) ? 3 : 0); // silence the slave nodes
+
+ /// Method
+ int method = 0;
  
 };

@@ -24,7 +24,7 @@ dcomplex insert::accept() {
  auto k = integrand->perturbation_order;
  integrand->weight->value = new_weight;
  integrand->perturbation_order++;
- integrand->measure_insert(k, pt);
+ integrand->measure->insert(k, pt);
  return 1.0;
 }
 
@@ -56,7 +56,7 @@ dcomplex insert2::accept() {
  auto k = integrand->perturbation_order;
  integrand->weight->value = new_weight;
  integrand->perturbation_order += 2;
- integrand->measure_insert2(k, k + 1, pt1, pt2);
+ integrand->measure->insert2(k, k + 1, pt1, pt2);
  return 1.0;
 }
 
@@ -87,7 +87,7 @@ dcomplex remove::attempt() {
 dcomplex remove::accept() {
  integrand->weight->value = new_weight;
  integrand->perturbation_order--;
- integrand->measure_remove(p);
+ integrand->measure->remove(p);
  return 1.0;
 }
 
@@ -120,7 +120,7 @@ dcomplex remove2::attempt() {
 dcomplex remove2::accept() {
  integrand->weight->value = new_weight;
  integrand->perturbation_order -= 2;
- integrand->measure_remove2(p1, p2);
+ integrand->measure->remove2(p1, p2);
  return 1.0;
 }
 
@@ -150,7 +150,7 @@ dcomplex shift::attempt() {
 
 dcomplex shift::accept() {
  integrand->weight->value = new_weight;
- integrand->measure_change_config(p, new_pt);
+ integrand->measure->change_config(p, new_pt);
  return 1.0;
 }
 
@@ -191,7 +191,7 @@ dcomplex weight_time_swap::attempt() {
 
 dcomplex weight_time_swap::accept() {
  integrand->weight->value = new_weight;
- integrand->measure_change_config(p, swap_pt);
+ integrand->measure->change_config(p, swap_pt);
  return 1.0;
 }
 

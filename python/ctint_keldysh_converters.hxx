@@ -30,6 +30,7 @@ template <> struct py_converter<solve_parameters_t> {
   PyDict_SetItemString( d, "random_name"           , convert_to_python(x.random_name));
   PyDict_SetItemString( d, "max_time"              , convert_to_python(x.max_time));
   PyDict_SetItemString( d, "verbosity"             , convert_to_python(x.verbosity));
+  PyDict_SetItemString( d, "method"                , convert_to_python(x.method));
   return d;
  }
 
@@ -66,6 +67,7 @@ template <> struct py_converter<solve_parameters_t> {
   _get_optional(dic, "random_name"           , res.random_name              ,"");
   _get_optional(dic, "max_time"              , res.max_time                 ,-1);
   _get_optional(dic, "verbosity"             , res.verbosity                ,((triqs::mpi::communicator().rank()==0)?3:0));
+  _get_optional(dic, "method"                , res.method                   ,0);
   return res;
  }
 
@@ -96,7 +98,7 @@ template <> struct py_converter<solve_parameters_t> {
   std::stringstream fs, fs2; int err=0;
 
 #ifndef TRIQS_ALLOW_UNUSED_PARAMETERS
-  std::vector<std::string> ks, all_keys = {"op_to_measure","measure_times","weight_time","U","alpha","p_dbl","p_shift","p_weight_time_swap","max_perturbation_order","min_perturbation_order","n_cycles","length_cycle","n_warmup_cycles","random_seed","random_name","max_time","verbosity"};
+  std::vector<std::string> ks, all_keys = {"op_to_measure","measure_times","weight_time","U","alpha","p_dbl","p_shift","p_weight_time_swap","max_perturbation_order","min_perturbation_order","n_cycles","length_cycle","n_warmup_cycles","random_seed","random_name","max_time","verbosity","method"};
   pyref keys = PyDict_Keys(dic);
   if (!convertible_from_python<std::vector<std::string>>(keys, true)) {
    fs << "\nThe dict keys are not strings";
@@ -125,6 +127,7 @@ template <> struct py_converter<solve_parameters_t> {
   _check_optional <std::string                                           >(dic, fs, err, "random_name"           , "std::string");
   _check_optional <int                                                   >(dic, fs, err, "max_time"              , "int");
   _check_optional <int                                                   >(dic, fs, err, "verbosity"             , "int");
+  _check_optional <int                                                   >(dic, fs, err, "method"                , "int");
   if (err) goto _error;
   return true;
 

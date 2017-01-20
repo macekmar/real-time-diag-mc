@@ -1,5 +1,5 @@
 #pragma once
-#include "./integrand.hpp"
+#include "./weight.hpp"
 #include "./measure.hpp"
 #include "./parameters.hpp"
 #include "./qmc_data.hpp"
