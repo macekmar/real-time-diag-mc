@@ -22,7 +22,7 @@ t2 = 5.
 
 p = {}
 p["op_to_measure"] = [[(0, 0), (0, 1)], []] # lesser
-p["measure_times"] = ([t1], t2)
+p["measure_times"] = ([0.9 * t1, t1, 1.1 * t1], t1)
 p["weight_times"] = t1, t2
 p["U"] = 2.5 # U_qmc
 p["max_perturbation_order"] = 7
@@ -39,15 +39,15 @@ if mpi.is_master_node():
     with HDFArchive('correlator.out.h5', 'a') as ar:  # A file to store the results
         ar['pn_values'] = pn
         ar['pn_errors'] = pn_error
-        ar['sn_values'] = sn[:, 0]
+        ar['sn_values'] = sn[:, 1]
         # ar['sn_errors'] = sn_error
 
 from pytriqs.utility.h5diff import h5diff
 
 with HDFArchive('correlator.ref.h5', 'r') as ar:
-    print "sn out:", sn[:, 0]
+    print "sn out:", sn[:, 1]
     print "sn ref:", ar['sn_values']
-    print "rel diff:", np.abs((sn[:, 0] - ar['sn_values'])/ar['sn_values']).mean()
+    print "rel diff:", np.abs((sn[:, 1] - ar['sn_values'])/ar['sn_values']).mean()
     print "pn out:", pn
     print "pn ref:", ar['pn_values']
     print "rel diff:", np.abs((pn - ar['pn_values'])/ar['pn_values']).mean()
