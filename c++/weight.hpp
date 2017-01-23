@@ -6,6 +6,9 @@ using triqs::det_manip::det_manip;
 
 class Weight {
 
+ protected:
+ double singular_threshold = 1e-12; // for set_manip. Not ideal to be defined here
+
  public:
  dcomplex value; // Sum of determinants of the last accepted config
 
@@ -78,4 +81,3 @@ class two_det_weight : public Weight {
 //  value = recompute_sum_keldysh_indices(matrix, 0);
 // }
 //};
-

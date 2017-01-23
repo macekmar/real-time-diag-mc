@@ -1,3 +1,4 @@
+#include "./measure.hpp"
 #include "./qmc_data.hpp"
 #include <triqs/gfs.hpp>
 
@@ -12,6 +13,8 @@ class solver_core {
  g0_t g0_lesser, g0_greater;
  double _solve_duration = 0;
  int _nb_measures = 0;
+
+ Measure* _create_measure(const int method, const input_physics_data* physics_params, const Weight* weight);
 
  public:
  // FIXME change type of arguments after olivier fixes wrapper

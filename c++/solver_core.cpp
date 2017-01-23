@@ -1,6 +1,5 @@
 #include "./solver_core.hpp"
 #include "./accumulator.hpp"
-#include "./measure.hpp"
 #include "./moves.hpp"
 #include "./weight.hpp"
 #include <triqs/det_manip.hpp>
@@ -13,6 +12,31 @@ using triqs::utility::mindex;
 using triqs::arrays::range;
 
 // ------------ The main class of the solver ------------------------
+
+Measure* solver_core::_create_measure(const int method, const input_physics_data* physics_params, const Weight* weight) {
+
+ switch (method) {
+  // singletime measures
+  case 0: // good old way
+   return new weight_sign_measure(physics_params, weight);
+   break;
+  case 1: // same as 0 but with different input times
+   return new twodet_single_measure(physics_params);
+   break;
+  // multitimes measures
+  case 2: // same as 1 but multitime
+   return new twodet_multi_measure(physics_params);
+   break;
+  case 3: // same as 2 but with cofact formula
+  case 4: // same as 3 but with addionnal integral for the weight left time
+   return new twodet_cofact_measure(physics_params);
+   break;
+  // default
+  default:
+   return new weight_sign_measure(physics_params, weight);
+   break;
+ }
+}
 
 // -------------------------------------------------------------------------
 // The method that runs the qmc
@@ -45,35 +69,7 @@ solver_core::solve(solve_parameters_t const& params) {
 
  // choose measure and weight
  two_det_weight weight(&params, &physics_params);
-
- weight_sign_measure measure0(&physics_params, &weight);
- twodet_single_measure measure1(&physics_params);
- twodet_multi_measure measure2(&physics_params);
- twodet_cofact_measure measure3(&physics_params);
- Measure* measure_p = NULL;
-
- switch (params.method) {
-  // singletime measures
-  case 0:
-   if (physics_params.nb_times > 1) TRIQS_RUNTIME_ERROR << "Trying to use a singletime measure with multiple input times";
-   measure_p = &measure0;
-   break;
-  case 1:
-   if (physics_params.nb_times > 1) TRIQS_RUNTIME_ERROR << "Trying to use a singletime measure with multiple input times";
-   measure_p = &measure1;
-   break;
-  // multitimes measures
-  case 2:
-   measure_p = &measure2;
-   break;
-  case 3:
-   measure_p = &measure3;
-   break;
-  default:
-   measure_p = &measure0;
-   break;
- }
-
+ Measure* measure_p = _create_measure(params.method, &physics_params, &weight);
  Integrand integrand(&weight, measure_p);
 
  // Register moves and measurements
@@ -88,11 +84,11 @@ solver_core::solve(solve_parameters_t const& params) {
  }
  qmc.add_move(moves::shift{&integrand, &params, &physics_params, qmc.get_rng()}, "shift", params.p_shift);
 
- if (physics_params.nb_times > 1) // no additional integral if only one time to measure
+ if (params.method == 4)
   qmc.add_move(moves::weight_time_swap{&integrand, &params, &physics_params, qmc.get_rng()}, "weight time swap",
                params.p_weight_time_swap);
 
- qmc.add_measure(Accumulator(&integrand, &pn, &sn, &pn_errors, &sn_errors, &_nb_measures), "Single Measurement");
+ qmc.add_measure(Accumulator(&integrand, &pn, &sn, &pn_errors, &sn_errors, &_nb_measures), "Measurement");
 
  // Run
  qmc.warmup_and_accumulate(params.n_warmup_cycles, params.n_cycles, params.length_cycle,

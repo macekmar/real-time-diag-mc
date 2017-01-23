@@ -6,6 +6,9 @@ using triqs::det_manip::det_manip;
 
 weight_sign_measure::weight_sign_measure(const input_physics_data* physics_params, const Weight* weight) : weight(weight) {
 
+ if (physics_params->nb_times > 1) TRIQS_RUNTIME_ERROR << "Trying to use a singletime measure with multiple input times";
+ std::cout << "Method used: weight sign measure" << std::endl;
+
  value = array<dcomplex, 1>(physics_params->nb_times);
  value() = 0;
 }
@@ -20,12 +23,16 @@ void weight_sign_measure::evaluate() { value() = weight->value; }
 
 // -------- twodet_single_measure -----------
 
-twodet_single_measure::twodet_single_measure(const input_physics_data* physics_params) {
+twodet_single_measure::twodet_single_measure(const input_physics_data* physics_params) : physics_params(physics_params) {
+
+ if (physics_params->nb_times > 1) TRIQS_RUNTIME_ERROR << "Trying to use a singletime measure with multiple input times";
+ std::cout << "Method used: twodet single measure" << std::endl;
 
  value = array<dcomplex, 1>(physics_params->nb_times);
  value() = 0;
 
  for (auto spin : {up, down}) matrices.emplace_back(physics_params->green_function, 100);
+ for (auto spin : {up, down}) matrices[spin].set_singular_threshold(singular_threshold);
  matrices[physics_params->op_to_measure_spin].insert_at_end(physics_params->tau_list[0], physics_params->taup);
 }
 
@@ -65,12 +72,15 @@ void twodet_single_measure::evaluate() {
 
 // -------- twodet_multi_measure -----------
 
-twodet_multi_measure::twodet_multi_measure(const input_physics_data* physics_params) {
+twodet_multi_measure::twodet_multi_measure(const input_physics_data* physics_params) : physics_params(physics_params) {
+
+ std::cout << "Method used: twodet multi measure" << std::endl;
 
  value = array<dcomplex, 1>(physics_params->nb_times);
  value() = 0;
 
  for (auto spin : {up, down}) matrices.emplace_back(physics_params->green_function, 100);
+ for (auto spin : {up, down}) matrices[spin].set_singular_threshold(singular_threshold);
 }
 
 void twodet_multi_measure::insert(int k, keldysh_contour_pt pt) {
@@ -131,12 +141,16 @@ void twodet_multi_measure::evaluate() {
 // -------- twodet_cofact_measure -----------
 
 twodet_cofact_measure::twodet_cofact_measure(const input_physics_data* physics_params)
-   : green_function(physics_params->green_function) {
+   : physics_params(physics_params), green_function(physics_params->green_function) {
+
+ if (physics_params->nb_times == 1) TRIQS_RUNTIME_ERROR << "Trying to use the multitime cofact measure with a single input time";
+ std::cout << "Method used: twodet cofact measure" << std::endl;
 
  value = array<dcomplex, 1>(physics_params->nb_times);
  value() = 0;
 
  for (auto spin : {up, down}) matrices.emplace_back(green_function, 100);
+ for (auto spin : {up, down}) matrices[spin].set_singular_threshold(singular_threshold);
 }
 
 void twodet_cofact_measure::insert(int k, keldysh_contour_pt pt) {

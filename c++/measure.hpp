@@ -13,6 +13,7 @@ class Measure {
 
  protected:
  array<dcomplex, 1> value; // measure of the last accepted config
+ double singular_threshold = 1e-12; // for set_manip. Not ideal to be defined here
 
  public:
  array<dcomplex, 1> get_value() { return value; };
@@ -64,7 +65,7 @@ class twodet_single_measure : public Measure {
 
  private:
  std::vector<det_manip<g0_keldysh_t>> matrices; // M matrices for up and down with tau and tau'
- input_physics_data* physics_params;
+ const input_physics_data* physics_params;
 
  twodet_single_measure(const twodet_single_measure&) = delete; // non construction-copyable
  void operator=(const twodet_single_measure&) = delete;        // non copyable
@@ -87,7 +88,7 @@ class twodet_multi_measure : public Measure {
  private:
  std::vector<det_manip<g0_keldysh_t>>
      matrices; // M matrices for up and down without tau and tau', so they are actually the same...
- input_physics_data* physics_params;
+ const input_physics_data* physics_params;
 
  twodet_multi_measure(const twodet_multi_measure&) = delete; // non construction-copyable
  void operator=(const twodet_multi_measure&) = delete;       // non copyable
@@ -111,7 +112,7 @@ class twodet_cofact_measure : public Measure {
  std::vector<det_manip<g0_keldysh_t>>
      matrices; // M matrices for up and down without tau and tau', so they are actually the same...
  g0_keldysh_t green_function;
- input_physics_data* physics_params;
+ const input_physics_data* physics_params;
 
  twodet_cofact_measure(const twodet_cofact_measure&) = delete; // non construction-copyable
  void operator=(const twodet_cofact_measure&) = delete;        // non copyable

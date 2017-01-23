@@ -21,7 +21,7 @@ struct solve_parameters_t {
  std::pair<std::vector<double>, double> measure_times;
 
  /// fixed weight time
- double weight_time;
+ std::pair<double, double> weight_times;
 
  /// U
  double U;
@@ -68,6 +68,6 @@ struct solve_parameters_t {
  int verbosity = ((triqs::mpi::communicator().rank() == 0) ? 3 : 0); // silence the slave nodes
 
  /// Method
- int method = 0;
+ int method = 2;
  
 };

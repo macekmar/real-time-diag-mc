@@ -7,13 +7,21 @@ two_det_weight::two_det_weight(const solve_parameters_t* params, const input_phy
 
  // Initialize the M-matrices. 100 is the initial alocated space.
  for (auto spin : {up, down}) matrices.emplace_back(physics_params->green_function, 100);
+ for (auto spin : {up, down}) matrices[spin].set_singular_threshold(singular_threshold);
 
  for (auto spin : {up, down}) {
   auto const& ops = params->op_to_measure[spin];
   if (ops.size() == 2) {
    op_to_measure_spin = spin;
-   matrices[spin].insert_at_end(make_keldysh_contour_pt(ops[0], 0.5 * (physics_params->t_left_max + physics_params->t_left_min)),
-                                make_keldysh_contour_pt(ops[1], params->weight_time));
+   if (params->method == 0) {
+    matrices[spin].insert_at_end(physics_params->tau_list[0], physics_params->taup);
+   } else if (params->method == 4) {
+    matrices[spin].insert_at_end(make_keldysh_contour_pt(ops[0], 0.5 * (physics_params->t_left_max + physics_params->t_left_min)),
+                                 make_keldysh_contour_pt(ops[1], params->weight_times.second));
+   } else {
+    matrices[spin].insert_at_end(make_keldysh_contour_pt(ops[0], params->weight_times.first),
+                                 make_keldysh_contour_pt(ops[1], params->weight_times.second));
+   }
   }
  }
 
@@ -60,5 +68,3 @@ keldysh_contour_pt two_det_weight::get_right_input() {
 };
 
 dcomplex two_det_weight::evaluate() { return recompute_sum_keldysh_indices(matrices, matrices[1 - op_to_measure_spin].size()); }
-
-
