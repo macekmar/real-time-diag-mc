@@ -13,7 +13,7 @@ class Measure {
 
  protected:
  array<dcomplex, 1> value; // measure of the last accepted config
- double singular_threshold = 1e-12; // for set_manip. Not ideal to be defined here
+ double singular_threshold = 1e-12; // for det_manip. Not ideal to be defined here
 
  public:
  array<dcomplex, 1> get_value() { return value; };
