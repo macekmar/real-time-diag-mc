@@ -7,7 +7,7 @@ using triqs::det_manip::det_manip;
 class Weight {
 
  protected:
- double singular_threshold = 1e-12; // for det_manip. Not ideal to be defined here
+ double singular_threshold = 1e-6; // for det_manip. Not ideal to be defined here
 
  public:
  dcomplex value; // Sum of determinants of the last accepted config

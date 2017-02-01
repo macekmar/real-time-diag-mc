@@ -46,7 +46,8 @@ void two_det_weight::remove2(int k1, int k2) {
 };
 
 void two_det_weight::change_config(int k, keldysh_contour_pt pt) {
- for (auto& m : matrices) m.change_one_row_and_one_col(k, k, pt, pt);
+ //for (auto& m : matrices) m.change_one_row_and_one_col(k, k, pt, pt);
+ for (auto& m : matrices) {m.change_row(k, pt); m.change_col(k, pt);};
 };
 
 void two_det_weight::change_left_input(keldysh_contour_pt tau) {

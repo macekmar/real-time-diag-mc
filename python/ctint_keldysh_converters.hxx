@@ -67,7 +67,7 @@ template <> struct py_converter<solve_parameters_t> {
   _get_optional(dic, "random_name"           , res.random_name              ,"");
   _get_optional(dic, "max_time"              , res.max_time                 ,-1);
   _get_optional(dic, "verbosity"             , res.verbosity                ,((triqs::mpi::communicator().rank()==0)?3:0));
-  _get_optional(dic, "method"                , res.method                   ,2);
+  _get_optional(dic, "method"                , res.method                   ,4);
   return res;
  }
 

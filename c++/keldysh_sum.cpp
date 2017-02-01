@@ -53,10 +53,14 @@ dcomplex recompute_sum_keldysh_indices(std::vector<det_manip<g0_keldysh_t>>& mat
 
   pt_l = flip_index(matrices[v].get_x(nlc_p));
   pt_r = flip_index(matrices[v].get_y(nlc));
-  matrices[v].change_one_row_and_one_col(nlc_p, nlc, pt_l, pt_r);
+  // matrices[v].change_one_row_and_one_col(nlc_p, nlc, pt_l, pt_r);
+  matrices[v].change_row(nlc_p, pt_l);
+  matrices[v].change_col(nlc, pt_r);
 
   pt = flip_index(matrices[1 - v].get_x(nlc_p));
-  matrices[1 - v].change_one_row_and_one_col(nlc_p, nlc_p, pt, pt);
+  // matrices[1 - v].change_one_row_and_one_col(nlc_p, nlc_p, pt, pt);
+  matrices[1 - v].change_row(nlc_p, pt);
+  matrices[1 - v].change_col(nlc_p, pt);
 
   // nice_print(matrices[0], p);
   res += sign * matrices[0].determinant() * matrices[1].determinant();
@@ -77,7 +81,11 @@ dcomplex recompute_sum_keldysh_indices(std::vector<det_manip<g0_keldysh_t>>& mat
  if (k > 63) TRIQS_RUNTIME_ERROR << "k overflow";
 
  if (k == 0) {
-  return matrices[0].determinant() * matrices[1].determinant();
+  dcomplex res0 = matrices[0].determinant() * matrices[1].determinant();
+  if (!(std::isfinite(real(res0)) & std::isfinite(imag(res0))))
+   TRIQS_RUNTIME_ERROR << "NAN for n = 0, res = " << res0 << ", k = " << k;
+  // return matrices[0].determinant() * matrices[1].determinant();
+  return res0;
  }
 
 #ifdef REGENERATE_MATRIX_BEFORE_EACH_GRAY_CODE
@@ -98,14 +106,19 @@ dcomplex recompute_sum_keldysh_indices(std::vector<det_manip<g0_keldysh_t>>& mat
 
   for (auto spin : {up, down}) {
    pt = flip_index(matrices[spin].get_x(nlc));
-   matrices[spin].change_one_row_and_one_col(nlc, nlc, pt, pt);
-   matrices[spin].change_one_row_and_one_col(nlc, nlc, pt, pt);
+   // matrices[spin].change_one_row_and_one_col(nlc, nlc, pt, pt);
+   // matrices[spin].change_one_row_and_one_col(nlc, nlc, pt, pt);
+   matrices[spin].change_row(nlc, pt);
+   matrices[spin].change_col(nlc, pt);
   }
 
   res += sign * matrices[0].determinant() * matrices[1].determinant();
   sign = -sign;
 
-  if (!(std::isfinite(real(res)) & std::isfinite(imag(res)))) TRIQS_RUNTIME_ERROR << "NAN for n = " << n;
+  if (!(std::isfinite(real(res)) & std::isfinite(imag(res)))) {
+   TRIQS_RUNTIME_ERROR << "NAN for n = " << n << ", res = " << res << ", k = " << k << ", nlc = " << nlc
+                       << ", det0 = " << matrices[0].determinant() << ", det1 = " << matrices[1].determinant();
+  }
  }
 
  return res;

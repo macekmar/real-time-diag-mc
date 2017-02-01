@@ -87,6 +87,7 @@ struct input_physics_data {
   // boundaries
   t_max = *std::max_element(params->measure_times.first.begin(), params->measure_times.first.end());
   t_max = std::max(t_max, params->measure_times.second);
+  //t_max = std::max(params->weight_times.first, params->weight_times.second); // for testing purpose only
   t_left_max = *std::max_element(params->measure_times.first.begin(), params->measure_times.first.end());
   t_left_min = *std::min_element(params->measure_times.first.begin(), params->measure_times.first.end());
 

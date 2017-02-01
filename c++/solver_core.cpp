@@ -27,8 +27,11 @@ Measure* solver_core::_create_measure(const int method, const input_physics_data
   case 2: // same as 1 but multitime
    return new twodet_multi_measure(physics_params);
    break;
-  case 3: // same as 2 but with cofact formula
   case 4: // same as 3 but with addionnal integral for the weight left time
+   if (physics_params->nb_times == 1)
+    TRIQS_RUNTIME_ERROR << "Trying to use the additionnal integral method with a single input time";
+  /* going through */
+  case 3: // same as 2 but with cofact formula
    return new twodet_cofact_measure(physics_params);
    break;
   // default
