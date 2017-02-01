@@ -13,14 +13,11 @@ two_det_weight::two_det_weight(const solve_parameters_t* params, const input_phy
   auto const& ops = params->op_to_measure[spin];
   if (ops.size() == 2) {
    op_to_measure_spin = spin;
-   if (params->method == 0) {
+   if (params->method == 0 || params->method == 4) {
     matrices[spin].insert_at_end(physics_params->tau_list[0], physics_params->taup);
-   } else if (params->method == 4) {
-    matrices[spin].insert_at_end(make_keldysh_contour_pt(ops[0], 0.5 * (physics_params->t_left_max + physics_params->t_left_min)),
-                                 make_keldysh_contour_pt(ops[1], params->weight_times.second));
    } else {
-    matrices[spin].insert_at_end(make_keldysh_contour_pt(ops[0], params->weight_times.first),
-                                 make_keldysh_contour_pt(ops[1], params->weight_times.second));
+    matrices[spin].insert_at_end(make_keldysh_contour_pt(ops[0], params->weight_time),
+                                 physics_params->taup);
    }
   }
  }

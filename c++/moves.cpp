@@ -174,10 +174,10 @@ dcomplex weight_time_swap::attempt() {
  tau = integrand->weight->get_left_input();  // integrand left input point
  save_swap_pt = swap_pt;                     // save for reject case
  save_tau = tau;                             // save for reject case
- // swap normalised times:
- double tau_norm_time = physics_params->left_time_normalize(tau.t);
- tau.t = physics_params->left_time_denormalize(swap_pt.t / physics_params->t_max);
- swap_pt.t = tau_norm_time * physics_params->t_max;
+ // swap times:
+ double tau_time = tau.t;
+ tau.t = swap_pt.t;
+ swap_pt.t = tau_time;
 
  // replace points with swapped times
  integrand->weight->change_config(p, swap_pt);

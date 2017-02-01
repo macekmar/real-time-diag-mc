@@ -14,8 +14,9 @@ template <> struct py_converter<solve_parameters_t> {
  static PyObject *c2py(solve_parameters_t const & x) {
   PyObject * d = PyDict_New();
   PyDict_SetItemString( d, "op_to_measure"         , convert_to_python(x.op_to_measure));
+  PyDict_SetItemString( d, "interaction_start"     , convert_to_python(x.interaction_start));
   PyDict_SetItemString( d, "measure_times"         , convert_to_python(x.measure_times));
-  PyDict_SetItemString( d, "weight_times"          , convert_to_python(x.weight_times));
+  PyDict_SetItemString( d, "weight_time"           , convert_to_python(x.weight_time));
   PyDict_SetItemString( d, "U"                     , convert_to_python(x.U));
   PyDict_SetItemString( d, "alpha"                 , convert_to_python(x.alpha));
   PyDict_SetItemString( d, "p_dbl"                 , convert_to_python(x.p_dbl));
@@ -51,8 +52,9 @@ template <> struct py_converter<solve_parameters_t> {
  static solve_parameters_t py2c(PyObject *dic) {
   solve_parameters_t res;
   res.op_to_measure = convert_from_python<std::vector<std::vector<std::tuple<x_index_t, int> > >>(PyDict_GetItemString(dic, "op_to_measure"));
-  res.measure_times = convert_from_python<std::pair<std::vector<double>, double>>(PyDict_GetItemString(dic, "measure_times"));
-  res.weight_times = convert_from_python<std::pair<double, double>>(PyDict_GetItemString(dic, "weight_times"));
+  res.interaction_start = convert_from_python<double>(PyDict_GetItemString(dic, "interaction_start"));
+  res.measure_times = convert_from_python<std::vector<double>>(PyDict_GetItemString(dic, "measure_times"));
+  _get_optional(dic, "weight_time"           , res.weight_time              ,0.0);
   res.U = convert_from_python<double>(PyDict_GetItemString(dic, "U"));
   res.alpha = convert_from_python<double>(PyDict_GetItemString(dic, "alpha"));
   _get_optional(dic, "p_dbl"                 , res.p_dbl                    ,0.5);
@@ -67,7 +69,7 @@ template <> struct py_converter<solve_parameters_t> {
   _get_optional(dic, "random_name"           , res.random_name              ,"");
   _get_optional(dic, "max_time"              , res.max_time                 ,-1);
   _get_optional(dic, "verbosity"             , res.verbosity                ,((triqs::mpi::communicator().rank()==0)?3:0));
-  _get_optional(dic, "method"                , res.method                   ,4);
+  _get_optional(dic, "method"                , res.method                   ,3);
   return res;
  }
 
@@ -98,7 +100,7 @@ template <> struct py_converter<solve_parameters_t> {
   std::stringstream fs, fs2; int err=0;
 
 #ifndef TRIQS_ALLOW_UNUSED_PARAMETERS
-  std::vector<std::string> ks, all_keys = {"op_to_measure","measure_times","weight_times","U","alpha","p_dbl","p_shift","p_weight_time_swap","max_perturbation_order","min_perturbation_order","n_cycles","length_cycle","n_warmup_cycles","random_seed","random_name","max_time","verbosity","method"};
+  std::vector<std::string> ks, all_keys = {"op_to_measure","interaction_start","measure_times","weight_time","U","alpha","p_dbl","p_shift","p_weight_time_swap","max_perturbation_order","min_perturbation_order","n_cycles","length_cycle","n_warmup_cycles","random_seed","random_name","max_time","verbosity","method"};
   pyref keys = PyDict_Keys(dic);
   if (!convertible_from_python<std::vector<std::string>>(keys, true)) {
    fs << "\nThe dict keys are not strings";
@@ -111,8 +113,9 @@ template <> struct py_converter<solve_parameters_t> {
 #endif
 
   _check_mandatory<std::vector<std::vector<std::tuple<x_index_t, int> > >>(dic, fs, err, "op_to_measure"         , "std::vector<std::vector<std::tuple<x_index_t, int> > >");
-  _check_mandatory<std::pair<std::vector<double>, double>                >(dic, fs, err, "measure_times"         , "std::pair<std::vector<double>, double>");
-  _check_mandatory<std::pair<double, double>                             >(dic, fs, err, "weight_times"          , "std::pair<double, double>");
+  _check_mandatory<double                                                >(dic, fs, err, "interaction_start"     , "double");
+  _check_mandatory<std::vector<double>                                   >(dic, fs, err, "measure_times"         , "std::vector<double>");
+  _check_optional <double                                                >(dic, fs, err, "weight_time"           , "double");
   _check_mandatory<double                                                >(dic, fs, err, "U"                     , "double");
   _check_mandatory<double                                                >(dic, fs, err, "alpha"                 , "double");
   _check_optional <double                                                >(dic, fs, err, "p_dbl"                 , "double");

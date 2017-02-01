@@ -17,11 +17,14 @@ struct solve_parameters_t {
  /// operator to measure
  std::vector<std::vector<std::tuple<x_index_t, int>>> op_to_measure;
 
+ /// time before 0 at which interaction started
+ double interaction_start;
+
  /// measure times
- std::pair<std::vector<double>, double> measure_times;
+ std::vector<double> measure_times;
 
  /// fixed weight time
- std::pair<double, double> weight_times;
+ double weight_time = 0.0;
 
  /// U
  double U;
@@ -68,6 +71,6 @@ struct solve_parameters_t {
  int verbosity = ((triqs::mpi::communicator().rank() == 0) ? 3 : 0); // silence the slave nodes
 
  /// Method
- int method = 4;
+ int method = 3;
  
 };

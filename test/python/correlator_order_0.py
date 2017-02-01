@@ -22,8 +22,9 @@ t2 = 5.
 
 p = {}
 p["op_to_measure"] = [[(0, 0), (0, 1)], []] # lesser
-p["measure_times"] = ([t1], t2)
-p["weight_times"] = t1, t2
+p["interaction_start"] = t2
+p["measure_times"] = [t1 - t2]
+p["weight_time"] = t1 - t2
 p["U"] = 2.5 # U_qmc
 p["max_perturbation_order"] = 0
 p["min_perturbation_order"] = 0

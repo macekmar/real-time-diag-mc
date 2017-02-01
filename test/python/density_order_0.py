@@ -21,8 +21,9 @@ tmax = 3.
 
 p = {}
 p["op_to_measure"] = [[(0, 0), (0, 1)], []]
-p["measure_times"] = ([tmax], tmax)
-p["weight_times"] = tmax, tmax
+p["interaction_start"] = tmax
+p["measure_times"] = [0]
+p["weight_time"] = 0
 p["U"] = 2.5 # U_qmc
 p["max_perturbation_order"] = 0
 p["min_perturbation_order"] = 0

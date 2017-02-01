@@ -69,8 +69,8 @@ struct input_physics_data {
  g0_keldysh_t green_function;
  std::vector<keldysh_contour_pt> tau_list;
  keldysh_contour_pt taup;
+ double interaction_start;
  double t_max;
- double t_left_min, t_left_max;
  int nb_times = 0;
  int nb_operators;
  int min_perturbation_order, max_perturbation_order;
@@ -79,17 +79,17 @@ struct input_physics_data {
  array<dcomplex, 1> order_zero_values;
  const int method;
 
- input_physics_data(const solve_parameters_t *params, g0_t g0_lesser, g0_t g0_greater) : method(params->method) {
+ input_physics_data(const solve_parameters_t *params, g0_t g0_lesser, g0_t g0_greater)
+    : method(params->method), interaction_start(params->interaction_start) {
+
+  if (interaction_start < 0) TRIQS_RUNTIME_ERROR << "interaction_time must be positive";
 
   min_perturbation_order = params->min_perturbation_order;
   max_perturbation_order = params->max_perturbation_order;
 
   // boundaries
-  t_max = *std::max_element(params->measure_times.first.begin(), params->measure_times.first.end());
-  t_max = std::max(t_max, params->measure_times.second);
-  //t_max = std::max(params->weight_times.first, params->weight_times.second); // for testing purpose only
-  t_left_max = *std::max_element(params->measure_times.first.begin(), params->measure_times.first.end());
-  t_left_min = *std::min_element(params->measure_times.first.begin(), params->measure_times.first.end());
+  t_max = *std::max_element(params->measure_times.begin(), params->measure_times.end());
+  t_max = std::max(t_max, 0.0); // second time is 0
 
   // non interacting Green function
   green_function = g0_keldysh_t{g0_adaptor_t{g0_lesser}, g0_adaptor_t{g0_greater}, params->alpha, t_max};
@@ -102,15 +102,15 @@ struct input_physics_data {
    auto const &ops = params->op_to_measure[spin];
    if (ops.size() == 2) {
     op_to_measure_spin = spin;
-    taup = make_keldysh_contour_pt(ops[1], params->measure_times.second);
-    for (auto time : params->measure_times.first) {
+    taup = make_keldysh_contour_pt(ops[1], 0.0); // second time set to 0, assumes only time difference matters
+    for (auto time : params->measure_times) {
      tau_list.emplace_back(make_keldysh_contour_pt(ops[0], time));
      nb_times++;
     }
    }
   }
 
-  if (nb_times < 1) TRIQS_RUNTIME_ERROR << "No left input times !";
+  if (nb_times < 1) TRIQS_RUNTIME_ERROR << "No left input time !";
 
   // order zero values
   order_zero_values = array<dcomplex, 1>(nb_times);
@@ -119,17 +119,11 @@ struct input_physics_data {
   }
  };
 
- double left_time_normalize(double left_time) const {
-  return (left_time - t_left_min) / (t_left_max - t_left_min); // no divide by zero check !
- };
-
- double left_time_denormalize(double norm_time) const { return norm_time * (t_left_max - t_left_min) + t_left_min; };
-
  array<dcomplex, 1> prefactor() {
   auto output = array<dcomplex, 1>(max_perturbation_order - min_perturbation_order + 1);
   output() = 1.0;
 
-  if (method == 4) output() /= (t_left_max - t_left_min); // only for cofact formula with additional integral
+  if (method == 4) output() /= (interaction_start + t_max); // only for cofact formula with additional integral
 
   dcomplex i_n[4] = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}}; // powers of i
 

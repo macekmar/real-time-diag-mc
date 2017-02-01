@@ -15,6 +15,7 @@ using triqs::arrays::range;
 
 Measure* solver_core::_create_measure(const int method, const input_physics_data* physics_params, const Weight* weight) {
 
+ std::cout << "Method used: " << method << std::endl;
  switch (method) {
   // singletime measures
   case 0: // good old way

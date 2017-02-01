@@ -186,8 +186,6 @@ void twodet_cofact_measure::change_config(int k, keldysh_contour_pt pt) {
 }
 
 void twodet_cofact_measure::evaluate() {
- // Remarks:
- // - why not using the inverse ?
  keldysh_contour_pt alpha_p_right, alpha_tmp;
  auto matrix_0 = &matrices[physics_params->op_to_measure_spin];
  auto matrix_1 = &matrices[1 - physics_params->op_to_measure_spin];
@@ -213,10 +211,12 @@ void twodet_cofact_measure::evaluate() {
     if (k_index == 1) alpha_p_right = matrix_0->get_y((p - 1 + n) % n);
     alpha_p_right = flip_index(alpha_p_right);
     //matrix_0->change_one_row_and_one_col(p, (p - 1 + n) % n, flip_index(matrix_0->get_x(p)),
-    //                                     alpha_tmp); // change p keldysh index on the left and p point on the right. p point on
+    //                                     alpha_tmp);
+	// Change the p keldysh index on the left (row) and the p point on the right (col). 
+	// The p point on the right is effectively changed only when k_index=1.
 	matrix_0->change_row(p, flip_index(matrix_0->get_x(p)));
 	matrix_0->change_col((p - 1 + n) % n, alpha_tmp);
-                                                     // the right is effectively changed only when k_index=?.
+                                                     
     //matrix_1->change_one_row_and_one_col(p, p, flip_index(matrix_1->get_x(p)), flip_index(matrix_1->get_y(p)));
 	matrix_1->change_row(p, flip_index(matrix_1->get_x(p)));
 	matrix_1->change_col(p, flip_index(matrix_1->get_y(p)));
