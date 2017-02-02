@@ -76,9 +76,10 @@ struct input_physics_data {
  int min_perturbation_order, max_perturbation_order;
  spin op_to_measure_spin; // spin of the operator to measure. Not needed when up/down symmetry. Is used to know which determinant
                           // is the big one.
- array<dcomplex, 1> order_zero_values;
+ array<dcomplex, 1> g0_values;
  const int method;
 
+ // --------
  input_physics_data(const solve_parameters_t *params, g0_t g0_lesser, g0_t g0_greater)
     : method(params->method), interaction_start(params->interaction_start) {
 
@@ -113,12 +114,13 @@ struct input_physics_data {
   if (nb_times < 1) TRIQS_RUNTIME_ERROR << "No left input time !";
 
   // order zero values
-  order_zero_values = array<dcomplex, 1>(nb_times);
+  g0_values = array<dcomplex, 1>(nb_times);
   for (int i = 0; i < nb_times; ++i) {
-   order_zero_values(i) = green_function(tau_list[i], taup);
+   g0_values(i) = green_function(tau_list[i], taup);
   }
  };
 
+ // --------
  array<dcomplex, 1> prefactor() {
   auto output = array<dcomplex, 1>(max_perturbation_order - min_perturbation_order + 1);
   output() = 1.0;

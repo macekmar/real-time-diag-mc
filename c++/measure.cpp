@@ -7,7 +7,7 @@ using triqs::det_manip::det_manip;
 weight_sign_measure::weight_sign_measure(const input_physics_data* physics_params, const Weight* weight) : weight(weight) {
 
  if (physics_params->nb_times > 1) TRIQS_RUNTIME_ERROR << "Trying to use a singletime measure with multiple input times";
- std::cout << "Measure used: weight sign measure" << std::endl;
+ if (triqs::mpi::communicator().rank() == 0) std::cout << "Measure used: weight sign measure" << std::endl;
 
  value = array<dcomplex, 1>(physics_params->nb_times);
  value() = 0;
@@ -26,7 +26,7 @@ void weight_sign_measure::evaluate() { value() = weight->value; }
 twodet_single_measure::twodet_single_measure(const input_physics_data* physics_params) : physics_params(physics_params) {
 
  if (physics_params->nb_times > 1) TRIQS_RUNTIME_ERROR << "Trying to use a singletime measure with multiple input times";
- std::cout << "Measure used: twodet single measure" << std::endl;
+ if (triqs::mpi::communicator().rank() == 0) std::cout << "Measure used: twodet single measure" << std::endl;
 
  value = array<dcomplex, 1>(physics_params->nb_times);
  value() = 0;
@@ -74,7 +74,7 @@ void twodet_single_measure::evaluate() {
 
 twodet_multi_measure::twodet_multi_measure(const input_physics_data* physics_params) : physics_params(physics_params) {
 
- std::cout << "Measure used: twodet multi measure" << std::endl;
+ if (triqs::mpi::communicator().rank() == 0) std::cout << "Measure used: twodet multi measure" << std::endl;
 
  value = array<dcomplex, 1>(physics_params->nb_times);
  value() = 0;
@@ -120,7 +120,7 @@ void twodet_multi_measure::evaluate() {
 
  if (n == 0) {
 
-  value() = physics_params->order_zero_values;
+  value() = physics_params->g0_values;
 
  } else {
 
@@ -143,7 +143,7 @@ void twodet_multi_measure::evaluate() {
 twodet_cofact_measure::twodet_cofact_measure(const input_physics_data* physics_params)
    : physics_params(physics_params), green_function(physics_params->green_function) {
 
- std::cout << "Measure used: twodet cofact measure" << std::endl;
+ if (triqs::mpi::communicator().rank() == 0) std::cout << "Measure used: twodet cofact measure" << std::endl;
 
  value = array<dcomplex, 1>(physics_params->nb_times);
  value() = 0;
@@ -178,10 +178,9 @@ void twodet_cofact_measure::remove2(int k1, int k2) {
 
 void twodet_cofact_measure::change_config(int k, keldysh_contour_pt pt) {
  for (auto spin : {up, down}) {
-  //matrices[spin].change_one_row_and_one_col(k, k, pt, pt);
+  // matrices[spin].change_one_row_and_one_col(k, k, pt, pt);
   matrices[spin].change_row(k, pt);
   matrices[spin].change_col(k, pt);
-  
  }
 }
 
@@ -195,7 +194,7 @@ void twodet_cofact_measure::evaluate() {
 
  if (n == 0) {
 
-  value() = physics_params->order_zero_values;
+  value() = physics_params->g0_values;
 
  } else {
 
@@ -210,16 +209,16 @@ void twodet_cofact_measure::evaluate() {
    for (int k_index : {1, 0}) {
     if (k_index == 1) alpha_p_right = matrix_0->get_y((p - 1 + n) % n);
     alpha_p_right = flip_index(alpha_p_right);
-    //matrix_0->change_one_row_and_one_col(p, (p - 1 + n) % n, flip_index(matrix_0->get_x(p)),
+    // matrix_0->change_one_row_and_one_col(p, (p - 1 + n) % n, flip_index(matrix_0->get_x(p)),
     //                                     alpha_tmp);
-	// Change the p keldysh index on the left (row) and the p point on the right (col). 
-	// The p point on the right is effectively changed only when k_index=1.
-	matrix_0->change_row(p, flip_index(matrix_0->get_x(p)));
-	matrix_0->change_col((p - 1 + n) % n, alpha_tmp);
-                                                     
-    //matrix_1->change_one_row_and_one_col(p, p, flip_index(matrix_1->get_x(p)), flip_index(matrix_1->get_y(p)));
-	matrix_1->change_row(p, flip_index(matrix_1->get_x(p)));
-	matrix_1->change_col(p, flip_index(matrix_1->get_y(p)));
+    // Change the p keldysh index on the left (row) and the p point on the right (col).
+    // The p point on the right is effectively changed only when k_index=1.
+    matrix_0->change_row(p, flip_index(matrix_0->get_x(p)));
+    matrix_0->change_col((p - 1 + n) % n, alpha_tmp);
+
+    // matrix_1->change_one_row_and_one_col(p, p, flip_index(matrix_1->get_x(p)), flip_index(matrix_1->get_y(p)));
+    matrix_1->change_row(p, flip_index(matrix_1->get_x(p)));
+    matrix_1->change_col(p, flip_index(matrix_1->get_y(p)));
 
     // nice_print(*matrix_0, p);
     kernel = recompute_sum_keldysh_indices(matrices, n - 1, physics_params->op_to_measure_spin, p) * sign[(n + p + k_index) % 2];
