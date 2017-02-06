@@ -70,9 +70,9 @@ solver_core::solve(solve_parameters_t const& params) {
  sn_errors() = 0;
 
  // Order zero case
- // Returns c0 in pn and s0 in sn so that c0*s0 = g0 the unperturbed Green's function.
  if (params.max_perturbation_order == 0) {
   if (params.method == 4) {
+   // Returns c0 in pn and s0 in sn so that c0*s0 = g0 the unperturbed Green's function.
    // Uses GSL integration (https://www.gnu.org/software/gsl/manual/html_node/Numerical-integration-examples.html)
    gsl_function F;
    F.function = &abs_g0_keldysh_t_inputs;
@@ -90,13 +90,13 @@ solver_core::solve(solve_parameters_t const& params) {
                        &(pn(0)),                          // result
                        &(pn_errors(0)));                  // output absolute error
    gsl_integration_workspace_free(w);
-   sn(0, range()) = physics_params.g0_values * dcomplex({0, -1}) / pn(0);
+   sn(0, range()) = physics_params.g0_values / pn(0);
    // TODO: sn_errors ?
    return {{pn, sn}, {pn_errors, sn_errors}};
 
   } else {
    pn() = 1.0;
-   sn(0, range()) = physics_params.g0_values * dcomplex({0, -1});
+   sn(0, range()) = physics_params.g0_values;
    return {{pn, sn}, {pn_errors, sn_errors}};
   }
  }

@@ -133,13 +133,6 @@ struct input_physics_data {
    output(k) *= i_n[(k + min_perturbation_order) % 4]; // * i^(k)
   }
 
-  if (nb_operators == 2)
-   output() *= i_n[3]; // additional factor of -i
-  else if (nb_operators == 4)
-   output() *= i_n[2]; // additional factor of -1=i^6
-  else
-   TRIQS_RUNTIME_ERROR << "Operator to measure not recognised.";
-
   return output;
  };
 };
