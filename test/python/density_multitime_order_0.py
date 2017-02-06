@@ -36,7 +36,7 @@ p["p_dbl"] = 0
 (pn, sn), (pn_error, sn_error) = S.solve(**p)
 
 g = pn[0] * sn[0, 1]
-g_ref = 6.3715406319870704E-01-7.4590093081033579E-12j
+g_ref = 6.3715406319870704E-01j + 7.4590093081033579E-12
 
 if abs(g - g_ref) > 1.e-6:
     raise RuntimeError, "FAILED"
