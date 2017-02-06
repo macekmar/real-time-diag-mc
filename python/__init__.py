@@ -25,5 +25,6 @@ DOC
 """
 from ctint_keldysh import SolverCore
 from g0_semi_circ import make_g0_semi_circular
+from perturbation_series import perturbation_series, stairwise_perturbation_series
 
-__all__ = ['SolverCore','make_g0_semi_circular']
+__all__ = ['SolverCore','make_g0_semi_circular', 'perturbation_series', 'stairwise_perturbation_series']
