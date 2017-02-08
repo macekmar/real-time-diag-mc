@@ -28,11 +28,11 @@ if __name__ == '__main__':
                                             0.5,
                                             times)
 
-    with HDFArchive("test_o1_1.ref.h5", 'w') as ar:
+    with HDFArchive("order1_params1.ref.h5", 'w') as ar:
         ar["times"] = times
         ar["t2"] = 0.0
-        ar["o1_lesser"] = o1_lesser[:, 0, 0]
-        ar["o1_greater"] = o1_greater[:, 0, 0]
+        ar["o1_less"] = o1_lesser[:, 0, 0]
+        ar["o1_grea"] = o1_greater[:, 0, 0]
 
     #-----------------
     times = np.linspace(-40.0, 0.0, 101)
@@ -46,8 +46,8 @@ if __name__ == '__main__':
                                             0.25,
                                             times)
 
-    with HDFArchive("test_o1_2.ref.h5", 'w') as ar:
+    with HDFArchive("order1_params2.ref.h5", 'w') as ar:
         ar["times"] = times
         ar["t2"] = 0.0
-        ar["o1_lesser"] = o1_lesser[:, 0, 0]
-        ar["o1_greater"] = o1_greater[:, 0, 0]
+        ar["o1_less"] = o1_lesser[:, 0, 0]
+        ar["o1_grea"] = o1_greater[:, 0, 0]

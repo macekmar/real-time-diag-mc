@@ -1,4 +1,3 @@
-# from pytriqs.gf.local import *
 from pytriqs.utility import mpi
 from ctint_keldysh import *
 from pytriqs.archive import *
@@ -41,15 +40,15 @@ p["max_perturbation_order"] = 1
 on = perturbation_series(p0, pn, sn, p["U"])
 
 if mpi.is_master_node():
-    with HDFArchive('test_o1_1.out.h5', 'a') as ar:  # A file to store the results
-        ar['on_lesser'] = on
+    with HDFArchive('out_files/' + os.path.basename(__file__)[:-3] + '.out.h5', 'a') as ar:  # A file to store the results
+        ar['on_less'] = on
         ar['times'] = times
 
-with HDFArchive('test_o1_1.ref.h5', 'r') as ar:
+with HDFArchive('ref_data/order1_params1.ref.h5', 'r') as ar:
     if not np.array_equal(times, ar['times']):
         raise RuntimeError, 'FAILED: times are different'
 
-    if not np.allclose(on[1], ar['o1_lesser'], rtol=0.1, atol=0.01):
+    if not np.allclose(on[1], ar['o1_less'], rtol=0.1, atol=0.01):
         print 'pn', pn
         raise RuntimeError, 'FAILED'
 
