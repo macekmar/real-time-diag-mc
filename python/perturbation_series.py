@@ -1,12 +1,18 @@
 import numpy as np
 
-def perturbation_series(c0, pn, sn, U):
+def perturbation_series(_c0, pn, sn, U):
     # TODO: sanity checks
+    # _c0: single value or (m,)-array
+    # pn: (n,)-array
+    # sn: (n, m)-array
+    # U: single value
+    # return: (n, m)-array
 
     n, m = sn.shape
     
-    c0 = np.array(c0)
-    if len(c0) == 1:
+    # transforms c0 in array if it si a single value
+    c0 = np.array(_c0)
+    if c0.size == 1:
         c0 = c0 * np.ones((m,))
 
     cn = np.zeros((n, m))
@@ -25,7 +31,14 @@ def perturbation_series(c0, pn, sn, U):
 
 def perturbation_series_errors(c0, pn, sn, U, c0_error, pn_error, sn_error):
     # TODO: sanity checks
-    # works only for a single c0
+    # c0: single value
+    # pn: (n,)-array
+    # sn: (n, m)-array
+    # U: single value
+    # c0_error: single value
+    # pn_error: (n,)-array
+    # sn_error: (n, m)-array
+    # return: ((n, m)-array, (n, m)-array)
 
     n, m = sn.shape
     
@@ -55,15 +68,40 @@ def perturbation_series_errors(c0, pn, sn, U, c0_error, pn_error, sn_error):
     return on, on_error
 
 
-def stairwise_perturbation_series(c0, pn, sn, U):
+def staircase_perturbation_series(c0, pn, sn, U):
     # TODO: sanity checks
+    # c0: single value
+    # pn: (n, n)-array
+    # sn: (n, n, m)-array
+    # U: single value
+    # return: (n, m)-array
 
-    n, m = pn.shape()
-    pn_eff = np.zeros((n,))
+    n, _, m = sn.shape
+    
+    cn = np.zeros((n, m))
+    on = np.zeros((n, m), dtype=complex)
 
-    pn_eff[0] = 1.0 # any value works
-    for k in range(1, n):
-        pn_eff[k] = pn_eff[k-1] * pn[k, k] / pn[k, k-1]
+    for k in range(0, n):
 
-    return perturbation_series(c0, pn_eff, np.diagonal(sn), U)
+        if (k==0):
+            cn[0, :] = c0
+        else:
+            cn[k, :] = cn[k-1, :] * pn[k, k] / (pn[k, k-1] * U)
+
+    on = cn * np.swapaxes(np.diagonal(sn), 0, 1) # np.diagonal returns a (m, n)-array
+    return on
+
+# def stairwise_perturbation_series2(c0, pn, sn, U):
+#     # TODO: sanity checks
+#     # works only for a single c0
+#     # works only for a single U
+
+#     n, m = pn.shape
+#     pn_eff = np.zeros((n,))
+
+#     pn_eff[0] = 1.0 # any value works
+#     for k in range(1, n):
+#         pn_eff[k] = pn_eff[k-1] * pn[k, k] / pn[k, k-1]
+
+#     return perturbation_series(c0, pn_eff, np.diagonal(sn), U)
 
