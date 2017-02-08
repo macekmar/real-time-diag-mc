@@ -38,7 +38,8 @@ Measure* solver_core::_create_measure(const int method, const input_physics_data
    return new twodet_multi_measure(physics_params);
    break;
   case 4: // same as 3 but with addionnal Z0 for the weight left time
-   if (physics_params->nb_times == 1) TRIQS_RUNTIME_ERROR << "Trying to use the additionnal integral method with a single input time";
+   if (physics_params->nb_times == 1)
+    TRIQS_RUNTIME_ERROR << "Trying to use the additionnal integral method with a single input time";
   /* going through */
   case 3: // same as 2 but with cofact formula
    return new twodet_cofact_measure(physics_params);
@@ -71,8 +72,11 @@ solver_core::solve(solve_parameters_t const& params) {
 
  // Order zero case
  if (params.max_perturbation_order == 0) {
+  // In the order zero case, pn contains c0 for each input time and sn contains s0 so that c0*s0 = g0 the unperturbed Green's
+  // function. The shape of pn is thus different compared with other orders.
+  pn = array<double, 1>(physics_params.nb_times);
+
   if (params.method == 4) {
-   // Returns c0 in pn and s0 in sn so that c0*s0 = g0 the unperturbed Green's function.
    // Uses GSL integration (https://www.gnu.org/software/gsl/manual/html_node/Numerical-integration-examples.html)
    gsl_function F;
    F.function = &abs_g0_keldysh_t_inputs;
@@ -90,13 +94,16 @@ solver_core::solve(solve_parameters_t const& params) {
                        &(pn(0)),                          // result
                        &(pn_errors(0)));                  // output absolute error
    gsl_integration_workspace_free(w);
+   pn() = pn(0); // all c0 are equals
    sn(0, range()) = physics_params.g0_values / pn(0);
    // TODO: sn_errors ?
    return {{pn, sn}, {pn_errors, sn_errors}};
 
   } else {
-   pn() = 1.0;
-   sn(0, range()) = physics_params.g0_values;
+   for (int i = 0; i < physics_params.nb_times; ++i) {
+    pn(i) = std::abs(physics_params.g0_values(i));
+    sn(0, i) = physics_params.g0_values(i) / pn(i);
+   }
    return {{pn, sn}, {pn_errors, sn_errors}};
   }
  }
@@ -133,7 +140,10 @@ solver_core::solve(solve_parameters_t const& params) {
 
  // Collect results
  mpi::communicator world;
- qmc.collect_results(world);
+ // use self communicator, gathering the data is done in python later
+ // mpi::communicator self(mpi::MPI_COMM_SELF); // does not work but I don't know why
+ auto self = world.split(world.rank());
+ qmc.collect_results(self);
 
  // prefactor
  array<dcomplex, 1> prefactor = physics_params.prefactor();

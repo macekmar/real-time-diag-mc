@@ -91,17 +91,3 @@ def staircase_perturbation_series(c0, pn, sn, U):
     on = cn * np.swapaxes(np.diagonal(sn), 0, 1) # np.diagonal returns a (m, n)-array
     return on
 
-# def stairwise_perturbation_series2(c0, pn, sn, U):
-#     # TODO: sanity checks
-#     # works only for a single c0
-#     # works only for a single U
-
-#     n, m = pn.shape
-#     pn_eff = np.zeros((n,))
-
-#     pn_eff[0] = 1.0 # any value works
-#     for k in range(1, n):
-#         pn_eff[k] = pn_eff[k-1] * pn[k, k] / pn[k, k-1]
-
-#     return perturbation_series(c0, pn_eff, np.diagonal(sn), U)
-

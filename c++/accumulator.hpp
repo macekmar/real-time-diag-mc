@@ -66,13 +66,14 @@ class Accumulator {
    sn(k, range()) = sn(k, range()) / data_histogram_pn(k);
 
    // FIXME : explicit formula for the error bar jacknife of a series of 0 and 1
-   pn_errors(k) =
-       (1 / double(pow(nb_measures, 2))) * sqrt((nb_measures - 1) * data_histogram_pn(k) * (nb_measures - data_histogram_pn(k)));
+   //pn_errors(k) =
+   //    (1 / double(pow(nb_measures, 2))) * sqrt((nb_measures - 1) * data_histogram_pn(k) * (nb_measures - data_histogram_pn(k)));
 
    // FIXME : explicit formula as well for the error bar of the sn using a jacknife
    // sn_errors(k) = (2 / double(pow(data_histogram_pn(k), 2))) *
    //               sqrt((data_histogram_pn(k) - 1) * data_histogram_sn(k) * (data_histogram_pn(k) - data_histogram_sn(k)));
    sn_errors(k) = nan("");
+   pn_errors(k) = nan("");
   }
  }
 };

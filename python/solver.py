@@ -13,7 +13,6 @@ def variance_error(on, comm):
     else:
         on_all = np.array(comm.gather(on), dtype=complex)
 
-        print on_all
         on_error = np.sqrt(np.var(on_all, axis=0) / comm.size)
         comm.bcast(on_error)
 
@@ -71,7 +70,7 @@ def staircase_solve(g0_lesser, g0_greater, _parameters):
     na = np.newaxis
 
     if world.rank == 0:
-        print "----------- Staircase solver -----------"
+        print "\n----------- Staircase solver -----------"
 
     S = SolverCore(g0_lesser, g0_greater)
 
@@ -95,6 +94,7 @@ def staircase_solve(g0_lesser, g0_greater, _parameters):
 
         if k == 0:
             c0 = pn
+            pn_all[0, 0] = 1. # needed to avoid NaNs, any value works
         else:
             pn_all[k, :k+1] = pn
         sn_all[k, :k+1, :] = sn
@@ -102,6 +102,12 @@ def staircase_solve(g0_lesser, g0_greater, _parameters):
             nb_measures[0] = 1 # needed to avoid divide by zero, any value works
         else:
             nb_measures[k] = S.nb_measures
+
+        if world.rank != 0:
+            world.reduce(S.nb_measures)
+        else:
+            tot_nb_measures = world.reduce(S.nb_measures)
+            print "[Solver] Total number of measures:", tot_nb_measures
 
     # Calculate estimation
     if world.rank != 0:
@@ -114,13 +120,14 @@ def staircase_solve(g0_lesser, g0_greater, _parameters):
 
     else:
         nb_measures_all = world.reduce(nb_measures, op=MPI.SUM)
+        print "[Solver] Total number of measures (all orders):", nb_measures_all[1:].sum()
         nb_measures_by_order = pn_all * nb_measures[:, na]
-        nb_measures_by_order = world.reduce(nb_measures_by_order, op=MPI.SUM)
-        pn_avg = nb_measures_by_order / nb_measures_all[:, na]
-        sn_avg = world.reduce(sn_all * nb_measures_by_order[:, :, na], op=MPI.SUM) / nb_measures_by_order[:, :, na]
+        nb_measures_by_order_all = world.reduce(nb_measures_by_order, op=MPI.SUM)
+        pn_avg = nb_measures_by_order_all / nb_measures_all[:, na]
+        sn_avg = world.reduce(sn_all * nb_measures_by_order[:, :, na], op=MPI.SUM) / nb_measures_by_order_all[:, :, na]
 
         on_result = staircase_perturbation_series(c0, pn_avg, sn_avg, U)
-    
+
         world.bcast(on_result)
 
     # Calculate error
