@@ -29,10 +29,15 @@ if __name__ == '__main__':
                                             times)
 
     with HDFArchive("order1_params1.ref.h5", 'w') as ar:
-        ar["times"] = times
-        ar["t2"] = 0.0
-        ar["o1_less"] = o1_lesser[:, 0, 0]
-        ar["o1_grea"] = o1_greater[:, 0, 0]
+        ar.create_group("less")
+        less = ar["less"]
+        less["times"] = times
+        less["o1"] = o1_lesser[:, 0, 0]
+
+        ar.create_group("grea")
+        grea = ar["grea"]
+        grea["times"] = times
+        grea["o1"] = o1_greater[:, 0, 0]
 
     #-----------------
     times = np.linspace(-40.0, 0.0, 101)
@@ -47,7 +52,13 @@ if __name__ == '__main__':
                                             times)
 
     with HDFArchive("order1_params2.ref.h5", 'w') as ar:
-        ar["times"] = times
-        ar["t2"] = 0.0
-        ar["o1_less"] = o1_lesser[:, 0, 0]
-        ar["o1_grea"] = o1_greater[:, 0, 0]
+        ar.create_group("less")
+        less = ar["less"]
+        less["times"] = times
+        less["o1"] = o1_lesser[:, 0, 0]
+
+        ar.create_group("grea")
+        grea = ar["grea"]
+        grea["times"] = times
+        grea["o1"] = o1_greater[:, 0, 0]
+

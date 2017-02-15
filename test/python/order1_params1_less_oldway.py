@@ -53,9 +53,9 @@ if mpi.is_master_node():
         ar['times'] = times
 
 with HDFArchive('ref_data/order1_params1.ref.h5', 'r') as ar:
-    if not np.array_equal(times, ar['times'][::10]):
+    if not np.array_equal(times, ar['less']['times'][::10]):
         raise RuntimeError, 'FAILED: times are different'
 
-    if not np.allclose(on[1], ar['o1_less'][::10], rtol=0.01, atol=0.005):
+    if not np.allclose(on[1], ar['less']['o1'][::10], rtol=0.01, atol=0.005):
         raise RuntimeError, 'FAILED'
 

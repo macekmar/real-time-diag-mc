@@ -2,6 +2,7 @@ from pytriqs.utility import mpi
 from ctint_keldysh import *
 from pytriqs.archive import *
 import numpy as np
+import os
 
 p = {}
 p["beta"] = 200.0
@@ -39,9 +40,9 @@ if mpi.is_master_node():
         ar['times'] = times
 
 with HDFArchive('ref_data/order1_params1.ref.h5', 'r') as ar:
-    if not np.array_equal(times, ar['times']):
+    if not np.array_equal(times, ar['less']['times']):
         raise RuntimeError, 'FAILED: times are different'
 
-    if not np.allclose(on[1], ar['o1_less'], rtol=0.1, atol=0.01):
+    if not np.allclose(on[1], ar['less']['o1'], rtol=0.1, atol=0.01):
         raise RuntimeError, 'FAILED'
 
