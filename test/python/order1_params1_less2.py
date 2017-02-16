@@ -17,8 +17,10 @@ g0_lesser, g0_greater = make_g0_semi_circular(**p)
 
 times = np.linspace(-40.0, 0.0, 101)
 p = {}
-p["op_to_measure"] = [[(0, 0), (0, 1)], []] # lesser
+p["right_input_points"] = [(0, 0.0, 1)] # lesser
 p["interaction_start"] = 40.0
+p["measure_state"] = 0
+p["measure_keldysh_indices"] = [0] # lesser
 p["measure_times"] = times
 p["U"] = 2.5 # U_qmc
 p["min_perturbation_order"] = 0
@@ -35,9 +37,11 @@ p["method"] = 4
 on, on_error = staircase_solve(g0_lesser, g0_greater, p)
 
 if mpi.is_master_node():
-    with HDFArchive('out_files/' + os.path.basename(__file__)[:-3] + '.out.h5', 'a') as ar:  # A file to store the results
-        ar['on_less'] = on
-        ar['times'] = times
+    with HDFArchive('out_files/' + os.path.basename(__file__)[:-3] + '.out.h5', 'w') as ar:  # A file to store the results
+        ar.create_group('less')
+        less = ar['less']
+        less['on'] = on
+        less['times'] = times
 
 # order 0
 o0_less = np.array([g0_lesser(t)[0, 0] for t in times], dtype=complex)

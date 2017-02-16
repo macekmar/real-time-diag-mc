@@ -12,10 +12,18 @@ namespace mpi = triqs::mpi;
 using triqs::utility::mindex;
 using triqs::arrays::range;
 
+struct integrand_params {
+ g0_keldysh_t green_function;
+ keldysh_contour_pt tau;
+ keldysh_contour_pt taup;
+
+ integrand_params(input_physics_data* physics_params, int state, int k_index)
+    : green_function(physics_params->green_function), tau{state, 0., k_index}, taup(physics_params->taup){};
+};
 
 double abs_g0_keldysh_t_inputs(double t, void* _params) {
- auto params = static_cast<input_physics_data*>(_params);
- keldysh_contour_pt tau = params->tau_list[0];
+ auto params = static_cast<integrand_params*>(_params);
+ keldysh_contour_pt tau = params->tau;
  tau.t = t;
  return std::abs(params->green_function(tau, params->taup));
 }
@@ -30,30 +38,28 @@ Measure* solver_core::_create_measure(const int method, const input_physics_data
   case 0: // good old way
    return new weight_sign_measure(physics_params, weight);
    break;
-  case 1: // same as 0 but with different input times
-   return new twodet_single_measure(physics_params);
-   break;
-  // multitimes measures
-  case 2: // same as 1 but multitime
-   return new twodet_multi_measure(physics_params);
-   break;
+  // case 1: // same as 0 but with different input times
+  // return new twodet_single_measure(physics_params);
+  // break;
+  //// multitimes measures
+  // case 2: // same as 1 but multitime
+  // return new twodet_multi_measure(physics_params);
+  // break;
   case 4: // same as 3 but with addionnal Z0 for the weight left time
-   if (physics_params->nb_times == 1)
-    TRIQS_RUNTIME_ERROR << "Trying to use the additionnal integral method with a single input time";
-  /* going through */
-  case 3: // same as 2 but with cofact formula
+          /* going through */
+          // case 3: // same as 2 but with cofact formula
    return new twodet_cofact_measure(physics_params);
    break;
   // default
   default:
-   return new weight_sign_measure(physics_params, weight);
+   TRIQS_RUNTIME_ERROR << "Cannot recognise the method ID";
    break;
  }
 }
 
 // -------------------------------------------------------------------------
 // The method that runs the qmc
-std::pair<std::pair<array<double, 1>, array<dcomplex, 2>>, std::pair<array<double, 1>, array<double, 1>>>
+std::pair<std::pair<array<double, 1>, array<dcomplex, 3>>, std::pair<array<double, 1>, array<double, 1>>>
 solver_core::solve(solve_parameters_t const& params) {
 
  // Prepare the data
@@ -61,8 +67,8 @@ solver_core::solve(solve_parameters_t const& params) {
 
  int nb_orders = params.max_perturbation_order - params.min_perturbation_order + 1;
 
- auto pn = array<double, 1>(nb_orders);                            // measurement of p_n
- auto sn = array<dcomplex, 2>(nb_orders, physics_params.nb_times); // measurement of s_n
+ auto pn = array<double, 1>(nb_orders);                                   // measurement of p_n
+ auto sn = array<dcomplex, 2>(nb_orders, physics_params.tau_list.size()); // measurement of s_n
  auto pn_errors = array<double, 1>(nb_orders);
  auto sn_errors = array<double, 1>(nb_orders);
  pn() = 0;
@@ -72,15 +78,15 @@ solver_core::solve(solve_parameters_t const& params) {
 
  // Order zero case
  if (params.max_perturbation_order == 0) {
-  // In the order zero case, pn contains c0 for each input time and sn contains s0 so that c0*s0 = g0 the unperturbed Green's
-  // function. The shape of pn is thus different compared with other orders.
-  pn = array<double, 1>(physics_params.nb_times);
+  // In the order zero case, pn contains c0 and sn contains s0 so that c0*s0 = g0 the unperturbed Green's
+  // function.
 
   if (params.method == 4) {
    // Uses GSL integration (https://www.gnu.org/software/gsl/manual/html_node/Numerical-integration-examples.html)
    gsl_function F;
    F.function = &abs_g0_keldysh_t_inputs;
-   F.params = &physics_params;
+   integrand_params int_params(&physics_params, 0, params.measure_keldysh_indices[0]);
+   F.params = &int_params;
 
    auto w = gsl_integration_workspace_alloc(1000);
    gsl_integration_qag(&F,                                // function to integrate
@@ -94,17 +100,20 @@ solver_core::solve(solve_parameters_t const& params) {
                        &(pn(0)),                          // result
                        &(pn_errors(0)));                  // output absolute error
    gsl_integration_workspace_free(w);
-   pn() = pn(0); // all c0 are equals
    sn(0, range()) = physics_params.g0_values / pn(0);
    // TODO: sn_errors ?
-   return {{pn, sn}, {pn_errors, sn_errors}};
+   auto sn_array = physics_params.reshape_sn(&sn);
+   return {{pn, sn_array}, {pn_errors, sn_errors}};
 
-  } else {
-   for (int i = 0; i < physics_params.nb_times; ++i) {
-    pn(i) = std::abs(physics_params.g0_values(i));
-    sn(0, i) = physics_params.g0_values(i) / pn(i);
-   }
-   return {{pn, sn}, {pn_errors, sn_errors}};
+  } else { // singlepoint methods only
+   // for (int i = 0; i < physics_params.tau_list.size(); ++i) {
+   // pn(i) = std::abs(physics_params.g0_values(i));
+   // sn(0, i) = physics_params.g0_values(i) / pn(i);
+   //}
+   pn(0) = abs(physics_params.g0_values(0));
+   sn(0, 0) = physics_params.g0_values(0) / pn(0);
+   auto sn_array = physics_params.reshape_sn(&sn);
+   return {{pn, sn_array}, {pn_errors, sn_errors}};
   }
  }
 
@@ -145,11 +154,12 @@ solver_core::solve(solve_parameters_t const& params) {
  auto self = world.split(world.rank());
  qmc.collect_results(self);
 
- // prefactor
+ // prefactor and reshaping sn
  array<dcomplex, 1> prefactor = physics_params.prefactor();
- for (int i = 0; i < physics_params.nb_times; ++i) sn(range(), i) *= prefactor;
+ for (int i = 0; i < physics_params.tau_list.size(); ++i) sn(range(), i) *= prefactor;
+ auto sn_array = physics_params.reshape_sn(&sn);
 
  _solve_duration = qmc.get_duration();
 
- return {{pn, sn}, {pn_errors, sn_errors}};
+ return {{pn, sn_array}, {pn_errors, sn_errors}};
 }

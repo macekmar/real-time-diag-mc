@@ -2,31 +2,29 @@ import numpy as np
 
 def perturbation_series(_c0, pn, sn, U):
     # TODO: sanity checks
-    # _c0: single value or (m,)-array
+    # _c0: single value or (m1, ...)-array
     # pn: (n,)-array
-    # sn: (n, m)-array
+    # sn: (n, m1, ...)-array
     # U: single value
-    # return: (n, m)-array
+    # return: (n, m1, ...)-array
 
-    n, m = sn.shape
-    
     # transforms c0 in array if it si a single value
     c0 = np.array(_c0)
     if c0.size == 1:
-        c0 = c0 * np.ones((m,))
+        c0 = c0 * np.ones(sn.shape[1:])
 
-    cn = np.zeros((n, m))
-    on = np.zeros((n, m), dtype=complex)
+    cn = np.zeros(sn.shape)
+    on = np.zeros(sn.shape, dtype=complex)
 
-    for k in range(0, n):
+    for k in range(0, sn.shape[0]):
 
         if (k==0):
-            cn[0, :] = c0
+            cn[0, ...] = c0
         else:
-            cn[k, :] = cn[k-1, :] * pn[k] / (pn[k-1] * U)
+            cn[k, ...] = cn[k-1, ...] * pn[k] / (pn[k-1] * U)
 
     on = cn * sn
-    return on
+    return np.squeeze(on)
 
 
 def perturbation_series_errors(c0, pn, sn, U, c0_error, pn_error, sn_error):
@@ -72,22 +70,21 @@ def staircase_perturbation_series(c0, pn, sn, U):
     # TODO: sanity checks
     # c0: single value
     # pn: (n, n)-array
-    # sn: (n, n, m)-array
+    # sn: (n, n, m1, ...)-array
     # U: single value
-    # return: (n, m)-array
+    # return: (n, m1, ...)-array
 
-    n, _, m = sn.shape
-    
-    cn = np.zeros((n, m))
-    on = np.zeros((n, m), dtype=complex)
+    cn = np.zeros(sn.shape[1:])
+    on = np.zeros(sn.shape[1:], dtype=complex)
 
-    for k in range(0, n):
+    for k in range(0, sn.shape[0]):
 
         if (k==0):
-            cn[0, :] = c0
+            cn[0, ...] = c0
         else:
-            cn[k, :] = cn[k-1, :] * pn[k, k] / (pn[k, k-1] * U)
+            cn[k, ...] = cn[k-1, ...] * pn[k, k] / (pn[k, k-1] * U)
 
-    on = cn * np.swapaxes(np.diagonal(sn), 0, 1) # np.diagonal returns a (m, n)-array
-    return on
+    on = cn * np.rollaxis(np.diagonal(sn), -1, 0) # np.diagonal sends the diagonalised axis to the left end
+
+    return np.squeeze(on)
 

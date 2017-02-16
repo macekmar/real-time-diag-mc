@@ -6,10 +6,10 @@ using triqs::det_manip::det_manip;
 
 weight_sign_measure::weight_sign_measure(const input_physics_data* physics_params, const Weight* weight) : weight(weight) {
 
- if (physics_params->nb_times > 1) TRIQS_RUNTIME_ERROR << "Trying to use a singletime measure with multiple input times";
+ if (physics_params->tau_list.size() > 1) TRIQS_RUNTIME_ERROR << "Trying to use a singlepoint measure with multiple input point";
  if (triqs::mpi::communicator().rank() == 0) std::cout << "Measure used: weight sign measure" << std::endl;
 
- value = array<dcomplex, 1>(physics_params->nb_times);
+ value = array<dcomplex, 1>(physics_params->tau_list.size());
  value() = 0;
 }
 
@@ -25,10 +25,10 @@ void weight_sign_measure::evaluate() { value() = weight->value; }
 
 twodet_single_measure::twodet_single_measure(const input_physics_data* physics_params) : physics_params(physics_params) {
 
- if (physics_params->nb_times > 1) TRIQS_RUNTIME_ERROR << "Trying to use a singletime measure with multiple input times";
+ if (physics_params->tau_list.size() > 1) TRIQS_RUNTIME_ERROR << "Trying to use a singlepoint measure with multiple input point";
  if (triqs::mpi::communicator().rank() == 0) std::cout << "Measure used: twodet single measure" << std::endl;
 
- value = array<dcomplex, 1>(physics_params->nb_times);
+ value = array<dcomplex, 1>(physics_params->tau_list.size());
  value() = 0;
 
  for (auto spin : {up, down}) matrices.emplace_back(physics_params->green_function, 100);
@@ -76,7 +76,7 @@ twodet_multi_measure::twodet_multi_measure(const input_physics_data* physics_par
 
  if (triqs::mpi::communicator().rank() == 0) std::cout << "Measure used: twodet multi measure" << std::endl;
 
- value = array<dcomplex, 1>(physics_params->nb_times);
+ value = array<dcomplex, 1>(physics_params->tau_list.size());
  value() = 0;
 
  for (auto spin : {up, down}) matrices.emplace_back(physics_params->green_function, 100);
@@ -130,7 +130,7 @@ void twodet_multi_measure::evaluate() {
 
   matrix_0->insert(n, n, physics_params->tau_list[0], physics_params->taup);
   value(0) = recompute_sum_keldysh_indices(matrices, n);
-  for (int i = 1; i < physics_params->nb_times; ++i) {
+  for (int i = 1; i < physics_params->tau_list.size(); ++i) {
    matrix_0->change_row(n, physics_params->tau_list[i]);
    value(i) = recompute_sum_keldysh_indices(matrices, n);
   }
@@ -145,7 +145,7 @@ twodet_cofact_measure::twodet_cofact_measure(const input_physics_data* physics_p
 
  if (triqs::mpi::communicator().rank() == 0) std::cout << "Measure used: twodet cofact measure" << std::endl;
 
- value = array<dcomplex, 1>(physics_params->nb_times);
+ value = array<dcomplex, 1>(physics_params->tau_list.size());
  value() = 0;
 
  for (auto spin : {up, down}) matrices.emplace_back(green_function, 100);
@@ -223,7 +223,7 @@ void twodet_cofact_measure::evaluate() {
     // nice_print(*matrix_0, p);
     kernel = recompute_sum_keldysh_indices(matrices, n - 1, physics_params->op_to_measure_spin, p) * sign[(n + p + k_index) % 2];
 
-    for (int i = 0; i < physics_params->nb_times; ++i) {
+    for (int i = 0; i < physics_params->tau_list.size(); ++i) {
      value(i) += green_function(physics_params->tau_list[i], alpha_p_right) * kernel;
     }
 

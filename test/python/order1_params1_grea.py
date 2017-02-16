@@ -19,8 +19,10 @@ S = SolverCore(g0_lesser, g0_greater)
 
 times = np.linspace(-40.0, 0.0, 101)
 p = {}
-p["op_to_measure"] = [[(0, 1), (0, 0)], []] # greater
+p["right_input_points"] = [(0, 0.0, 0)] # greater
 p["interaction_start"] = 40.0
+p["measure_state"] = 0
+p["measure_keldysh_indices"] = [1] # greater
 p["measure_times"] = times
 p["U"] = 2.5 # U_qmc
 p["min_perturbation_order"] = 0
@@ -41,9 +43,11 @@ p["max_perturbation_order"] = 1
 on = perturbation_series(p0, pn, sn, p["U"])
 
 if mpi.is_master_node():
-    with HDFArchive('out_files/' + os.path.basename(__file__)[:-3] + '.out.h5', 'a') as ar:  # A file to store the results
-        ar['on_grea'] = on
-        ar['times'] = times
+    with HDFArchive('out_files/' + os.path.basename(__file__)[:-3] + '.out.h5', 'w') as ar:  # A file to store the results
+        ar.create_group('grea')
+        grea = ar['grea']
+        grea['on'] = on
+        grea['times'] = times
 
 with HDFArchive('ref_data/order1_params1.ref.h5', 'r') as ar:
     if not np.array_equal(times, ar['grea']['times']):

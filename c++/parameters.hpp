@@ -14,17 +14,20 @@ using x_index_t = int;
 // All the arguments of the solve function
 struct solve_parameters_t {
 
- /// operator to measure
- std::vector<std::vector<std::tuple<x_index_t, int>>> op_to_measure;
+ /// input contour points, except the first (left) one, must be of odd size
+ std::vector<std::tuple<x_index_t, double, int>> right_input_points;
 
  /// time before 0 at which interaction started
  double interaction_start;
 
- /// measure times
+ /// measure states (for the first input point), for now just one
+ int measure_state = 0;
+
+ /// measure times (for the first input point)
  std::vector<double> measure_times;
 
- /// fixed weight time
- double weight_time = 0.0;
+ /// measure keldysh indices (for the first input point)
+ std::vector<int> measure_keldysh_indices;
 
  /// U
  double U;

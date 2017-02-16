@@ -9,18 +9,8 @@ two_det_weight::two_det_weight(const solve_parameters_t* params, const input_phy
  for (auto spin : {up, down}) matrices.emplace_back(physics_params->green_function, 100);
  for (auto spin : {up, down}) matrices[spin].set_singular_threshold(singular_threshold);
 
- for (auto spin : {up, down}) {
-  auto const& ops = params->op_to_measure[spin];
-  if (ops.size() == 2) {
-   op_to_measure_spin = spin;
-   if (params->method == 0 || params->method == 4) {
-    matrices[spin].insert_at_end(physics_params->tau_list[0], physics_params->taup);
-   } else {
-    matrices[spin].insert_at_end(make_keldysh_contour_pt(ops[0], params->weight_time),
-                                 physics_params->taup);
-   }
-  }
- }
+ op_to_measure_spin = physics_params->op_to_measure_spin; // for now
+ matrices[op_to_measure_spin].insert_at_end(physics_params->tau_list[0], physics_params->taup);
 
  // Initialize value
  value = recompute_sum_keldysh_indices(matrices, 0);
@@ -43,8 +33,11 @@ void two_det_weight::remove2(int k1, int k2) {
 };
 
 void two_det_weight::change_config(int k, keldysh_contour_pt pt) {
- //for (auto& m : matrices) m.change_one_row_and_one_col(k, k, pt, pt);
- for (auto& m : matrices) {m.change_row(k, pt); m.change_col(k, pt);};
+ // for (auto& m : matrices) m.change_one_row_and_one_col(k, k, pt, pt);
+ for (auto& m : matrices) {
+  m.change_row(k, pt);
+  m.change_col(k, pt);
+ };
 };
 
 void two_det_weight::change_left_input(keldysh_contour_pt tau) {

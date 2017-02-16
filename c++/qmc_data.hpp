@@ -12,8 +12,8 @@ struct keldysh_contour_pt {
  int k_index;  // Keldysh index : 0 (upper contour), or 1 (lower contour)
 };
 
-inline keldysh_contour_pt make_keldysh_contour_pt(std::tuple<x_index_t, int> const &t, double const time) {
- return {std::get<0>(t), time, std::get<1>(t)};
+inline keldysh_contour_pt make_keldysh_contour_pt(std::tuple<x_index_t, double, int> const &t) {
+ return {std::get<0>(t), std::get<1>(t), std::get<2>(t)};
 }
 
 /// Comparison (Float is ok in == since we are not doing any operations on them, just store them and compare them in this code).
@@ -71,11 +71,12 @@ struct input_physics_data {
  keldysh_contour_pt taup;
  double interaction_start;
  double t_max;
- int nb_times = 0;
- int nb_operators;
+ std::vector<std::size_t> shape_tau_array;
+ // int nb_times = 0;
+ int rank;
  int min_perturbation_order, max_perturbation_order;
- spin op_to_measure_spin; // spin of the operator to measure. Not needed when up/down symmetry. Is used to know which determinant
-                          // is the big one.
+ int op_to_measure_spin; // spin of the operator to measure. Not needed when up/down symmetry. Is used to know which determinant
+                         // is the big one.
  array<dcomplex, 1> g0_values;
  const int method;
 
@@ -90,32 +91,35 @@ struct input_physics_data {
 
   // boundaries
   t_max = *std::max_element(params->measure_times.begin(), params->measure_times.end());
-  t_max = std::max(t_max, 0.0); // second time is 0
+  t_max = std::max(t_max, std::get<1>(params->right_input_points[0]));
 
   // non interacting Green function
   green_function = g0_keldysh_t{g0_adaptor_t{g0_lesser}, g0_adaptor_t{g0_greater}, params->alpha, t_max};
 
-  // number of operators in the correlator to measure. For now only 2 is supported
-  nb_operators = params->op_to_measure[up].size() + params->op_to_measure[down].size();
+  // rank of the Green's function to calculate. For now only 1 is supported.
+  if (params->right_input_points.size() % 2 == 0) TRIQS_RUNTIME_ERROR << "There must be an odd number of right input points";
+  if (params->right_input_points.size() > 1) TRIQS_RUNTIME_ERROR << "For now only rank 1 Green's functions are supported.";
+  rank = params->right_input_points.size() / 2;
 
-  // input times
-  for (auto spin : {up, down}) {
-   auto const &ops = params->op_to_measure[spin];
-   if (ops.size() == 2) {
-    op_to_measure_spin = spin;
-    taup = make_keldysh_contour_pt(ops[1], 0.0); // second time set to 0, assumes only time difference matters
-    for (auto time : params->measure_times) {
-     tau_list.emplace_back(make_keldysh_contour_pt(ops[0], time));
-     nb_times++;
-    }
+  op_to_measure_spin = std::get<0>(params->right_input_points[0]); // for now
+  taup = make_keldysh_contour_pt(params->right_input_points[0]);
+
+  // make tau list from left input points lists
+  shape_tau_array = {params->measure_times.size(), params->measure_keldysh_indices.size()};
+
+  keldysh_contour_pt tau;
+  for (auto time : params->measure_times) {
+   for (auto k_index : params->measure_keldysh_indices) {
+    tau = {params->measure_state, time, k_index};
+    tau_list.emplace_back(tau);
    }
   }
 
-  if (nb_times < 1) TRIQS_RUNTIME_ERROR << "No left input time !";
+  if (tau_list.size() < 1) TRIQS_RUNTIME_ERROR << "No left input point !";
 
   // order zero values
-  g0_values = array<dcomplex, 1>(nb_times);
-  for (int i = 0; i < nb_times; ++i) {
+  g0_values = array<dcomplex, 1>(tau_list.size());
+  for (int i = 0; i < tau_list.size(); ++i) {
    g0_values(i) = green_function(tau_list[i], taup);
   }
  };
@@ -134,6 +138,20 @@ struct input_physics_data {
   }
 
   return output;
+ };
+
+ // -------
+ array<dcomplex, 3> reshape_sn(array<dcomplex, 2> *sn_list) {
+  if (second_dim(*sn_list) != tau_list.size()) TRIQS_RUNTIME_ERROR << "The sn list has not the good size to be reshaped.";
+  array<dcomplex, 3> sn_array(first_dim(*sn_list), shape_tau_array[0], shape_tau_array[1]);
+  int flatten_idx = 0;
+  for (int i = 0; i < shape_tau_array[0]; ++i) {
+   for (int j = 0; j < shape_tau_array[1]; ++j) {
+    sn_array(range(), i, j) = (*sn_list)(range(), flatten_idx);
+    flatten_idx++;
+   }
+  }
+  return sn_array;
  };
 };
 

@@ -20,8 +20,10 @@ S = SolverCore(g0_lesser, g0_greater)
 times = np.linspace(-40.0, 0.0, 101)
 times = times[::10] # divide by 10 the size because oldway takes more time
 p = {}
-p["op_to_measure"] = [[(0, 0), (0, 1)], []] # lesser
+p["right_input_points"] = [(0, 0.0, 1)] # lesser
 p["interaction_start"] = 40.0
+p["measure_state"] = 0
+p["measure_keldysh_indices"] = [0] # lesser
 p["U"] = 2.5 # U_qmc
 p["min_perturbation_order"] = 0
 p["alpha"] = 0.0
@@ -45,12 +47,14 @@ for i, t in enumerate(times):
     p["max_perturbation_order"] = 1
     (pn, sn), _ = S.solve(**p)
 
-    on[:, i] = perturbation_series(c0, pn, sn, p["U"])[:, 0]
+    on[:, i] = perturbation_series(c0, pn, sn, p["U"])[:]
 
 if mpi.is_master_node():
-    with HDFArchive('out_files/' + os.path.basename(__file__)[:-3] + '.out.h5', 'a') as ar:  # A file to store the results
-        ar['on_less'] = on
-        ar['times'] = times
+    with HDFArchive('out_files/' + os.path.basename(__file__)[:-3] + '.out.h5', 'w') as ar:  # A file to store the results
+        ar.create_group('less')
+        less = ar['less']
+        less['on'] = on
+        less['times'] = times
 
 with HDFArchive('ref_data/order1_params1.ref.h5', 'r') as ar:
     if not np.array_equal(times, ar['less']['times'][::10]):

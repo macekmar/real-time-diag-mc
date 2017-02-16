@@ -22,11 +22,13 @@ def variance_error(on, comm):
 def single_solve(g0_lesser, g0_greater, parameters):
 
     world = MPI.COMM_WORLD
-    na = np.newaxis
 
     S = SolverCore(g0_lesser, g0_greater)
     (pn, sn), (pn_error, sn_error) = S.solve(**parameters)
     nb_measures = S.nb_measures
+    # make pn shape broadcastable with sn
+    while pn.ndim < sn.ndim:
+        pn = pn[..., np.newaxis]
 
     U = parameters["U"]
 
@@ -41,7 +43,7 @@ def single_solve(g0_lesser, g0_greater, parameters):
     if world.rank != 0:
         world.reduce(nb_measures, op=MPI.SUM)
         world.reduce(pn * nb_measures, op=MPI.SUM)
-        world.reduce(sn * pn[:, na] * nb_measures, op=MPI.SUM)
+        world.reduce(sn * pn * nb_measures, op=MPI.SUM)
 
         on_result = world.bcast(None)
 
@@ -49,15 +51,15 @@ def single_solve(g0_lesser, g0_greater, parameters):
         nb_measures_all = world.reduce(nb_measures, op=MPI.SUM)
         nb_measures_by_order = world.reduce(pn * nb_measures, op=MPI.SUM)
         pn_avg = nb_measures_by_order / nb_measures_all
-        sn_avg = world.reduce(sn * pn[:, na] * nb_measures, op=MPI.SUM) / nb_measures_by_order[:, na]
+        sn_avg = world.reduce(sn * pn * nb_measures, op=MPI.SUM) / nb_measures_by_order
 
-        on_result = perturbation_series(c0, pn_avg, sn_avg, U)
+        on_result = perturbation_series(c0, np.squeeze(pn_avg), sn_avg, U)
 
         world.bcast(on_result)
 
     # Calculate error
     # estimation using the variance of the On obtained on each process (assumes each process is equivalent)
-    on = perturbation_series(c0, pn, sn, U)
+    on = perturbation_series(c0, np.squeeze(pn), sn, U)
     
     on_error = variance_error(on, world)
 
@@ -79,11 +81,6 @@ def staircase_solve(g0_lesser, g0_greater, _parameters):
     max_order = parameters["max_perturbation_order"]
     U = parameters["U"]
 
-    # pn_all and sn_all are lower triangular arrays (for 2 first dims), unused values are set to NaN.
-    pn_all = np.empty((max_order+1, max_order+1)) * np.nan
-    sn_all = np.empty((max_order+1, max_order+1, len(parameters["measure_times"])), dtype=complex) * np.nan
-    nb_measures = np.zeros((max_order+1,), dtype=int)
-
     for k in range(max_order + 1):
 
         if world.rank == 0:
@@ -93,15 +90,20 @@ def staircase_solve(g0_lesser, g0_greater, _parameters):
         (pn, sn), _ = S.solve(**parameters)
 
         if k == 0:
+            
+            # pn_all and sn_all are lower triangular arrays (for 2 first dims), unused values are set to NaN.
+            pn_all = np.empty((max_order+1, max_order+1)) * np.nan
+            sn_all = np.empty(pn_all.shape + sn.shape[1:], dtype=complex) * np.nan
+            nb_measures = np.zeros((max_order+1,), dtype=int)
+
             c0 = pn
             pn_all[0, 0] = 1. # needed to avoid NaNs, any value works
-        else:
-            pn_all[k, :k+1] = pn
-        sn_all[k, :k+1, :] = sn
-        if k == 0:
             nb_measures[0] = 1 # needed to avoid divide by zero, any value works
         else:
+            pn_all[k, :k+1] = pn
             nb_measures[k] = S.nb_measures
+
+        sn_all[k, :k+1, ...] = sn
 
         if world.rank != 0:
             world.reduce(S.nb_measures)
@@ -109,30 +111,35 @@ def staircase_solve(g0_lesser, g0_greater, _parameters):
             tot_nb_measures = world.reduce(S.nb_measures)
             print "[Solver] Total number of measures:", tot_nb_measures
 
+    while pn_all.ndim < sn_all.ndim:
+        pn_all = pn_all[..., na]
+    while nb_measures.ndim < sn_all.ndim:
+        nb_measures = nb_measures[..., na]
+
     # Calculate estimation
     if world.rank != 0:
         world.reduce(nb_measures, op=MPI.SUM)
-        nb_measures_by_order = pn_all * nb_measures[:, na]
+        nb_measures_by_order = pn_all * nb_measures
         world.reduce(nb_measures_by_order, op=MPI.SUM)
-        world.reduce(sn_all * nb_measures_by_order[:, :, na], op=MPI.SUM)
+        world.reduce(sn_all * nb_measures_by_order, op=MPI.SUM)
 
         on_result = world.bcast(None)
 
     else:
         nb_measures_all = world.reduce(nb_measures, op=MPI.SUM)
         print "[Solver] Total number of measures (all orders):", nb_measures_all[1:].sum()
-        nb_measures_by_order = pn_all * nb_measures[:, na]
+        nb_measures_by_order = pn_all * nb_measures
         nb_measures_by_order_all = world.reduce(nb_measures_by_order, op=MPI.SUM)
-        pn_avg = nb_measures_by_order_all / nb_measures_all[:, na]
-        sn_avg = world.reduce(sn_all * nb_measures_by_order[:, :, na], op=MPI.SUM) / nb_measures_by_order_all[:, :, na]
+        pn_avg = nb_measures_by_order_all / nb_measures_all
+        sn_avg = world.reduce(sn_all * nb_measures_by_order, op=MPI.SUM) / nb_measures_by_order_all
 
-        on_result = staircase_perturbation_series(c0, pn_avg, sn_avg, U)
+        on_result = staircase_perturbation_series(c0, np.squeeze(pn_avg), sn_avg, U)
 
         world.bcast(on_result)
 
     # Calculate error
     # estimation using the variance of the On obtained on each process (assumes each process is equivalent)
-    on = staircase_perturbation_series(c0, pn_all, sn_all, U)
+    on = staircase_perturbation_series(c0, np.squeeze(pn_all), sn_all, U)
 
     on_error = variance_error(on, world)
 
