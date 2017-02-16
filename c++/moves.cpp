@@ -177,6 +177,7 @@ dcomplex weight_time_swap::attempt() {
  // swap times:
  double tau_time = tau.t;
  tau.t = swap_pt.t;
+ tau.k_index = rng(2); // random keldysh index
  swap_pt.t = tau_time;
 
  // replace points with swapped times

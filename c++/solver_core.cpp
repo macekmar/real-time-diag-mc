@@ -85,21 +85,27 @@ solver_core::solve(solve_parameters_t const& params) {
    // Uses GSL integration (https://www.gnu.org/software/gsl/manual/html_node/Numerical-integration-examples.html)
    gsl_function F;
    F.function = &abs_g0_keldysh_t_inputs;
-   integrand_params int_params(&physics_params, 0, params.measure_keldysh_indices[0]);
-   F.params = &int_params;
-
-   auto w = gsl_integration_cquad_workspace_alloc(1000);
+   auto w = gsl_integration_cquad_workspace_alloc(10000);
    size_t nb_evals;
-   gsl_integration_cquad(&F,                                // function to integrate
-                         -physics_params.interaction_start, // lower boundary
-                         physics_params.t_max,              // upper boundary
-                         1e-4,                              // absolute error
-                         1e-4,                              // relative error
-                         w,                                 // workspace
-                         &(pn(0)),                          // result
-                         &(pn_errors(0)),                   // output absolute error
-                         &nb_evals);                        // number of function evaluation
-   std::cout << pn_errors(0) << std::endl;
+   double value;
+   double value_error;
+
+   for (int a : {0, 1}) {
+    integrand_params int_params(&physics_params, 0, a);
+    F.params = &int_params;
+    gsl_integration_cquad(&F,                                // function to integrate
+                          -physics_params.interaction_start, // lower boundary
+                          physics_params.t_max,              // upper boundary
+                          1e-6,                              // absolute error
+                          1e-6,                              // relative error
+                          w,                                 // workspace
+                          &value,                            // result
+                          &value_error,                      // output absolute error
+                          &nb_evals);                        // number of function evaluation
+    pn(0) += value;
+    pn_errors(0) += value_error;
+   }
+
    gsl_integration_cquad_workspace_free(w);
    sn(0, range()) = physics_params.g0_values / pn(0);
    // TODO: sn_errors ?
@@ -107,10 +113,6 @@ solver_core::solve(solve_parameters_t const& params) {
    return {{pn, sn_array}, {pn_errors, sn_errors}};
 
   } else { // singlepoint methods only
-   // for (int i = 0; i < physics_params.tau_list.size(); ++i) {
-   // pn(i) = std::abs(physics_params.g0_values(i));
-   // sn(0, i) = physics_params.g0_values(i) / pn(i);
-   //}
    pn(0) = abs(physics_params.g0_values(0));
    sn(0, 0) = physics_params.g0_values(0) / pn(0);
    auto sn_array = physics_params.reshape_sn(&sn);

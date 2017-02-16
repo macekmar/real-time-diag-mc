@@ -129,7 +129,7 @@ struct input_physics_data {
   auto output = array<dcomplex, 1>(max_perturbation_order - min_perturbation_order + 1);
   output() = 1.0;
 
-  if (method == 4) output() /= (interaction_start + t_max); // only for cofact formula with additional integral
+  if (method == 4) output() /= 2. * (interaction_start + t_max); // only for cofact formula with additional integral
 
   dcomplex i_n[4] = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}}; // powers of i
 
