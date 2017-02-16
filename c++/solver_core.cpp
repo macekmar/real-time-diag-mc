@@ -88,18 +88,19 @@ solver_core::solve(solve_parameters_t const& params) {
    integrand_params int_params(&physics_params, 0, params.measure_keldysh_indices[0]);
    F.params = &int_params;
 
-   auto w = gsl_integration_workspace_alloc(1000);
-   gsl_integration_qag(&F,                                // function to integrate
-                       -physics_params.interaction_start, // lower boundary
-                       physics_params.t_max,              // upper boundary
-                       0,                                 // absolute error
-                       1e-4,                              // relative error
-                       900,                               // limit
-                       4,                                 // key
-                       w,                                 // workspace
-                       &(pn(0)),                          // result
-                       &(pn_errors(0)));                  // output absolute error
-   gsl_integration_workspace_free(w);
+   auto w = gsl_integration_cquad_workspace_alloc(1000);
+   size_t nb_evals;
+   gsl_integration_cquad(&F,                                // function to integrate
+                         -physics_params.interaction_start, // lower boundary
+                         physics_params.t_max,              // upper boundary
+                         1e-4,                              // absolute error
+                         1e-4,                              // relative error
+                         w,                                 // workspace
+                         &(pn(0)),                          // result
+                         &(pn_errors(0)),                   // output absolute error
+                         &nb_evals);                        // number of function evaluation
+   std::cout << pn_errors(0) << std::endl;
+   gsl_integration_cquad_workspace_free(w);
    sn(0, range()) = physics_params.g0_values / pn(0);
    // TODO: sn_errors ?
    auto sn_array = physics_params.reshape_sn(&sn);

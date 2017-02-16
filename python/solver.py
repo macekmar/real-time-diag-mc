@@ -97,6 +97,7 @@ def staircase_solve(g0_lesser, g0_greater, _parameters):
             nb_measures = np.zeros((max_order+1,), dtype=int)
 
             c0 = pn
+            print c0
             pn_all[0, 0] = 1. # needed to avoid NaNs, any value works
             nb_measures[0] = 1 # needed to avoid divide by zero, any value works
         else:
