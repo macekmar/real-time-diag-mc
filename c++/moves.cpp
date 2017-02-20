@@ -166,9 +166,8 @@ void shift::reject() {
 }
 
 // ------------ QMC additional time swap move --------------------------------------
-// Only for multi-measure mode
 
-dcomplex weight_time_swap::attempt() {
+dcomplex weight_swap::attempt() {
   //integrand->weight->register_config();
 
  auto k = integrand->perturbation_order;
@@ -197,16 +196,43 @@ dcomplex weight_time_swap::attempt() {
  return new_weight / integrand->weight->value;
 }
 
-dcomplex weight_time_swap::accept() {
+dcomplex weight_swap::accept() {
  integrand->weight->value = new_weight;
  integrand->measure->change_config(p, swap_pt);
  return 1.0;
 }
 
-void weight_time_swap::reject() {
+void weight_swap::reject() {
  if (quick_exit) return;
- auto k = integrand->perturbation_order;
  integrand->weight->change_config(p, save_swap_pt);
+ integrand->weight->change_left_input(save_tau);
+}
+
+// ------------ QMC additional time shift move --------------------------------------
+
+dcomplex weight_shift::attempt() {
+ //integrand->weight->register_config();
+ // No quick exit for this move, all orders are concerned
+
+ keldysh_contour_pt tau = integrand->weight->get_left_input();  // integrand left input point
+ save_tau = tau;                             // save for reject case
+ tau.t = rng(physics_params->interaction_start + physics_params->t_max) - physics_params->interaction_start; // random time
+ tau.k_index = rng(2); // random keldysh index
+ integrand->weight->change_left_input(tau);
+
+ new_weight = integrand->weight->evaluate();
+
+ // The Metropolis ratio
+ return new_weight / integrand->weight->value;
+}
+
+dcomplex weight_shift::accept() {
+ integrand->weight->value = new_weight;
+ return 1.0;
+}
+
+void weight_shift::reject() {
+ // No quick exit for this move, all orders are concerned
  integrand->weight->change_left_input(save_tau);
 }
 }

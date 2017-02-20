@@ -131,19 +131,21 @@ solver_core::solve(solve_parameters_t const& params) {
 
  // Register moves and measurements
  // Can add single moves only, or double moves only (for the case with ph symmetry), or both simultaneously
- if (params.p_dbl < 1) {
-  qmc.add_move(moves::insert{&integrand, &params, &physics_params, qmc.get_rng()}, "insertion", 1. - params.p_dbl);
-  qmc.add_move(moves::remove{&integrand, &params, &physics_params, qmc.get_rng()}, "removal", 1. - params.p_dbl);
+ if (params.w_ins_rem > 0) {
+  qmc.add_move(moves::insert{&integrand, &params, &physics_params, qmc.get_rng()}, "insertion", params.w_ins_rem);
+  qmc.add_move(moves::remove{&integrand, &params, &physics_params, qmc.get_rng()}, "removal", params.w_ins_rem);
  }
- if (params.p_dbl > 0) {
-  qmc.add_move(moves::insert2{&integrand, &params, &physics_params, qmc.get_rng()}, "insertion2", params.p_dbl);
-  qmc.add_move(moves::remove2{&integrand, &params, &physics_params, qmc.get_rng()}, "removal2", params.p_dbl);
+ if (params.w_dbl > 0) {
+  qmc.add_move(moves::insert2{&integrand, &params, &physics_params, qmc.get_rng()}, "insertion2", params.w_dbl);
+  qmc.add_move(moves::remove2{&integrand, &params, &physics_params, qmc.get_rng()}, "removal2", params.w_dbl);
  }
- qmc.add_move(moves::shift{&integrand, &params, &physics_params, qmc.get_rng()}, "shift", params.p_shift);
-
- if (params.method == 4)
-  qmc.add_move(moves::weight_time_swap{&integrand, &params, &physics_params, qmc.get_rng()}, "weight time swap",
-               params.p_weight_time_swap);
+ if (params.w_shift > 0) {
+  qmc.add_move(moves::shift{&integrand, &params, &physics_params, qmc.get_rng()}, "shift", params.w_shift);
+ }
+ if (params.method == 4) {
+  qmc.add_move(moves::weight_swap{&integrand, &params, &physics_params, qmc.get_rng()}, "weight swap", params.w_weight_swap);
+  qmc.add_move(moves::weight_shift{&integrand, &params, &physics_params, qmc.get_rng()}, "weight shift", params.w_weight_shift);
+ }
 
  qmc.add_measure(Accumulator(&integrand, &pn, &sn, &pn_errors, &sn_errors, &_nb_measures), "Measurement");
 
