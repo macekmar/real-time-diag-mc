@@ -13,6 +13,8 @@ class solver_core {
  g0_t g0_lesser, g0_greater;
  double _solve_duration = 0;
  int _nb_measures = 0;
+ std::vector<std::vector<double>> _config_list;
+ std::vector<int> _config_weight;
 
  Measure* _create_measure(const int method, const input_physics_data* physics_params, const Weight* weight);
 
@@ -28,4 +30,7 @@ class solver_core {
  double get_solve_duration() const { return _solve_duration; }
 
  int get_nb_measures() const { return _nb_measures; }
+
+ std::vector<std::vector<double>> get_config_list() const { return _config_list; }
+ std::vector<int> get_config_weight() const { return _config_weight; }
 };

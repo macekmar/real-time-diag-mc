@@ -58,4 +58,33 @@ keldysh_contour_pt two_det_weight::get_right_input() {
  return matrices[op_to_measure_spin].get_y(matrices[op_to_measure_spin].size() - 1);
 };
 
-dcomplex two_det_weight::evaluate() { return recompute_sum_keldysh_indices(matrices, matrices[1 - op_to_measure_spin].size()); }
+dcomplex two_det_weight::evaluate() { return recompute_sum_keldysh_indices(matrices, matrices[1 - op_to_measure_spin].size()); };
+
+void two_det_weight::register_config() {
+ if (stop_register) return;
+
+ int threshold = 1e7 / triqs::mpi::communicator().size();
+ if (config_list.size() > threshold) {
+  if (triqs::mpi::communicator().rank() == 0) std::cout << std::endl << "Max nb of config reached" << std::endl;
+  stop_register = true;
+ }
+
+ std::vector<double> config;
+ config.emplace_back(get_left_input().t);
+ for (int i = 0; i < matrices[1 - op_to_measure_spin].size(); ++i) {
+  config.emplace_back(get_config(i).t);
+ }
+
+ if (config_list.size() == 0) {
+  config_list.emplace_back(config);
+  config_weight.emplace_back(1);
+  return;
+ }
+
+ if (config == config_list[config_list.size() - 1])
+  config_weight[config_weight.size() - 1]++;
+ else {
+  config_list.emplace_back(config);
+  config_weight.emplace_back(1);
+ }
+};

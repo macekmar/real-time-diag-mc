@@ -84,6 +84,14 @@ c.add_property(name = "nb_measures",
                getter = cfunction("int get_nb_measures ()"),
                doc = """ """)
 
+c.add_property(name = "config_list",
+               getter = cfunction("std::vector<std::vector<double>> get_config_list ()"),
+               doc = """ """)
+
+c.add_property(name = "config_weight",
+               getter = cfunction("std::vector<int> get_config_weight ()"),
+               doc = """ """)
+
 module.add_class(c)
 
 module.generate_code()

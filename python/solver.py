@@ -3,6 +3,7 @@ from mpi4py import MPI
 from ctint_keldysh import SolverCore
 from perturbation_series import perturbation_series, staircase_perturbation_series
 import numpy as np
+import itertools
 
 
 def variance_error(on, comm):
@@ -19,13 +20,17 @@ def variance_error(on, comm):
     return on_error
 
 
-def single_solve(g0_lesser, g0_greater, parameters):
+def single_solve(g0_lesser, g0_greater, parameters, histogram=False):
 
     world = MPI.COMM_WORLD
 
     S = SolverCore(g0_lesser, g0_greater)
     (pn, sn), (pn_error, sn_error) = S.solve(**parameters)
     nb_measures = S.nb_measures
+    list_config = S.config_list
+    weight_config = S.config_weight
+    list_config = map(lambda x, y : [x] + list(y), weight_config, list_config)
+
     # make pn shape broadcastable with sn
     while pn.ndim < sn.ndim:
         pn = pn[..., np.newaxis]
@@ -62,8 +67,30 @@ def single_solve(g0_lesser, g0_greater, parameters):
     on = perturbation_series(c0, np.squeeze(pn), sn, U)
     
     on_error = variance_error(on, world)
+    output = (on_result, on_error)
 
-    return on_result, on_error
+    # Sort out the configurations if histogram is True
+    if histogram:
+        list_config.sort(key=len)
+        list_histograms = []
+        for k, g in itertools.groupby(list_config, len):
+            list_histograms.append(np.array(list(g)).T)
+
+        list_histograms_all = []
+
+        for histogram in list_histograms:
+            if world.rank != 0:
+                world.gather(histogram)
+            else:
+                list_histograms_all.append(np.concatenate(world.gather(histogram), axis=1))
+
+        if world.rank != 0:
+            list_histograms_all = world.bcast(None)
+        else:
+            world.bcast(list_histograms_all)
+        output += (list_histograms_all,)
+
+    return output
 
 
 def staircase_solve(g0_lesser, g0_greater, _parameters):

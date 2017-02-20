@@ -12,6 +12,10 @@ class Weight {
  public:
  dcomplex value; // Sum of determinants of the last accepted config
 
+ std::vector<std::vector<double>> config_list;
+ std::vector<int> config_weight;
+ bool stop_register = false;
+
  virtual void insert(int k, keldysh_contour_pt pt) = 0;
  virtual void insert2(int k1, int k2, keldysh_contour_pt pt1, keldysh_contour_pt pt2) = 0;
  virtual void remove(int k) = 0;
@@ -23,6 +27,8 @@ class Weight {
  virtual keldysh_contour_pt get_left_input() = 0;
  virtual keldysh_contour_pt get_right_input() = 0;
  virtual dcomplex evaluate() = 0;
+
+ virtual void register_config() = 0;
 };
 
 // ------------------------
@@ -49,6 +55,8 @@ class two_det_weight : public Weight {
  keldysh_contour_pt get_left_input();
  keldysh_contour_pt get_right_input();
  dcomplex evaluate();
+
+ void register_config();
 };
 
 

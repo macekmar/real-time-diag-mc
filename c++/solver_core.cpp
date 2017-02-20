@@ -107,6 +107,7 @@ solver_core::solve(solve_parameters_t const& params) {
    }
 
    gsl_integration_cquad_workspace_free(w);
+   if (triqs::mpi::communicator().rank() == 0) std::cout << "c0 = " << pn(0) << " error = " << pn_errors(0) << std::endl;
    sn(0, range()) = physics_params.g0_values / pn(0);
    // TODO: sn_errors ?
    auto sn_array = physics_params.reshape_sn(&sn);
@@ -162,6 +163,8 @@ solver_core::solve(solve_parameters_t const& params) {
  for (int i = 0; i < physics_params.tau_list.size(); ++i) sn(range(), i) *= prefactor;
  auto sn_array = physics_params.reshape_sn(&sn);
 
+ _config_list = integrand.weight->config_list;
+ _config_weight = integrand.weight->config_weight;
  _solve_duration = qmc.get_duration();
 
  return {{pn, sn_array}, {pn_errors, sn_errors}};

@@ -6,6 +6,7 @@ namespace moves {
 // ------------ QMC insertion move --------------------------------------
 
 dcomplex insert::attempt() {
+  //integrand->weight->register_config();
 
  auto k = integrand->perturbation_order; // order before adding a time
  quick_exit = (k >= params->max_perturbation_order);
@@ -37,6 +38,8 @@ void insert::reject() {
 // ------------ QMC double-insertion move --------------------------------------
 
 dcomplex insert2::attempt() {
+  //integrand->weight->register_config();
+
  auto k = integrand->perturbation_order; // order before adding two times
  quick_exit = (k + 1 >= params->max_perturbation_order);
  if (quick_exit) return 0;
@@ -69,6 +72,7 @@ void insert2::reject() {
 //// ------------ QMC removal move --------------------------------------
 
 dcomplex remove::attempt() {
+  //integrand->weight->register_config();
 
  auto k = integrand->perturbation_order; // order before removal
  quick_exit = (k <= params->min_perturbation_order);
@@ -99,6 +103,7 @@ void remove::reject() {
 // ------------ QMC double-removal move --------------------------------------
 
 dcomplex remove2::attempt() {
+  //integrand->weight->register_config();
 
  auto k = integrand->perturbation_order; // order before removal
  quick_exit = (k - 2 < params->min_perturbation_order);
@@ -132,6 +137,7 @@ void remove2::reject() {
 // ------------ QMC vertex shift move --------------------------------------
 
 dcomplex shift::attempt() {
+  //integrand->weight->register_config();
 
  auto k = integrand->perturbation_order; // order
 
@@ -163,6 +169,7 @@ void shift::reject() {
 // Only for multi-measure mode
 
 dcomplex weight_time_swap::attempt() {
+  //integrand->weight->register_config();
 
  auto k = integrand->perturbation_order;
  keldysh_contour_pt tau;
