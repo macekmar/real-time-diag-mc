@@ -1,7 +1,10 @@
 #pragma once
 #include <vector>
 #include <string>
-#include <triqs/gfs.hpp>
+
+//template <typename T> using view_t = typename T::view_type;
+using namespace triqs::gfs;
+//using my_gf_view = gf<retime, matrix_valued>::view_type;
 
 #define IMPURITY_MATRIX
 

@@ -24,7 +24,7 @@ def perturbation_series(_c0, pn, sn, U):
             cn[k, ...] = cn[k-1, ...] * pn[k] / (pn[k-1] * U)
 
     on = cn * sn
-    return np.squeeze(on)
+    return on
 
 
 def perturbation_series_errors(c0, pn, sn, U, c0_error, pn_error, sn_error):
@@ -86,5 +86,5 @@ def staircase_perturbation_series(c0, pn, sn, U):
 
     on = cn * np.rollaxis(np.diagonal(sn), -1, 0) # np.diagonal sends the diagonalised axis to the left end
 
-    return np.squeeze(on)
+    return on
 

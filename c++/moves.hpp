@@ -9,24 +9,25 @@ namespace moves {
 struct common {
  Integrand *integrand;
  const solve_parameters_t *params;
- const input_physics_data *physics_params;
  triqs::mc_tools::random_generator &rng;
  random_x_generator rxg;
- double t_max_L_U;
+ double delta_t_L_U;
+ double delta_t;
  bool quick_exit = false;
  dcomplex new_weight = 0;
 
- common(Integrand *integrand, const solve_parameters_t *params, const input_physics_data *physics_params,
+ common(Integrand *integrand, const solve_parameters_t *params, const double t_max,
         triqs::mc_tools::random_generator &rng)
-    : integrand(integrand), params(params), physics_params(physics_params), rng(rng) {
+    : integrand(integrand), params(params), rng(rng) {
   rxg = random_x_generator();
-  t_max_L_U = (physics_params->interaction_start + physics_params->t_max) * rxg.size() * params->U;
+  delta_t = params->interaction_start + t_max;
+  delta_t_L_U = delta_t * rxg.size() * params->U;
  }
 
  /// Construct random point with space/orbital index, time and alpha
  keldysh_contour_pt get_random_point() {
   return {rxg(rng),
-          qmc_time_t{rng(physics_params->interaction_start + physics_params->t_max) - physics_params->interaction_start}, 0};
+          qmc_time_t{rng(delta_t) - params->interaction_start}, 0};
  }
 };
 

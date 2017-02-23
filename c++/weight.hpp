@@ -37,13 +37,13 @@ class two_det_weight : public Weight {
 
  private:
  std::vector<det_manip<g0_keldysh_t>> matrices; // M matrices for up and down
- int op_to_measure_spin;
+ const int op_to_measure_spin;
 
  two_det_weight(const two_det_weight&) = delete; // non construction-copyable
  void operator=(const two_det_weight&) = delete; // non copyable
 
  public:
- two_det_weight(const solve_parameters_t* params, const input_physics_data* physics_params);
+ two_det_weight(g0_keldysh_t green_function, const keldysh_contour_pt tau, const keldysh_contour_pt taup, const int op_to_measure_spin);
  void insert(int k, keldysh_contour_pt pt);
  void insert2(int k1, int k2, keldysh_contour_pt pt1, keldysh_contour_pt pt2);
  void remove(int k);

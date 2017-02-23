@@ -3,14 +3,13 @@
 // ---------- two_det_weight --------------
 
 
-two_det_weight::two_det_weight(const solve_parameters_t* params, const input_physics_data* physics_params) {
+two_det_weight::two_det_weight(g0_keldysh_t green_function, const keldysh_contour_pt tau, const keldysh_contour_pt taup, const int op_to_measure_spin) : op_to_measure_spin(op_to_measure_spin) {
 
  // Initialize the M-matrices. 100 is the initial alocated space.
- for (auto spin : {up, down}) matrices.emplace_back(physics_params->green_function, 100);
+ for (auto spin : {up, down}) matrices.emplace_back(green_function, 100);
  for (auto spin : {up, down}) matrices[spin].set_singular_threshold(singular_threshold);
 
- op_to_measure_spin = physics_params->op_to_measure_spin; // for now
- matrices[op_to_measure_spin].insert_at_end(physics_params->tau_list[0], physics_params->taup);
+ matrices[op_to_measure_spin].insert_at_end(tau, taup);
 
  // Initialize value
  value = recompute_sum_keldysh_indices(matrices, 0);

@@ -1,12 +1,17 @@
 #include "./moves.hpp"
 #include <triqs/det_manip.hpp>
 
+//#define REGISTER_CONFIG
+
 namespace moves {
 
 // ------------ QMC insertion move --------------------------------------
 
 dcomplex insert::attempt() {
-  //integrand->weight->register_config();
+#ifdef REGISTER_CONFIG
+ integrand->weight->register_config();
+#endif
+ //std::cout << "DEBUG move: " << integrand->measure << std::endl;
 
  auto k = integrand->perturbation_order; // order before adding a time
  quick_exit = (k >= params->max_perturbation_order);
@@ -18,7 +23,7 @@ dcomplex insert::attempt() {
  new_weight = integrand->weight->evaluate();
 
  // The Metropolis ratio;
- return t_max_L_U / (k + 1) * new_weight / integrand->weight->value;
+ return delta_t_L_U / (k + 1) * new_weight / integrand->weight->value;
 }
 
 dcomplex insert::accept() {
@@ -38,7 +43,9 @@ void insert::reject() {
 // ------------ QMC double-insertion move --------------------------------------
 
 dcomplex insert2::attempt() {
-  //integrand->weight->register_config();
+#ifdef REGISTER_CONFIG
+ integrand->weight->register_config();
+#endif
 
  auto k = integrand->perturbation_order; // order before adding two times
  quick_exit = (k + 1 >= params->max_perturbation_order);
@@ -52,7 +59,7 @@ dcomplex insert2::attempt() {
  new_weight = integrand->weight->evaluate();
 
  // The Metropolis ratio
- return t_max_L_U * t_max_L_U / ((k + 1) * (k + 2)) * new_weight / integrand->weight->value;
+ return delta_t_L_U * delta_t_L_U / ((k + 1) * (k + 2)) * new_weight / integrand->weight->value;
 }
 
 dcomplex insert2::accept() {
@@ -72,7 +79,9 @@ void insert2::reject() {
 //// ------------ QMC removal move --------------------------------------
 
 dcomplex remove::attempt() {
-  //integrand->weight->register_config();
+#ifdef REGISTER_CONFIG
+ integrand->weight->register_config();
+#endif
 
  auto k = integrand->perturbation_order; // order before removal
  quick_exit = (k <= params->min_perturbation_order);
@@ -85,7 +94,7 @@ dcomplex remove::attempt() {
  new_weight = integrand->weight->evaluate();    // recompute sum over keldysh indices
 
  // The Metropolis ratio
- return k / t_max_L_U * new_weight / integrand->weight->value;
+ return k / delta_t_L_U * new_weight / integrand->weight->value;
 }
 
 dcomplex remove::accept() {
@@ -103,7 +112,9 @@ void remove::reject() {
 // ------------ QMC double-removal move --------------------------------------
 
 dcomplex remove2::attempt() {
-  //integrand->weight->register_config();
+#ifdef REGISTER_CONFIG
+ integrand->weight->register_config();
+#endif
 
  auto k = integrand->perturbation_order; // order before removal
  quick_exit = (k - 2 < params->min_perturbation_order);
@@ -119,7 +130,7 @@ dcomplex remove2::attempt() {
  new_weight = integrand->weight->evaluate(); // recompute sum over keldysh indices
 
  // The Metropolis ratio
- return k * (k - 1) / pow(t_max_L_U, 2) * new_weight / integrand->weight->value;
+ return k * (k - 1) / pow(delta_t_L_U, 2) * new_weight / integrand->weight->value;
 }
 
 dcomplex remove2::accept() {
@@ -137,7 +148,9 @@ void remove2::reject() {
 // ------------ QMC vertex shift move --------------------------------------
 
 dcomplex shift::attempt() {
-  //integrand->weight->register_config();
+#ifdef REGISTER_CONFIG
+ integrand->weight->register_config();
+#endif
 
  auto k = integrand->perturbation_order; // order
 
@@ -168,7 +181,9 @@ void shift::reject() {
 // ------------ QMC additional time swap move --------------------------------------
 
 dcomplex weight_swap::attempt() {
-  //integrand->weight->register_config();
+#ifdef REGISTER_CONFIG
+ integrand->weight->register_config();
+#endif
 
  auto k = integrand->perturbation_order;
  keldysh_contour_pt tau;
@@ -211,12 +226,14 @@ void weight_swap::reject() {
 // ------------ QMC additional time shift move --------------------------------------
 
 dcomplex weight_shift::attempt() {
- //integrand->weight->register_config();
+#ifdef REGISTER_CONFIG
+ integrand->weight->register_config();
+#endif
  // No quick exit for this move, all orders are concerned
 
- keldysh_contour_pt tau = integrand->weight->get_left_input();  // integrand left input point
- save_tau = tau;                             // save for reject case
- tau.t = rng(physics_params->interaction_start + physics_params->t_max) - physics_params->interaction_start; // random time
+ keldysh_contour_pt tau = integrand->weight->get_left_input(); // integrand left input point
+ save_tau = tau;                                               // save for reject case
+ tau.t = rng(delta_t) - params->interaction_start; // random time
  tau.k_index = rng(2); // random keldysh index
  integrand->weight->change_left_input(tau);
 

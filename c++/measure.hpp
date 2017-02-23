@@ -12,7 +12,7 @@ using triqs::det_manip::det_manip;
 class Measure {
 
  protected:
- array<dcomplex, 1> value; // measure of the last accepted config
+ array<dcomplex, 1> value;         // measure of the last accepted config
  double singular_threshold = 1e-4; // for det_manip. Not ideal to be defined here
 
  public:
@@ -33,9 +33,13 @@ struct Integrand {
  // time, keldysh index). Depending on symmetries it can be simplified to a single keldysh point.
 
  int perturbation_order = 0;
- Weight* weight;
- Measure* measure;
+ Weight* weight = nullptr;
+ Measure* measure = nullptr;
 
+ // Integrand(const Integrand&) = delete; // non construction-copyable
+ // void operator=(const Integrand&) = delete;      // non copyable
+
+ Integrand(){};
  Integrand(Weight* weight, Measure* measure) : weight(weight), measure(measure){};
 };
 
@@ -49,7 +53,7 @@ class weight_sign_measure : public Measure {
  void operator=(const weight_sign_measure&) = delete;      // non copyable
 
  public:
- weight_sign_measure(const input_physics_data* physics_params, const Weight* weight);
+ weight_sign_measure(const Weight* weight);
 
  void insert(int k, keldysh_contour_pt pt);
  void insert2(int k1, int k2, keldysh_contour_pt pt1, keldysh_contour_pt pt2);
@@ -60,65 +64,45 @@ class weight_sign_measure : public Measure {
 };
 
 // ---------------
-
-class twodet_single_measure : public Measure {
-
- private:
- std::vector<det_manip<g0_keldysh_t>> matrices; // M matrices for up and down with tau and tau'
- const input_physics_data* physics_params;
-
- twodet_single_measure(const twodet_single_measure&) = delete; // non construction-copyable
- void operator=(const twodet_single_measure&) = delete;        // non copyable
-
- public:
- twodet_single_measure(const input_physics_data* physics_params);
-
- void insert(int k, keldysh_contour_pt pt);
- void insert2(int k1, int k2, keldysh_contour_pt pt1, keldysh_contour_pt pt2);
- void remove(int k);
- void remove2(int k1, int k2);
- void change_config(int k, keldysh_contour_pt pt);
- void evaluate();
-};
-
-// ---------------
-
-class twodet_multi_measure : public Measure {
-
- private:
- std::vector<det_manip<g0_keldysh_t>>
-     matrices; // M matrices for up and down without tau and tau', so they are actually the same...
- const input_physics_data* physics_params;
-
- twodet_multi_measure(const twodet_multi_measure&) = delete; // non construction-copyable
- void operator=(const twodet_multi_measure&) = delete;       // non copyable
-
- public:
- twodet_multi_measure(const input_physics_data* physics_params);
-
- void insert(int k, keldysh_contour_pt pt);
- void insert2(int k1, int k2, keldysh_contour_pt pt1, keldysh_contour_pt pt2);
- void remove(int k);
- void remove2(int k1, int k2);
- void change_config(int k, keldysh_contour_pt pt);
- void evaluate();
-};
-
-// ---------------
-
+// interaction between two distinct particles
 class twodet_cofact_measure : public Measure {
 
  private:
- std::vector<det_manip<g0_keldysh_t>>
-     matrices; // M matrices for up and down without tau and tau', so they are actually the same...
+ std::vector<det_manip<g0_keldysh_t>> matrices; // M matrices for up and down without tau and tau'
  g0_keldysh_t green_function;
- const input_physics_data* physics_params;
+ const std::vector<keldysh_contour_pt>* tau_list;
+ const keldysh_contour_pt taup;
+ const array<dcomplex, 1>* g0_values;
+ const int op_to_measure_spin;
 
  twodet_cofact_measure(const twodet_cofact_measure&) = delete; // non construction-copyable
  void operator=(const twodet_cofact_measure&) = delete;        // non copyable
 
  public:
- twodet_cofact_measure(const input_physics_data* physics_params);
+ twodet_cofact_measure(g0_keldysh_t green_function, const std::vector<keldysh_contour_pt>* tau_list,
+                       const keldysh_contour_pt taup, const int op_to_measure_spin, const array<dcomplex, 1>* g0_values);
+
+ void insert(int k, keldysh_contour_pt pt);
+ void insert2(int k1, int k2, keldysh_contour_pt pt1, keldysh_contour_pt pt2);
+ void remove(int k);
+ void remove2(int k1, int k2);
+ void change_config(int k, keldysh_contour_pt pt);
+ void evaluate();
+};
+
+// ---------------
+// interaction between two symmetric distinct particles
+class onedet_cofact_measure : public Measure {
+
+ private:
+ det_manip<g0_keldysh_t> matrix; // in this case the two deterinants without tau and taup are the same
+ g0_keldysh_t green_function;
+
+ onedet_cofact_measure(const onedet_cofact_measure&) = delete; // non construction-copyable
+ void operator=(const onedet_cofact_measure&) = delete;        // non copyable
+
+ public:
+ onedet_cofact_measure();
 
  void insert(int k, keldysh_contour_pt pt);
  void insert2(int k1, int k2, keldysh_contour_pt pt1, keldysh_contour_pt pt2);

@@ -14,7 +14,6 @@ module.add_include("solver_core.hpp")
 # Add here anything to add in the C++ code at the start, e.g. namespace using
 module.add_preamble("""
 #include <triqs/python_tools/converters/arrays.hpp>
-#include <triqs/python_tools/converters/pair.hpp>
 #include <triqs/python_tools/converters/vector.hpp>
 #include <triqs/python_tools/converters/tuple.hpp>
 using namespace triqs::gfs;
@@ -28,11 +27,8 @@ c = class_(
         doc = r"",   # doc of the C++ class
 )
 
-c.add_constructor("""(gf_view<retime,matrix_valued> g0_lesser, gf_view<retime,matrix_valued> g0_greater)""",
-                  doc = """ """)
-
-c.add_method("""std::pair<std::pair<array<double,1>,array<dcomplex,3>>,std::pair<array<double,1>,array<double,1>>> solve (**solve_parameters_t)""",
-             doc = """+-------------------------+--------------------------------------------------+------------------------------------------------+-------------------------------------------------------------------------+
+c.add_constructor("""(**solve_parameters_t)""",
+                  doc = """+-------------------------+--------------------------------------------------+------------------------------------------------+-------------------------------------------------------------------------+
 | Parameter Name          | Type                                             | Default                                        | Documentation                                                           |
 +=========================+==================================================+================================================+=========================================================================+
 | right_input_points      | std::vector<std::tuple<x_index_t, double, int> > |                                                | input contour points, except the first (left) one, must be of odd size  |
@@ -80,6 +76,16 @@ c.add_method("""std::pair<std::pair<array<double,1>,array<dcomplex,3>>,std::pair
 | method                  | int                                              | 4                                              | Method                                                                  |
 +-------------------------+--------------------------------------------------+------------------------------------------------+-------------------------------------------------------------------------+ """)
 
+c.add_method("""void set_g0 (gf_view<retime,matrix_valued> g0_lesser, gf_view<retime,matrix_valued> g0_greater)""",
+             doc = """ """)
+
+c.add_method("""int run (int max_time)""",
+             doc = """ """)
+
+c.add_property(name = "order_zero",
+               getter = cfunction("int order_zero ()"),
+               doc = """ """)
+
 c.add_property(name = "solve_duration",
                getter = cfunction("double get_solve_duration ()"),
                doc = """ """)
@@ -94,6 +100,22 @@ c.add_property(name = "config_list",
 
 c.add_property(name = "config_weight",
                getter = cfunction("std::vector<int> get_config_weight ()"),
+               doc = """ """)
+
+c.add_property(name = "pn",
+               getter = cfunction("array<double,1> get_pn ()"),
+               doc = """ """)
+
+c.add_property(name = "sn",
+               getter = cfunction("array<dcomplex,3> get_sn ()"),
+               doc = """ """)
+
+c.add_property(name = "pn_errors",
+               getter = cfunction("array<double,1> get_pn_errors ()"),
+               doc = """ """)
+
+c.add_property(name = "sn_errors",
+               getter = cfunction("array<double,1> get_sn_errors ()"),
                doc = """ """)
 
 module.add_class(c)

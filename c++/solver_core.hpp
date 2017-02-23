@@ -1,36 +1,69 @@
 #include "./measure.hpp"
 #include "./qmc_data.hpp"
+#include <triqs/mc_tools.hpp>
+
 #include <triqs/gfs.hpp>
 
-template <typename T> using view_t = typename T::view_type;
+//template <typename T> using view_t = typename T::view_type;
+using namespace triqs::gfs;
 
 // ------------ The main class of the solver -----------------------
 
-using namespace triqs::gfs;
+enum Status {aborted, not_ready, ready, running};
 
 class solver_core {
 
- g0_t g0_lesser, g0_greater;
- double _solve_duration = 0;
- int _nb_measures = 0;
- std::vector<std::vector<double>> _config_list;
- std::vector<int> _config_weight;
+ g0_keldysh_t green_function;
+ Integrand* integrand = nullptr;
+ solve_parameters_t params;
+ triqs::mc_tools::mc_generic<dcomplex> qmc;
+ keldysh_contour_pt taup;
+ std::vector<keldysh_contour_pt> tau_list;
+ std::vector<std::size_t> shape_tau_array;
+ array<dcomplex, 1> g0_values = array<dcomplex, 1>();
+ array<dcomplex, 1> prefactor;
+ double t_max;
+ int rank;
+ int op_to_measure_spin; // spin of the operator to measure. Not needed when up/down symmetry. Is used to know which determinant
+                         // is the big one.
+ double solve_duration = 0;
+ int nb_measures;
+ std::vector<std::vector<double>> config_list;
+ std::vector<int> config_weight;
+ Status status = not_ready;
+ array<double, 1> pn;
+ array<dcomplex, 2> sn;
+ array<dcomplex, 3> sn_array;
+ array<double, 1> pn_errors;
+ array<double, 1> sn_errors;
 
- Measure* _create_measure(const int method, const input_physics_data* physics_params, const Weight* weight);
+ void checkpoint();
+
+ int finish(const int run_status);
+
+ Measure* create_measure(const int method, const Weight* weight);
+
+ array<dcomplex, 3> reshape_sn(array<dcomplex, 2> *sn_list);
 
  public:
+
  // FIXME change type of arguments after olivier fixes wrapper
- solver_core(gf_view<retime, matrix_valued> g0_lesser, gf_view<retime, matrix_valued> g0_greater)
-    : g0_lesser(g0_lesser), g0_greater(g0_greater){};
-
  TRIQS_WRAP_ARG_AS_DICT // Wrap the solver parameters as a ** call in python with the clang & c++2py tool
-     std::pair<std::pair<array<double, 1>, array<dcomplex, 3>>, std::pair<array<double, 1>, array<double, 1>>>
-     solve(solve_parameters_t const& params);
+ solver_core(solve_parameters_t const& params);
 
- double get_solve_duration() const { return _solve_duration; }
+ void set_g0(gf_view<retime, matrix_valued> g0_lesser, gf_view<retime, matrix_valued> g0_greater);
 
- int get_nb_measures() const { return _nb_measures; }
+ int order_zero();
 
- std::vector<std::vector<double>> get_config_list() const { return _config_list; }
- std::vector<int> get_config_weight() const { return _config_weight; }
+ int run(const int max_time);
+
+ // getters
+ double get_solve_duration() const { return solve_duration; }
+ int get_nb_measures() const { return nb_measures; }
+ std::vector<std::vector<double>> get_config_list() const { return config_list; }
+ std::vector<int> get_config_weight() const { return config_weight; }
+ array<double, 1> get_pn() const { return pn; }
+ array<dcomplex, 3> get_sn() const { return sn_array; }
+ array<double, 1> get_pn_errors() const { return pn_errors; }
+ array<double, 1> get_sn_errors() const { return sn_errors; }
 };
