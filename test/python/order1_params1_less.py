@@ -15,8 +15,6 @@ p["muR"] = 0.
 
 g0_lesser, g0_greater = make_g0_semi_circular(**p)
 
-S = SolverCore(g0_lesser, g0_greater)
-
 times = np.linspace(-40.0, 0.0, 101)
 p = {}
 p["right_input_points"] = [(0, 0.0, 1)] # lesser
@@ -26,7 +24,7 @@ p["measure_keldysh_indices"] = [0] # lesser
 p["measure_times"] = times
 p["U"] = 2.5 # U_qmc
 p["min_perturbation_order"] = 0
-p["max_perturbation_order"] = 0
+p["max_perturbation_order"] = 1
 p["alpha"] = 0.0
 p["n_warmup_cycles"] = 1000
 p["length_cycle"] = 50
@@ -35,25 +33,36 @@ p["w_dbl"] = 0
 p["w_shift"] = 0
 p["w_weight_swap"] = 0.2
 p["method"] = 4
-(p0, s0), _ = S.solve(**p)
 
-p["max_perturbation_order"] = 1
-(pn, sn), _ = S.solve(**p)
+S = SolverCore(**p)
+S.set_g0(g0_lesser, g0_greater)
 
-on = perturbation_series(p0, pn, sn, p["U"])
+S.order_zero
+c0 = S.pn[0]
+
+status = 1
+while status ==1:
+    status = S.run(-1)
+
+on = perturbation_series(c0, S.pn, S.sn, p["U"])
+on = np.squeeze(on)
 
 if mpi.is_master_node():
-    with HDFArchive('out_files/' + os.path.basename(__file__)[:-3] + '.out.h5', 'w') as ar:  # A file to store the results
+    # A file to store the results
+    with HDFArchive('out_files/' + os.path.basename(__file__)[:-3] + '.out.h5', 'w') as ar:  
         ar.create_group('less')
         less = ar['less']
         less['on'] = on
         less['times'] = times
 
+if on.shape != (2, 101):
+    raise RuntimeError, 'FAILED: on shape is ' + str(on.shape) + ' but should be (2, 101)'
+
 with HDFArchive('ref_data/order1_params1.ref.h5', 'r') as ar:
     if not np.array_equal(times, ar['less']['times']):
         raise RuntimeError, 'FAILED: times are different'
 
-    if not np.allclose(on[1], ar['less']['o1'], rtol=0.1, atol=0.01):
-        print 'pn', pn
+    if not np.allclose(on[1], ar['less']['o1'], rtol=0.001, atol=0.01):
+        print 'pn', S.pn
         raise RuntimeError, 'FAILED'
 

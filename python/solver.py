@@ -94,7 +94,8 @@ def staircase_gather_on(pn_all, sn_all, nb_measures, c0, U, comm=MPI.COMM_WORLD)
 
     else:
         nb_measures_all = comm.reduce(nb_measures, op=MPI.SUM)
-        print "[Solver] Total number of measures (all orders):", nb_measures_all[1:].sum()
+        print "Total number of measures (all orders):", nb_measures_all[1:].sum()
+        print
         nb_measures_by_order = pn_all * nb_measures
         nb_measures_by_order_all = comm.reduce(nb_measures_by_order, op=MPI.SUM)
         pn_avg = nb_measures_by_order_all / nb_measures_all
@@ -235,7 +236,7 @@ def staircase_solve(g0_lesser, g0_greater, _parameters, max_time=-1):
             world.reduce(S.nb_measures)
         else:
             tot_nb_measures = world.reduce(S.nb_measures)
-            print "[Solver] Total number of measures:", tot_nb_measures
+            print "Total number of measures:", tot_nb_measures
 
         if status == 2 : break # Received signal, terminate
 
@@ -299,7 +300,7 @@ def save_staircase_solve(g0_lesser, g0_greater, _parameters, filename, kind_list
                 world.reduce(S.nb_measures)
             else:
                 tot_nb_measures = world.reduce(S.nb_measures)
-                print "[Solver] Total number of measures:", tot_nb_measures
+                print "Total number of measures:", tot_nb_measures
 
             on_result, on_error = staircase_gather_on(pn_all, sn_all, nb_measures, c0, parameters["U"], world)
             if world.rank == 0:

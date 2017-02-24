@@ -80,7 +80,8 @@ struct solve_parameters_t {
  int max_time = -1;
 
  /// Verbosity level
- int verbosity = ((triqs::mpi::communicator().rank() == 0) ? 3 : 0); // silence the slave nodes
+ int verbosity = 0; // silence triqs qmc display
+ //int verbosity = ((triqs::mpi::communicator().rank() == 0) ? 3 : 0); // silence the slave nodes
 
  /// Method
  int method = 4;

@@ -37,11 +37,15 @@ p["method"] = 4
 on, on_error = staircase_solve(g0_lesser, g0_greater, p)
 
 if mpi.is_master_node():
-    with HDFArchive('out_files/' + os.path.basename(__file__)[:-3] + '.out.h5', 'w') as ar:  # A file to store the results
+    # A file to store the results
+    with HDFArchive('out_files/' + os.path.basename(__file__)[:-3] + '.out.h5', 'w') as ar:  
         ar.create_group('less')
         less = ar['less']
         less['on'] = on
         less['times'] = times
+
+if on.shape != (2, 101):
+    raise RuntimeError, 'FAILED: on shape is ' + str(on.shape) + ' but should be (2, 101)'
 
 # order 0
 o0_less = np.array([g0_lesser(t)[0, 0] for t in times], dtype=complex)
@@ -53,6 +57,6 @@ with HDFArchive('ref_data/order1_params1.ref.h5', 'r') as ar:
     if not np.array_equal(times, ar['less']['times']):
         raise RuntimeError, 'FAILED: times are different'
 
-    if not np.allclose(on[1], ar['less']['o1'], rtol=0.1, atol=0.01):
+    if not np.allclose(on[1], ar['less']['o1'], rtol=0.001, atol=0.01):
         raise RuntimeError, 'FAILED order 1'
 

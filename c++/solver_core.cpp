@@ -2,6 +2,7 @@
 #include "./accumulator.hpp"
 #include "./moves.hpp"
 #include "./weight.hpp"
+#include <chrono>
 #include <gsl/gsl_integration.h>
 #include <triqs/det_manip.hpp>
 
@@ -101,7 +102,6 @@ void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser, gf_view<retim
 
  qmc.add_measure(Accumulator(integrand, &pn, &sn, &pn_errors, &sn_errors, &nb_measures), "Measurement");
 
-
  // order zero values
  g0_values = array<dcomplex, 1>(tau_list.size());
  for (int i = 0; i < tau_list.size(); ++i) {
@@ -124,21 +124,16 @@ int solver_core::run(const int max_time = -1) {
  if (status == ready) {
   status = running;
   solve_duration = 0;
+  if (triqs::mpi::communicator().rank() == 0) std::cout << "Warming up... ";
   run_status = qmc.run(params.n_warmup_cycles, params.length_cycle, triqs::utility::clock_callback(-1), false);
   if (run_status == 2) return finish(run_status); // Received a signal: abort
+  if (triqs::mpi::communicator().rank() == 0) std::cout << "done" << std::endl;
+  ;
  }
 
  // accumulate
+ if (triqs::mpi::communicator().rank() == 0) std::cout << "Accumulate..." << std::endl << std::endl;
  run_status = qmc.run(params.n_cycles - nb_measures, params.length_cycle, triqs::utility::clock_callback(max_time), true);
- checkpoint();
-
- if (run_status != 1) return finish(run_status);
-
- return run_status;
-}
-
-// --------------------------------
-void solver_core::checkpoint() {
 
  // Collect results
  mpi::communicator world;
@@ -154,6 +149,41 @@ void solver_core::checkpoint() {
  config_list = integrand->weight->config_list;
  config_weight = integrand->weight->config_weight;
  solve_duration = solve_duration + qmc.get_duration();
+
+ // print acceptance rates
+ if (triqs::mpi::communicator().rank() == 0) {
+  std::cout << "Duration: " << solve_duration << " seconds" << std::endl;
+  std::cout << "Progress: " << 100 * nb_measures / params.n_cycles << " %" << std::endl;
+  std::cout << "Acceptance rates of node 0:" << std::endl;
+  double total_weight = 0;
+  double total_rate = 0;
+  double move_weight;
+  for (auto const& x : qmc.get_acceptance_rates()) { // x.first = key, x.second = value
+
+   if (x.first == "insertion" or x.first == "removal")
+    move_weight = params.w_ins_rem;
+   else if (x.first == "insertion2" or x.first == "removal2")
+    move_weight = params.w_dbl;
+   else if (x.first == "shift")
+    move_weight = params.w_shift;
+   else if (x.first == "weight swap")
+    move_weight = params.w_weight_swap;
+   else if (x.first == "weight shift")
+    move_weight = params.w_weight_shift;
+   else
+    move_weight = 0;
+   total_weight += move_weight;
+   total_rate += move_weight * x.second;
+
+   std::cout << "> " << x.first << " (" << move_weight << "): " << x.second << std::endl;
+  }
+  std::cout << "> All moves: " << total_rate / total_weight << std::endl;
+  std::cout << std::endl;
+ }
+
+ if (run_status != 1) return finish(run_status);
+
+ return run_status;
 }
 
 // --------------------------------
@@ -163,7 +193,8 @@ int solver_core::finish(const int run_status) {
  if (run_status == 0) status = ready;   // finished
  if (run_status == 2) status = aborted; // Received a signal: abort
 
- if (run_status == 2 and triqs::mpi::communicator().rank() == 0) std::cout << "Run aborted" << std::endl;
+ if (run_status == 0 and triqs::mpi::communicator().rank() == 0) std::cout << "Run finished" << std::endl << std::endl;
+ if (run_status == 2 and triqs::mpi::communicator().rank() == 0) std::cout << "Run aborted" << std::endl << std::endl;
 
  return run_status;
 }
@@ -189,6 +220,7 @@ int solver_core::order_zero() {
  if (status < not_ready) TRIQS_RUNTIME_ERROR << "Run aborted";
  if (status < ready) TRIQS_RUNTIME_ERROR << "Unperturbed Green's functions have not been set!";
  if (status > ready) TRIQS_RUNTIME_ERROR << "A run was in progress, order_zero is not allowed";
+ if (triqs::mpi::communicator().rank() == 0) std::cout << "Order zero calculation... ";
  // In the order zero case, pn(0) contains c0 and sn(0, :) contains s0 so that c0*s0 = g0 the unperturbed Green's
  // function. Other elements of these arrays are 0.
  pn() = 0;
@@ -222,7 +254,6 @@ int solver_core::order_zero() {
   }
 
   gsl_integration_cquad_workspace_free(w);
-  if (triqs::mpi::communicator().rank() == 0) std::cout << "c0 = " << pn(0) << " error = " << pn_errors(0) << std::endl;
   sn(0, range()) = g0_values / pn(0);
   // TODO: sn_errors ?
   sn_array = reshape_sn(&sn);
@@ -231,6 +262,10 @@ int solver_core::order_zero() {
   pn(0) = abs(g0_values(0));
   sn(0, 0) = g0_values(0) / pn(0);
   sn_array = reshape_sn(&sn);
+ }
+ if (triqs::mpi::communicator().rank() == 0) {
+  std::cout << "done" << std::endl;
+  std::cout << "c0 = " << pn(0) << " error = " << pn_errors(0) << std::endl << std::endl;
  }
  return 0;
 }

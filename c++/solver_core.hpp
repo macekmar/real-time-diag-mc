@@ -4,12 +4,12 @@
 
 #include <triqs/gfs.hpp>
 
-//template <typename T> using view_t = typename T::view_type;
+// template <typename T> using view_t = typename T::view_type;
 using namespace triqs::gfs;
 
 // ------------ The main class of the solver -----------------------
 
-enum Status {aborted, not_ready, ready, running};
+enum Status { aborted, not_ready, ready, running };
 
 class solver_core {
 
@@ -37,19 +37,16 @@ class solver_core {
  array<double, 1> pn_errors;
  array<double, 1> sn_errors;
 
- void checkpoint();
-
  int finish(const int run_status);
 
  Measure* create_measure(const int method, const Weight* weight);
 
- array<dcomplex, 3> reshape_sn(array<dcomplex, 2> *sn_list);
+ array<dcomplex, 3> reshape_sn(array<dcomplex, 2>* sn_list);
 
  public:
-
  // FIXME change type of arguments after olivier fixes wrapper
  TRIQS_WRAP_ARG_AS_DICT // Wrap the solver parameters as a ** call in python with the clang & c++2py tool
- solver_core(solve_parameters_t const& params);
+     solver_core(solve_parameters_t const& params);
 
  void set_g0(gf_view<retime, matrix_valued> g0_lesser, gf_view<retime, matrix_valued> g0_greater);
 
