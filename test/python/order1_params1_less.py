@@ -37,8 +37,7 @@ p["method"] = 4
 S = SolverCore(**p)
 S.set_g0(g0_lesser, g0_greater)
 
-S.order_zero
-c0 = S.pn[0]
+c0, _ = S.order_zero
 
 status = 1
 while status ==1:

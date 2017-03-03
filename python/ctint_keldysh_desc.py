@@ -79,11 +79,18 @@ c.add_constructor("""(**solve_parameters_t)""",
 c.add_method("""void set_g0 (gf_view<retime,matrix_valued> g0_lesser, gf_view<retime,matrix_valued> g0_greater)""",
              doc = """ """)
 
+c.add_method("""int run (int max_time, int max_measures)""",
+             doc = """ """)
+
 c.add_method("""int run (int max_time)""",
              doc = """ """)
 
 c.add_property(name = "order_zero",
-               getter = cfunction("int order_zero ()"),
+               getter = cfunction("std::tuple<double,array<dcomplex,2>> order_zero ()"),
+               doc = """ """)
+
+c.add_property(name = "run",
+               getter = cfunction("int run ()"),
                doc = """ """)
 
 c.add_property(name = "solve_duration",
@@ -103,7 +110,7 @@ c.add_property(name = "config_weight",
                doc = """ """)
 
 c.add_property(name = "pn",
-               getter = cfunction("array<double,1> get_pn ()"),
+               getter = cfunction("array<int,1> get_pn ()"),
                doc = """ """)
 
 c.add_property(name = "sn",

@@ -44,7 +44,7 @@ def gather_histogram(solver, comm=MPI.COMM_WORLD):
 
     return list_histograms_all
 
-def gather_on(pn, sn, nb_measures, c0, U, comm=MPI.COMM_WORLD):
+def gather_on(pn, sn, c0, U, comm=MPI.COMM_WORLD):
 
     # make pn shape broadcastable with sn
     while pn.ndim < sn.ndim:
@@ -52,21 +52,19 @@ def gather_on(pn, sn, nb_measures, c0, U, comm=MPI.COMM_WORLD):
 
     # Calculate estimation
     if comm.rank != 0:
-        comm.reduce(nb_measures, op=MPI.SUM)
-        comm.reduce(pn * nb_measures, op=MPI.SUM)
-        comm.reduce(sn * pn * nb_measures, op=MPI.SUM)
+        comm.reduce(pn, op=MPI.SUM)
+        comm.reduce(sn * pn, op=MPI.SUM)
 
         on_result = comm.bcast(None)
 
     else:
-        nb_measures_all = comm.reduce(nb_measures, op=MPI.SUM)
-        print "Number of measures (all procs):", nb_measures_all
-        print
-        nb_measures_by_order = comm.reduce(pn * nb_measures, op=MPI.SUM)
-        pn_avg = nb_measures_by_order / nb_measures_all
-        sn_avg = comm.reduce(sn * pn * nb_measures, op=MPI.SUM) / nb_measures_by_order
+        pn_all = comm.reduce(pn, op=MPI.SUM)
+        sn_avg = comm.reduce(sn * pn, op=MPI.SUM) / pn_all
 
-        on_result = perturbation_series(c0, np.squeeze(pn_avg), sn_avg, U)
+        print "Number of measures (all procs):", np.sum(pn_all)
+        print
+
+        on_result = perturbation_series(c0, np.squeeze(pn_all), sn_avg, U)
 
         comm.bcast(on_result)
 
@@ -77,39 +75,32 @@ def gather_on(pn, sn, nb_measures, c0, U, comm=MPI.COMM_WORLD):
 
     return on_result, on_error
 
-def staircase_gather_on(pn_all, sn_all, nb_measures, c0, U, comm=MPI.COMM_WORLD):
-    na = np.newaxis
+def staircase_gather_on(pn, sn, c0, U, comm=MPI.COMM_WORLD):
 
-    while pn_all.ndim < sn_all.ndim:
-        pn_all = pn_all[..., na]
-    while nb_measures.ndim < sn_all.ndim:
-        nb_measures = nb_measures[..., na]
+    while pn.ndim < sn.ndim:
+        pn = pn[..., np.newaxis]
 
     # Calculate estimation
     if comm.rank != 0:
-        comm.reduce(nb_measures, op=MPI.SUM)
-        nb_measures_by_order = pn_all * nb_measures
-        comm.reduce(nb_measures_by_order, op=MPI.SUM)
-        comm.reduce(sn_all * nb_measures_by_order, op=MPI.SUM)
+        comm.reduce(pn, op=MPI.SUM)
+        comm.reduce(sn * pn, op=MPI.SUM)
 
         on_result = comm.bcast(None)
 
     else:
-        nb_measures_all = comm.reduce(nb_measures, op=MPI.SUM)
-        print "Number of measures (all procs, all orders):", nb_measures_all[1:].sum()
-        print
-        nb_measures_by_order = pn_all * nb_measures
-        nb_measures_by_order_all = comm.reduce(nb_measures_by_order, op=MPI.SUM)
-        pn_avg = nb_measures_by_order_all / nb_measures_all
-        sn_avg = comm.reduce(sn_all * nb_measures_by_order, op=MPI.SUM) / nb_measures_by_order_all
+        pn_all = comm.reduce(pn, op=MPI.SUM)
+        sn_avg = comm.reduce(sn * pn, op=MPI.SUM) / pn_all
 
-        on_result = staircase_perturbation_series(c0, np.squeeze(pn_avg), sn_avg, U)
+        print "Number of measures (all procs, all orders):", int(np.nansum(pn_all)) - 1
+        print
+
+        on_result = staircase_perturbation_series(c0, np.squeeze(pn_all), sn_avg, U)
 
         comm.bcast(on_result)
 
     # Calculate error
     # estimation using the variance of the On obtained on each process (assumes each process is equivalent)
-    on = staircase_perturbation_series(c0, np.squeeze(pn_all), sn_all, U)
+    on = staircase_perturbation_series(c0, np.squeeze(pn), sn, U)
     on_error = variance_error(on, comm)
 
     return on_result, on_error
@@ -141,11 +132,10 @@ def single_solve(g0_lesser, g0_greater, parameters, max_time=-1, histogram=False
     S = SolverCore(**parameters)
     S.set_g0(g0_lesser, g0_greater)
 
-    S.order_zero
-    c0 = S.pn[0]
+    c0, _ = S.order_zero
 
     S.run(max_time)
-    on, on_error = gather_on(S.pn, S.sn, S.nb_measures, c0, parameters['U'], world)
+    on, on_error = gather_on(S.pn, S.sn, c0, parameters['U'], world)
     output = (np.squeeze(on), np.squeeze(on_error))
     if histogram:
         list_hist = gather_histogram(S, world)
@@ -163,13 +153,12 @@ def save_single_solve(g0_lesser, g0_greater, parameters, filename, kind_list, sa
     S = SolverCore(**parameters)
     S.set_g0(g0_lesser, g0_greater)
 
-    S.order_zero
-    c0 = S.pn[0]
+    c0, _ = S.order_zero
 
     status = 1
     while status == 1:
         status = S.run(save_period) # status=0 if finished, 1 if timed up, 2 if aborted
-        on, on_error = gather_on(S.pn, S.sn, S.nb_measures, c0, parameters['U'], world)
+        on, on_error = gather_on(S.pn, S.sn, c0, parameters['U'], world)
 
         if world.rank == 0:
             save(S.solve_duration, S.nb_measures, parameters, on, on_error, filename, kind_list, world.size)
@@ -211,19 +200,14 @@ def staircase_solve(g0_lesser, g0_greater, _parameters, max_time=-1):
 
         if k == 1:
             # order zero and initializing arrays
-            S.order_zero
-            pn = S.pn
-            sn = S.sn
+            c0, s0 = S.order_zero
 
             # pn_all and sn_all are lower triangular arrays (for 2 first dims), unused values are set to NaN.
-            pn_all = np.empty((max_order+1, max_order+1)) * np.nan
-            sn_all = np.empty(pn_all.shape + sn.shape[1:], dtype=complex) * np.nan
-            nb_measures = np.zeros((max_order+1,), dtype=int)
+            pn_all = np.empty((max_order+1, max_order+1), dtype=int) * np.nan
+            sn_all = np.empty(pn_all.shape + s0.shape, dtype=complex) * np.nan
 
-            c0 = pn[0]
-            pn_all[0, 0] = 1. # needed to avoid NaNs, any value works
-            sn_all[0, 0, ...] = sn[0, ...]
-            nb_measures[0] = 1 # needed to avoid divide by zero, any value works
+            pn_all[0, 0] = 1 # needed to avoid NaNs, any non zero value works
+            sn_all[0, 0, ...] = s0
 
         status = S.run(max_time - solve_duration)
         pn = S.pn
@@ -232,18 +216,13 @@ def staircase_solve(g0_lesser, g0_greater, _parameters, max_time=-1):
 
         pn_all[k, :k+1] = pn
         sn_all[k, :k+1, ...] = sn
-        nb_measures[k] = S.nb_measures
 
-        if world.rank != 0:
-            world.reduce(S.nb_measures)
-        else:
-            tot_nb_measures = world.reduce(S.nb_measures)
-            print "Number of measures (all procs):", tot_nb_measures
+        if world.rank == 0:
             print "Duration (all orders):", solve_duration
 
         if status == 2 : break # Received signal, terminate
 
-    on_result, on_error = staircase_gather_on(pn_all, sn_all, nb_measures, c0, parameters["U"], world)
+    on_result, on_error = staircase_gather_on(pn_all, sn_all, c0, parameters["U"], world)
 
     return np.squeeze(on_result), np.squeeze(on_error)
 
@@ -274,19 +253,14 @@ def save_staircase_solve(g0_lesser, g0_greater, _parameters, filename, kind_list
 
         if k == 1:
             # order zero and initializing arrays
-            S.order_zero
-            pn = S.pn
-            sn = S.sn
+            c0, s0 = S.order_zero
 
             # pn_all and sn_all are lower triangular arrays (for 2 first dims), unused values are set to NaN.
-            pn_all = np.empty((max_order+1, max_order+1)) * np.nan
-            sn_all = np.empty(pn_all.shape + sn.shape[1:], dtype=complex) * np.nan
-            nb_measures = np.zeros((max_order+1,), dtype=int)
+            pn_all = np.empty((max_order+1, max_order+1), dtype=int) * np.nan
+            sn_all = np.empty(pn_all.shape + s0.shape, dtype=complex) * np.nan
 
-            c0 = pn[0]
-            pn_all[0, 0] = 1. # needed to avoid NaNs, any value works
-            sn_all[0, 0, ...] = sn[0, ...]
-            nb_measures[0] = 1 # needed to avoid divide by zero, any value works
+            pn_all[0, 0] = 1 # needed to avoid NaNs, any non zero value works
+            sn_all[0, 0, ...] = s0
 
         status = 1
         while status == 1:
@@ -296,15 +270,10 @@ def save_staircase_solve(g0_lesser, g0_greater, _parameters, filename, kind_list
 
             pn_all[k, :k+1] = pn
             sn_all[k, :k+1, ...] = sn
-            nb_measures[k] = S.nb_measures
 
-            on_result, on_error = staircase_gather_on(pn_all, sn_all, nb_measures, c0, parameters["U"], world)
+            on_result, on_error = staircase_gather_on(pn_all, sn_all, c0, parameters["U"], world)
 
-            if world.rank != 0:
-                world.reduce(S.nb_measures)
-            else:
-                tot_nb_measures = world.reduce(S.nb_measures)
-                print "Number of measures (all procs):", tot_nb_measures
+            if world.rank == 0:
                 print "Duration (all orders):", solve_duration + S.solve_duration
                 save(solve_duration + S.solve_duration, float('Nan'), parameters, on_result, on_error, filename, kind_list, world.size)
 

@@ -32,7 +32,7 @@ class solver_core {
  std::vector<std::vector<double>> config_list;
  std::vector<int> config_weight;
  Status status = not_ready;
- array<double, 1> pn;
+ array<int, 1> pn;
  array<dcomplex, 2> sn;
  array<dcomplex, 3> sn_array;
  array<double, 1> pn_errors;
@@ -43,6 +43,7 @@ class solver_core {
  Measure* create_measure(const int method, const Weight* weight);
 
  array<dcomplex, 3> reshape_sn(array<dcomplex, 2>* sn_list);
+ array<dcomplex, 2> reshape_sn(array<dcomplex, 1>* sn_list);
 
  public:
  // FIXME change type of arguments after olivier fixes wrapper
@@ -51,16 +52,18 @@ class solver_core {
 
  void set_g0(gf_view<retime, matrix_valued> g0_lesser, gf_view<retime, matrix_valued> g0_greater);
 
- int order_zero();
+ std::tuple<double, array<dcomplex, 2>> order_zero();
 
- int run(const int max_time);
+ int run(const int max_time, const int max_measures);
+ int run(const int max_time) {return run(max_time, -1);};
+ int run() {return run(-1, -1);};
 
  // getters
  double get_solve_duration() const { return solve_duration; }
  int get_nb_measures() const { return nb_measures; }
  std::vector<std::vector<double>> get_config_list() const { return config_list; }
  std::vector<int> get_config_weight() const { return config_weight; }
- array<double, 1> get_pn() const { return pn; }
+ array<int, 1> get_pn() const { return pn; }
  array<dcomplex, 3> get_sn() const { return sn_array; }
  array<double, 1> get_pn_errors() const { return pn_errors; }
  array<double, 1> get_sn_errors() const { return sn_errors; }

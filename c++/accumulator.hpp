@@ -16,7 +16,7 @@ class Accumulator {
 
  private:
  std::shared_ptr<Integrand> integrand;
- array<double, 1>& pn;
+ array<int, 1>& pn;
  array<dcomplex, 2>& sn;
  array<double, 1>& pn_errors;
  array<double, 1>& sn_errors;
@@ -27,7 +27,7 @@ class Accumulator {
 
  public:
  // ----------
- Accumulator(std::shared_ptr<Integrand> integrand, array<double, 1>* pn, array<dcomplex, 2>* sn, array<double, 1>* pn_errors,
+ Accumulator(std::shared_ptr<Integrand> integrand, array<int, 1>* pn, array<dcomplex, 2>* sn, array<double, 1>* pn_errors,
                    array<double, 1>* sn_errors, int* nb_measures)
     : integrand(integrand),
       pn(*pn),
@@ -62,7 +62,7 @@ class Accumulator {
 
   // Computing the average and error values
   for (int k = 0; k < size_n; k++) {
-   pn(k) = data_histogram_pn(k) / nb_measures; // Average
+   pn(k) = data_histogram_pn(k);
    sn(k, range()) = sn(k, range()) / data_histogram_pn(k);
 
    // FIXME : explicit formula for the error bar jacknife of a series of 0 and 1

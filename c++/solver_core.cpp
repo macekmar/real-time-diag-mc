@@ -64,7 +64,7 @@ solver_core::solver_core(solve_parameters_t const& params)
  }
 
  // results arrays
- pn = array<double, 1>(nb_orders);                    // measurement of p_n
+ pn = array<int, 1>(nb_orders);                    // measurement of p_n
  sn = array<dcomplex, 2>(nb_orders, tau_list.size()); // measurement of s_n
  pn_errors = array<double, 1>(nb_orders);
  sn_errors = array<double, 1>(nb_orders);
@@ -116,11 +116,11 @@ void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser, gf_view<retim
 };
 
 // --------------------------------
-int solver_core::run(const int max_time = -1) {
+int solver_core::run(const int max_time = -1, const int max_measures = -1) {
  if (status < not_ready) TRIQS_RUNTIME_ERROR << "Run aborted";
  if (status < ready) TRIQS_RUNTIME_ERROR << "Unperturbed Green's functions have not been set !";
  // order zero case
- if (params.max_perturbation_order == 0) return order_zero();
+ if (params.max_perturbation_order == 0) TRIQS_RUNTIME_ERROR << "Order zero cannot run, use order_zero method instead";
 
  int run_status;
 
@@ -132,12 +132,13 @@ int solver_core::run(const int max_time = -1) {
   run_status = qmc.run(params.n_warmup_cycles, params.length_cycle, triqs::utility::clock_callback(-1), false);
   if (run_status == 2) return finish(run_status); // Received a signal: abort
   if (triqs::mpi::communicator().rank() == 0) std::cout << "done" << std::endl;
-  ;
  }
 
  // accumulate
+ int measures_to_do = params.n_cycles - nb_measures;
+ if (max_measures > 0) measures_to_do = std::min(measures_to_do, max_measures);
  if (triqs::mpi::communicator().rank() == 0) std::cout << "Accumulate..." << std::endl << std::endl;
- run_status = qmc.run(params.n_cycles - nb_measures, params.length_cycle, triqs::utility::clock_callback(max_time), true);
+ run_status = qmc.run(measures_to_do, params.length_cycle, triqs::utility::clock_callback(max_time), true);
 
  // Collect results
  mpi::communicator world;
@@ -222,17 +223,14 @@ double abs_g0_keldysh_t_inputs(double t, void* _params) {
  return std::abs(params->green_function(tau, params->taup));
 };
 
-int solver_core::order_zero() {
+std::tuple<double, array<dcomplex, 2>> solver_core::order_zero() {
  if (status < not_ready) TRIQS_RUNTIME_ERROR << "Run aborted";
  if (status < ready) TRIQS_RUNTIME_ERROR << "Unperturbed Green's functions have not been set!";
- if (status > ready) TRIQS_RUNTIME_ERROR << "A run was in progress, order_zero is not allowed";
  if (triqs::mpi::communicator().rank() == 0) std::cout << "Order zero calculation... ";
- // In the order zero case, pn(0) contains c0 and sn(0, :) contains s0 so that c0*s0 = g0 the unperturbed Green's
- // function. Other elements of these arrays are 0.
- pn() = 0;
- sn() = 0;
- pn_errors() = 0;
- sn_errors() = 0;
+ double c0 = 0;
+ double c0_error = 0;
+ array<dcomplex, 1> s0_list(tau_list.size());
+ array<dcomplex, 2> s0;
 
  if (params.method == 4) {
   // Uses GSL integration (https://www.gnu.org/software/gsl/manual/html_node/Numerical-integration-examples.html)
@@ -255,25 +253,22 @@ int solver_core::order_zero() {
                          &value,                    // result
                          &value_error,              // output absolute error
                          &nb_evals);                // number of function evaluation
-   pn(0) += value;
-   pn_errors(0) += value_error;
+   c0 += value;
+   c0_error += value_error;
   }
 
   gsl_integration_cquad_workspace_free(w);
-  sn(0, range()) = g0_values / pn(0);
-  // TODO: sn_errors ?
-  sn_array = reshape_sn(&sn);
 
  } else { // singlepoint methods only
-  pn(0) = abs(g0_values(0));
-  sn(0, 0) = g0_values(0) / pn(0);
-  sn_array = reshape_sn(&sn);
+  c0 = abs(g0_values(0));
  }
+  s0_list() = g0_values / c0;
+  s0 = reshape_sn(&s0_list);
  if (triqs::mpi::communicator().rank() == 0) {
   std::cout << "done" << std::endl;
-  std::cout << "c0 = " << pn(0) << " error = " << pn_errors(0) << std::endl << std::endl;
+  std::cout << "c0 = " << c0 << " error = " << c0_error << std::endl << std::endl;
  }
- return 0;
+ return std::tuple<double, array<dcomplex, 2>>{c0, s0};
 }
 
 // --------------------------------
@@ -314,6 +309,20 @@ array<dcomplex, 3> solver_core::reshape_sn(array<dcomplex, 2>* sn_list) {
  for (int i = 0; i < shape_tau_array[0]; ++i) {
   for (int j = 0; j < shape_tau_array[1]; ++j) {
    sn_array(range(), i, j) = (*sn_list)(range(), flatten_idx);
+   flatten_idx++;
+  }
+ }
+ return sn_array;
+};
+
+// -------
+array<dcomplex, 2> solver_core::reshape_sn(array<dcomplex, 1>* sn_list) {
+ if (first_dim(*sn_list) != tau_list.size()) TRIQS_RUNTIME_ERROR << "The sn list has not the good size to be reshaped.";
+ array<dcomplex, 2> sn_array(shape_tau_array[0], shape_tau_array[1]);
+ int flatten_idx = 0;
+ for (int i = 0; i < shape_tau_array[0]; ++i) {
+  for (int j = 0; j < shape_tau_array[1]; ++j) {
+   sn_array(i, j) = (*sn_list)(flatten_idx);
    flatten_idx++;
   }
  }
