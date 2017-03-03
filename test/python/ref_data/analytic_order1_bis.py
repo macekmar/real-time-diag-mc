@@ -114,7 +114,7 @@ if __name__ == '__main__':
     # mpmath.mp.dps = 5
 
     #-----------------
-    times = np.linspace(-40.0, 0.0, 101)
+    times = np.linspace(-40.0, 0.0, 1000)
     g0_lesser, g0_greater = make_g0_semi_circular(beta=200,
                                                   Gamma=0.5,
                                                   epsilon_d=0.5,
@@ -127,18 +127,18 @@ if __name__ == '__main__':
     interaction_start = 40.0
     o1_less, o1_grea = analytic_order1(g0_lesser, g0_greater, interaction_start, times)
 
-    with HDFArchive("order1_params1_bis.ref.h5", 'w') as ar:
+    with HDFArchive("order1_params1_bis_1k.ref.h5", 'w') as ar:
         ar.create_group("less")
         less = ar["less"]
         less["times"] = times
         less["interaction_start"] = interaction_start
-        less["o1_less"] = o1_less[0]
-        less["o1_less_error"] = o1_less[1]
+        less["o1"] = o1_less[0]
+        less["o1_error"] = o1_less[1]
 
         ar.create_group("grea")
         grea = ar["grea"]
         grea["times"] = times
         grea["interaction_start"] = interaction_start
-        grea["o1_grea"] = o1_grea[0]
-        grea["o1_grea_error"] = o1_grea[1]
+        grea["o1"] = o1_grea[0]
+        grea["o1_error"] = o1_grea[1]
 

@@ -33,6 +33,9 @@ endif(${GIT_RESULT} EQUAL 0)
 
 include_directories(c++)
 
+# add cmake modules path
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules/")
+
 # Compile C++ code
 add_subdirectory(c++)
 

@@ -41,6 +41,10 @@ struct Integrand {
 
  Integrand(){};
  Integrand(Weight* weight, Measure* measure) : weight(weight), measure(measure){};
+ ~Integrand() {
+  delete weight;
+  delete measure;
+ };
 };
 
 // ----------------

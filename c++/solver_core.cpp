@@ -18,6 +18,10 @@ solver_core::solver_core(solve_parameters_t const& params)
      params(params),
      nb_measures(0) {
 
+#ifdef REGISTER_CONFIG
+ if (triqs::mpi::communicator().rank() == 0) std::cout << "/!\ Configuration Registration ON" << std::endl << std::endl;
+#endif
+
  if (params.interaction_start < 0) TRIQS_RUNTIME_ERROR << "interaction_time must be positive";
  int nb_orders = params.max_perturbation_order - params.min_perturbation_order + 1;
  if (nb_orders < 2) TRIQS_RUNTIME_ERROR << "The range of perturbation orders must cover at least 2 orders";
@@ -80,7 +84,7 @@ void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser, gf_view<retim
  // choose measure and weight
  Weight* weight = new two_det_weight(green_function, tau_list[0], taup, op_to_measure_spin);
  Measure* measure = create_measure(params.method, weight);
- integrand = new Integrand(weight, measure);
+ integrand = std::make_shared<Integrand>(weight, measure);
 
  // Register moves and measurements
  // Can add single moves only, or double moves only (for the case with ph symmetry), or both simultaneously
@@ -172,8 +176,10 @@ int solver_core::run(const int max_time = -1) {
     move_weight = params.w_weight_shift;
    else
     move_weight = 0;
-   total_weight += move_weight;
-   total_rate += move_weight * x.second;
+   if (move_weight > 0) {
+    total_weight += move_weight;
+    total_rate += move_weight * x.second;
+   }
 
    std::cout << "> " << x.first << " (" << move_weight << "): " << x.second << std::endl;
   }

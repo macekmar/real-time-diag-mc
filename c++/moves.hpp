@@ -7,7 +7,7 @@
 namespace moves {
 
 struct common {
- Integrand *integrand;
+ std::shared_ptr<Integrand> integrand;
  const solve_parameters_t *params;
  triqs::mc_tools::random_generator &rng;
  random_x_generator rxg;
@@ -16,7 +16,7 @@ struct common {
  bool quick_exit = false;
  dcomplex new_weight = 0;
 
- common(Integrand *integrand, const solve_parameters_t *params, const double t_max,
+ common(std::shared_ptr<Integrand> integrand, const solve_parameters_t *params, const double t_max,
         triqs::mc_tools::random_generator &rng)
     : integrand(integrand), params(params), rng(rng) {
   rxg = random_x_generator();

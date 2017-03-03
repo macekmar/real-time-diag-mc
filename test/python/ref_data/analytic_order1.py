@@ -17,7 +17,7 @@ if __name__ == '__main__':
     from pytriqs.archive import *
 
     #-----------------
-    times = np.linspace(-40.0, 0.0, 101)
+    times = np.linspace(-40.0, 0.0, 1000)
     o1_lesser, o1_greater = analytic_order1(lambda epsilon : make_g0_semi_circular(beta=200,
                                                                                   Gamma=0.5,
                                                                                   tmax_gf0=100.0,
@@ -28,7 +28,7 @@ if __name__ == '__main__':
                                             0.5,
                                             times)
 
-    with HDFArchive("order1_params1.ref.h5", 'w') as ar:
+    with HDFArchive("order1_params1_1k.ref.h5", 'w') as ar:
         ar.create_group("less")
         less = ar["less"]
         less["times"] = times

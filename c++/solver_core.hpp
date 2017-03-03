@@ -1,6 +1,7 @@
 #include "./measure.hpp"
 #include "./qmc_data.hpp"
 #include <triqs/mc_tools.hpp>
+#include <memory>
 
 #include <triqs/gfs.hpp>
 
@@ -14,7 +15,7 @@ enum Status { aborted, not_ready, ready, running };
 class solver_core {
 
  g0_keldysh_t green_function;
- Integrand* integrand = nullptr;
+ std::shared_ptr<Integrand> integrand = nullptr;
  solve_parameters_t params;
  triqs::mc_tools::mc_generic<dcomplex> qmc;
  keldysh_contour_pt taup;

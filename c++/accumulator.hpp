@@ -15,7 +15,7 @@ namespace mpi = triqs::mpi;
 class Accumulator {
 
  private:
- Integrand* integrand;
+ std::shared_ptr<Integrand> integrand;
  array<double, 1>& pn;
  array<dcomplex, 2>& sn;
  array<double, 1>& pn_errors;
@@ -27,7 +27,7 @@ class Accumulator {
 
  public:
  // ----------
- Accumulator(Integrand* integrand, array<double, 1>* pn, array<dcomplex, 2>* sn, array<double, 1>* pn_errors,
+ Accumulator(std::shared_ptr<Integrand> integrand, array<double, 1>* pn, array<dcomplex, 2>* sn, array<double, 1>* pn_errors,
                    array<double, 1>* sn_errors, int* nb_measures)
     : integrand(integrand),
       pn(*pn),

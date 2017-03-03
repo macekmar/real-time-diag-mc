@@ -60,6 +60,8 @@ def gather_on(pn, sn, nb_measures, c0, U, comm=MPI.COMM_WORLD):
 
     else:
         nb_measures_all = comm.reduce(nb_measures, op=MPI.SUM)
+        print "Number of measures (all procs):", nb_measures_all
+        print
         nb_measures_by_order = comm.reduce(pn * nb_measures, op=MPI.SUM)
         pn_avg = nb_measures_by_order / nb_measures_all
         sn_avg = comm.reduce(sn * pn * nb_measures, op=MPI.SUM) / nb_measures_by_order
@@ -94,7 +96,7 @@ def staircase_gather_on(pn_all, sn_all, nb_measures, c0, U, comm=MPI.COMM_WORLD)
 
     else:
         nb_measures_all = comm.reduce(nb_measures, op=MPI.SUM)
-        print "Total number of measures (all orders):", nb_measures_all[1:].sum()
+        print "Number of measures (all procs, all orders):", nb_measures_all[1:].sum()
         print
         nb_measures_by_order = pn_all * nb_measures
         nb_measures_by_order_all = comm.reduce(nb_measures_by_order, op=MPI.SUM)
@@ -112,13 +114,13 @@ def staircase_gather_on(pn_all, sn_all, nb_measures, c0, U, comm=MPI.COMM_WORLD)
 
     return on_result, on_error
 
-def save(solver, parameters, on, on_error, filename, kind_list, nb_proc):
+def save(duration, nb_measures, parameters, on, on_error, filename, kind_list, nb_proc):
     # before using save, check kind_list has the good shape
     with HDFArchive(filename, 'w') as ar:
         ar['nb_proc'] = nb_proc
         ar['interaction_start'] = parameters['interaction_start']
-        ar['run_time'] = solver.solve_duration
-        ar['nb_measures'] = solver.nb_measures
+        ar['run_time'] = duration
+        ar['nb_measures'] = nb_measures
 
         for i, kind in enumerate(kind_list):
             ar.create_group(kind)
@@ -170,7 +172,7 @@ def save_single_solve(g0_lesser, g0_greater, parameters, filename, kind_list, sa
         on, on_error = gather_on(S.pn, S.sn, S.nb_measures, c0, parameters['U'], world)
 
         if world.rank == 0:
-            save(S, parameters, on, on_error, filename, kind_list, world.size)
+            save(S.solve_duration, S.nb_measures, parameters, on, on_error, filename, kind_list, world.size)
 
         output = (np.squeeze(on), np.squeeze(on_error))
 
@@ -236,7 +238,8 @@ def staircase_solve(g0_lesser, g0_greater, _parameters, max_time=-1):
             world.reduce(S.nb_measures)
         else:
             tot_nb_measures = world.reduce(S.nb_measures)
-            print "Total number of measures:", tot_nb_measures
+            print "Number of measures (all procs):", tot_nb_measures
+            print "Duration (all orders):", solve_duration
 
         if status == 2 : break # Received signal, terminate
 
@@ -290,22 +293,22 @@ def save_staircase_solve(g0_lesser, g0_greater, _parameters, filename, kind_list
             status = S.run(save_period)
             pn = S.pn
             sn = S.sn
-            solve_duration += S.solve_duration
 
             pn_all[k, :k+1] = pn
             sn_all[k, :k+1, ...] = sn
             nb_measures[k] = S.nb_measures
 
+            on_result, on_error = staircase_gather_on(pn_all, sn_all, nb_measures, c0, parameters["U"], world)
+
             if world.rank != 0:
                 world.reduce(S.nb_measures)
             else:
                 tot_nb_measures = world.reduce(S.nb_measures)
-                print "Total number of measures:", tot_nb_measures
+                print "Number of measures (all procs):", tot_nb_measures
+                print "Duration (all orders):", solve_duration + S.solve_duration
+                save(solve_duration + S.solve_duration, float('Nan'), parameters, on_result, on_error, filename, kind_list, world.size)
 
-            on_result, on_error = staircase_gather_on(pn_all, sn_all, nb_measures, c0, parameters["U"], world)
-            if world.rank == 0:
-                save(S, parameters, on_result, on_error, filename, kind_list, world.size)
-
+        solve_duration += S.solve_duration
         if status == 2: break # Received signal, terminate
 
     return np.squeeze(on_result), np.squeeze(on_error)
