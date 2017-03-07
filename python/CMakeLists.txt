@@ -12,6 +12,11 @@ triqs_python_extension_and_install(g0_semi_circ)
 include_directories(${TRIQS_INCLUDE_ALL} ${CMAKE_CURRENT_SOURCE_DIR})
 triqs_set_rpath_for_target(g0_semi_circ)
 
+# Build the module g0_flat_band
+triqs_python_extension_and_install(g0_flat_band)
+include_directories(${TRIQS_INCLUDE_ALL} ${CMAKE_CURRENT_SOURCE_DIR})
+triqs_set_rpath_for_target(g0_flat_band)
+
 # add version file
 configure_file(version.py.in version.py)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/version.py DESTINATION ${TRIQS_PYTHON_LIB_DEST_ROOT}/${CMAKE_PROJECT_NAME})

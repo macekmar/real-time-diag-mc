@@ -28,7 +28,7 @@ class Accumulator {
  public:
  // ----------
  Accumulator(std::shared_ptr<Integrand> integrand, array<int, 1>* pn, array<dcomplex, 2>* sn, array<double, 1>* pn_errors,
-                   array<double, 1>* sn_errors, int* nb_measures)
+             array<double, 1>* sn_errors, int* nb_measures)
     : integrand(integrand),
       pn(*pn),
       sn(*sn),
@@ -47,7 +47,7 @@ class Accumulator {
   integrand->measure->evaluate();
 
   histogram_pn << integrand->perturbation_order;
-  sn_node(integrand->perturbation_order, range()) += integrand->measure->get_value() / std::abs(integrand->weight->value);
+  //sn_node(integrand->perturbation_order, range()) += integrand->measure->get_value() / std::abs(integrand->weight->value);
  }
 
  // ----------
@@ -66,8 +66,9 @@ class Accumulator {
    sn(k, range()) = sn(k, range()) / data_histogram_pn(k);
 
    // FIXME : explicit formula for the error bar jacknife of a series of 0 and 1
-   //pn_errors(k) =
-   //    (1 / double(pow(nb_measures, 2))) * sqrt((nb_measures - 1) * data_histogram_pn(k) * (nb_measures - data_histogram_pn(k)));
+   // pn_errors(k) =
+   //    (1 / double(pow(nb_measures, 2))) * sqrt((nb_measures - 1) * data_histogram_pn(k) * (nb_measures -
+   //    data_histogram_pn(k)));
 
    // FIXME : explicit formula as well for the error bar of the sn using a jacknife
    // sn_errors(k) = (2 / double(pow(data_histogram_pn(k), 2))) *
@@ -77,4 +78,3 @@ class Accumulator {
   }
  }
 };
-

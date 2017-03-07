@@ -72,6 +72,7 @@ solver_core::solver_core(solve_parameters_t const& params)
  sn() = 0;
  pn_errors() = 0;
  sn_errors() = 0;
+ sn_array = reshape_sn(&sn);
 };
 
 // --------------------------------
@@ -128,7 +129,7 @@ int solver_core::run(const int max_time = -1, const int max_measures = -1) {
  if (status == ready) {
   status = running;
   solve_duration = 0;
-  if (triqs::mpi::communicator().rank() == 0) std::cout << "Warming up... ";
+  if (triqs::mpi::communicator().rank() == 0) std::cout << "Warming up... " << std::flush;
   run_status = qmc.run(params.n_warmup_cycles, params.length_cycle, triqs::utility::clock_callback(-1), false);
   if (run_status == 2) return finish(run_status); // Received a signal: abort
   if (triqs::mpi::communicator().rank() == 0) std::cout << "done" << std::endl;

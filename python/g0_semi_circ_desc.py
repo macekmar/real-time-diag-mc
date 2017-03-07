@@ -14,8 +14,10 @@ module.add_include("g0_semi_circ.hpp")
 # Add here anything to add in the C++ code at the start, e.g. namespace using
 module.add_preamble("""
 #include <triqs/python_tools/converters/pair.hpp>
+using namespace triqs::gfs;
 """)
+module.add_function ("std::pair<gf_view<refreq>,gf_view<refreq>> make_g0_semi_circular_freq (double beta, double Gamma, double tmax_gf0, int Nt_gf0, double epsilon_d, double muL, double muR)", doc = """""")
+
 module.add_function ("std::pair<gf_view<retime>,gf_view<retime>> make_g0_semi_circular (double beta, double Gamma, double tmax_gf0, int Nt_gf0, double epsilon_d, double muL, double muR)", doc = """""")
 
 module.generate_code()
-

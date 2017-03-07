@@ -24,9 +24,10 @@ DOC
 
 """
 from ctint_keldysh import SolverCore
-from g0_semi_circ import make_g0_semi_circular
+from g0_semi_circ import make_g0_semi_circular, make_g0_semi_circular_freq
+from g0_flat_band import make_g0_flat_band
 from perturbation_series import perturbation_series, staircase_perturbation_series
 from solver import single_solve, staircase_solve, save_single_solve, save_staircase_solve
 import debugging_utilities
 
-__all__ = ['SolverCore','make_g0_semi_circular', 'perturbation_series', 'staircase_perturbation_series', 'single_solve', 'staircase_solve', 'save_single_solve', 'save_staircase_solve', 'debugging_utilities']
+__all__ = ['SolverCore','make_g0_semi_circular', 'make_g0_semi_circular_freq', 'make_g0_flat_band', 'perturbation_series', 'staircase_perturbation_series', 'single_solve', 'staircase_solve', 'save_single_solve', 'save_staircase_solve', 'debugging_utilities']

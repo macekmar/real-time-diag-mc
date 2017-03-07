@@ -4,17 +4,17 @@
 using namespace triqs::gfs;
 
 // The flat band (Werner)
-std::pair<gf_latt_time_t, gf_latt_time_t> make_g0_flat_band(double beta, double Gamma, double tmax_gf0, long Nt_gf0,
-                                                            double epsilon_d, double muL, double muR) {
+std::pair<gf_view<retime>, gf_view<retime>> make_g0_flat_band(double beta, double Gamma, double tmax_gf0, int Nt_gf0,
+                                                              double epsilon_d, double muL, double muR) {
  // Prepare the non interacting GF's used to calculate the occupation or the current :
  // G0_dd_w on the dot
  // G0_dc_w between the dot and the left lead
 
  // Construction of the empty GF's, with the correct number of points
- g0_greater_t = gf<retime>{{-tmax_gf0, tmax_gf0, 2 * Nt_gf0 - 1}, {2, 2}};
- g0_greater_w = make_gf_from_fourier(g0_greater_t);
- g0_lesser_t = g0_greater_t;
- g0_lesser_w = g0_greater_w;
+ auto g0_greater_t = gf<retime>{{-tmax_gf0, tmax_gf0, 2 * Nt_gf0 - 1}, {2, 2}};
+ auto g0_greater_w = make_gf_from_fourier(g0_greater_t);
+ auto g0_lesser_t = g0_greater_t;
+ auto g0_lesser_w = g0_greater_w;
 
  // Fermi function
  auto nf = [&](double omega) {
@@ -39,7 +39,7 @@ std::pair<gf_latt_time_t, gf_latt_time_t> make_g0_flat_band(double beta, double 
   return array<dcomplex, 2>{{K + R + A, K - R + A}, {K + R - A, K - R - A}};
  };
 
- for (auto w : g0_dd_w.mesh()) {
+ for (auto w : g0_greater_w.mesh()) {
   auto g0_dd = G0_dd_w(w);
   g0_lesser_w[w](0, 0) = g0_dd(0, 1);
   g0_greater_w[w](0, 0) = g0_dd(1, 0);

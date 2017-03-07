@@ -52,8 +52,8 @@ dcomplex insert2::attempt() {
  if (quick_exit) return 0;
 
  // insert the new lines and cols.
- auto pt1 = get_random_point();
- auto pt2 = get_random_point();
+ pt1 = get_random_point();
+ pt2 = get_random_point();
  integrand->weight->insert2(k, k + 1, pt1, pt2);
 
  new_weight = integrand->weight->evaluate();

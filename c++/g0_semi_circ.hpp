@@ -5,7 +5,7 @@
 using namespace triqs::gfs;
 
 // Semi-circular band (Xavier)
-std::pair<gf_view<retime>, gf_view<retime>> make_g0_semi_circular(double beta, double Gamma, double tmax_gf0, int Nt_gf0,
+std::pair<gf_view<refreq>, gf_view<refreq>> make_g0_semi_circular_freq(double beta, double Gamma, double tmax_gf0, int Nt_gf0,
                                                                   double epsilon_d, double muL, double muR) {
 
  // Construction of the empty GF's, with the correct number of points
@@ -69,10 +69,17 @@ std::pair<gf_view<retime>, gf_view<retime>> make_g0_semi_circular(double beta, d
  }
 
  // No singularity information needed.
+ return {g0_lesser_w, g0_greater_w};
+}
+
+std::pair<gf_view<retime>, gf_view<retime>> make_g0_semi_circular(double beta, double Gamma, double tmax_gf0, int Nt_gf0,
+                                                                  double epsilon_d, double muL, double muR) {
+
+ auto g0_w = make_g0_semi_circular_freq(beta, Gamma, tmax_gf0, Nt_gf0, epsilon_d, muL, muR);
 
  // The non interacting GF in time, obtained from the exact expression in frequency
- g0_lesser_t = make_gf_from_inverse_fourier(g0_lesser_w);
- g0_greater_t = make_gf_from_inverse_fourier(g0_greater_w);
+ auto g0_lesser_t = make_gf_from_inverse_fourier(g0_w.first);
+ auto g0_greater_t = make_gf_from_inverse_fourier(g0_w.second);
 
  return {g0_lesser_t, g0_greater_t};
 }
