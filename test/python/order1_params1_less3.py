@@ -45,8 +45,8 @@ if mpi.is_master_node():
         less['on'] = on
         less['times'] = times
 
-if on.shape != (2, 101):
-    raise RuntimeError, 'FAILED: on shape is ' + str(on.shape) + ' but should be (2, 101)'
+if on.shape != (3, 101):
+    raise RuntimeError, 'FAILED: on shape is ' + str(on.shape) + ' but should be (3, 101)'
 
 # order 0
 o0_less = np.array([g0_lesser(t)[0, 0] for t in times], dtype=complex)

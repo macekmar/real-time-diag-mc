@@ -84,8 +84,6 @@ void twodet_cofact_measure::evaluate() {
   alpha_tmp = taup;
   matrix_0->roll_matrix(det_manip<g0_keldysh_t>::RollDirection::Left);
 
-  try {
-
   for (int p = 0; p < n; ++p) {
    for (int k_index : {1, 0}) {
     if (k_index == 1) alpha_p_right = matrix_0->get_y((p - 1 + n) % n);
@@ -113,19 +111,6 @@ void twodet_cofact_measure::evaluate() {
   }
   matrix_0->change_col(n - 1, alpha_tmp);
 
-  }
-  catch (int param) {
-   std::cout << "Error in measure evaluate: " << param << std::endl;
-   value() = 0;
-  }
-  catch (std::exception& e) {
-   std::cout << "Error in measure evaluate: " << e.what() << std::endl;
-   value() = 0;
-  }
-  catch (...) {
-   std::cout << "Unknown error in measure evaluate" << std::endl;
-   value() = 0;
-  }
 
  }
 }

@@ -2,9 +2,11 @@ import numpy as np
 
 class G0Keldysh :
 
-    def __init__(self, g0_lesser, g0_greater):
+    def __init__(self, g0_lesser, g0_greater, alpha, tmax):
         self.g0_lesser = g0_lesser
         self.g0_greater = g0_greater
+        self.alpha = alpha
+        self.tmax = tmax
 
     def __call__(self, tau1, tau2):
 
@@ -15,7 +17,10 @@ class G0Keldysh :
             return 0.0
         
         if u1 == u2 and a1 == a2:
-            return self.g0_lesser(u1 - u2)[0, 0]
+            if u1 == self.tmax:
+                return self.g0_lesser(u1 - u2)[0, 0]
+            else:
+                return self.g0_lesser(u1 - u2)[0, 0] - 1j * self.alpha
         
         if a1 == a2:
             is_greater = (a1 != (u1 > u2))

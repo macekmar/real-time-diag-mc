@@ -23,7 +23,7 @@ def gather_histogram(solver, comm=MPI.COMM_WORLD):
     weight_config = solver.config_weight
     list_config = map(lambda x, y : [x] + list(y), weight_config, list_config)
 
-    # Sort out the configurations if histogram is True
+    # Sort out the configurations
     list_config.sort(key=len)
     list_histograms = []
     for k, g in itertools.groupby(list_config, len):
@@ -210,12 +210,10 @@ def staircase_solve(g0_lesser, g0_greater, _parameters, max_time=-1):
             sn_all[0, 0, ...] = s0
 
         status = S.run(max_time - solve_duration)
-        pn = S.pn
-        sn = S.sn
         solve_duration += S.solve_duration
 
-        pn_all[k, :k+1] = pn
-        sn_all[k, :k+1, ...] = sn
+        pn_all[k, :k+1] = S.pn
+        sn_all[k, :k+1, ...] = S.sn
 
         if world.rank == 0:
             print "Duration (all orders):", solve_duration
@@ -265,13 +263,11 @@ def save_staircase_solve(g0_lesser, g0_greater, _parameters, filename, kind_list
         status = 1
         while status == 1:
             status = S.run(save_period)
-            pn = S.pn
-            sn = S.sn
 
-            pn_all[k, :k+1] = pn
-            sn_all[k, :k+1, ...] = sn
+            pn_all[k, :k+1] = S.pn
+            sn_all[k, :k+1, ...] = S.sn
 
-            on_result, on_error = staircase_gather_on(pn_all, sn_all, c0, parameters["U"], world)
+            on_result, on_error = staircase_gather_on(pn_all[:k+1, :k+1], sn_all[:k+1, :k+1, ...], c0, parameters["U"], world)
 
             if world.rank == 0:
                 print "Duration (all orders):", solve_duration + S.solve_duration

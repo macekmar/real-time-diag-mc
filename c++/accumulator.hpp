@@ -47,7 +47,8 @@ class Accumulator {
   integrand->measure->evaluate();
 
   histogram_pn << integrand->perturbation_order;
-  //sn_node(integrand->perturbation_order, range()) += integrand->measure->get_value() / std::abs(integrand->weight->value);
+  // FIXME: first dim of sn_node is out of range if min_perturbation_order is not zero !
+  sn_node(integrand->perturbation_order, range()) += integrand->measure->get_value() / std::abs(integrand->weight->value);
  }
 
  // ----------
@@ -63,7 +64,8 @@ class Accumulator {
   // Computing the average and error values
   for (int k = 0; k < size_n; k++) {
    pn(k) = data_histogram_pn(k);
-   sn(k, range()) = sn(k, range()) / data_histogram_pn(k);
+   if (pn(k) == 0) pn(k) = 1; // Avoids divide by zero, sn(k) should be zero in this case
+   sn(k, range()) = sn(k, range()) / pn(k);
 
    // FIXME : explicit formula for the error bar jacknife of a series of 0 and 1
    // pn_errors(k) =
