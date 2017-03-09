@@ -11,7 +11,7 @@ AlwaysBreakTemplateDeclarations: false
 BinPackParameters: true 
 BreakBeforeBinaryOperators: false
 BreakBeforeBraces: Attach
-ColumnLimit: 130
+ColumnLimit: 110
 ConstructorInitializerAllOnOneLineOrOnePerLine: true
 ConstructorInitializerIndentWidth: 3
 Cpp11BracedListStyle: true

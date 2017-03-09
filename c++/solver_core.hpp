@@ -1,7 +1,7 @@
 #include "./measure.hpp"
 #include "./qmc_data.hpp"
+#include <assert.h>
 #include <triqs/mc_tools.hpp>
-#include <memory>
 
 #include <triqs/gfs.hpp>
 
@@ -15,7 +15,7 @@ enum Status { aborted, not_ready, ready, running };
 class solver_core {
 
  g0_keldysh_t green_function;
- std::shared_ptr<Integrand> integrand = nullptr;
+ Configuration config;
  solve_parameters_t params;
  triqs::mc_tools::mc_generic<dcomplex> qmc;
  keldysh_contour_pt taup;
@@ -23,15 +23,16 @@ class solver_core {
  std::vector<std::size_t> shape_tau_array;
  array<dcomplex, 1> g0_values = array<dcomplex, 1>();
  array<dcomplex, 1> prefactor;
- double t_max;
+ double t_max, t_min;
  int rank;
- int op_to_measure_spin; // spin of the operator to measure. Not needed when up/down symmetry. Is used to know which determinant
-                         // is the big one.
+ int op_to_measure_spin; // spin of the operator to measure. Not needed when up/down symmetry. Is used to know
+                         // which determinant is the big one.
  double solve_duration = 0;
  int nb_measures;
  std::vector<std::vector<double>> config_list;
  std::vector<int> config_weight;
  Status status = not_ready;
+ KernelBinning kernels;
  array<int, 1> pn;
  array<dcomplex, 2> sn;
  array<dcomplex, 3> sn_array;
@@ -39,8 +40,6 @@ class solver_core {
  array<double, 1> sn_errors;
 
  int finish(const int run_status);
-
- Measure* create_measure(const int method, const Weight* weight);
 
  array<dcomplex, 3> reshape_sn(array<dcomplex, 2>* sn_list);
  array<dcomplex, 2> reshape_sn(array<dcomplex, 1>* sn_list);
@@ -55,8 +54,8 @@ class solver_core {
  std::tuple<double, array<dcomplex, 2>> order_zero();
 
  int run(const int max_time, const int max_measures);
- int run(const int max_time) {return run(max_time, -1);};
- int run() {return run(-1, -1);};
+ int run(const int max_time) { return run(max_time, -1); };
+ int run() { return run(-1, -1); };
 
  // getters
  double get_solve_duration() const { return solve_duration; }
@@ -67,4 +66,5 @@ class solver_core {
  array<dcomplex, 3> get_sn() const { return sn_array; }
  array<double, 1> get_pn_errors() const { return pn_errors; }
  array<double, 1> get_sn_errors() const { return sn_errors; }
+ std::vector<array<dcomplex, 3>> get_kernels() const { return kernels.values; }
 };

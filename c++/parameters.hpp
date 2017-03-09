@@ -85,5 +85,8 @@ struct solve_parameters_t {
 
  /// Method
  int method = 4;
+
+ /// nb of bins for the kernels
+ int nb_bins = 10000;
  
 };

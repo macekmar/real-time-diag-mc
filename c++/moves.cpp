@@ -9,114 +9,104 @@ namespace moves {
 
 dcomplex insert::attempt() {
 #ifdef REGISTER_CONFIG
- integrand->weight->register_config();
+ config.register_config();
 #endif
- //std::cout << "DEBUG move: " << integrand->measure << std::endl;
 
- auto k = integrand->perturbation_order; // order before adding a time
+ auto k = config.order; // order before adding a time
  quick_exit = (k >= params->max_perturbation_order);
  if (quick_exit) return 0;
 
  // insert the new line and col.
- pt = get_random_point();
- integrand->weight->insert(k, pt);
- new_weight = integrand->weight->evaluate();
+ auto pt = get_random_point();
+ config.insert(k, pt);
+ new_weight = config.weight_evaluate();
 
  // The Metropolis ratio;
- return delta_t_L_U / (k + 1) * new_weight / integrand->weight->value;
+ return delta_t_L_U / (k + 1) * new_weight / config.weight_value;
 }
 
 dcomplex insert::accept() {
- auto k = integrand->perturbation_order;
- integrand->weight->value = new_weight;
- integrand->perturbation_order++;
- integrand->measure->insert(k, pt);
+ config.weight_value = new_weight;
  return 1.0;
 }
 
 void insert::reject() {
  if (quick_exit) return;
- auto k = integrand->perturbation_order;
- integrand->weight->remove(k);
+ config.remove(config.order - 1);
 }
 
 // ------------ QMC double-insertion move --------------------------------------
 
 dcomplex insert2::attempt() {
 #ifdef REGISTER_CONFIG
- integrand->weight->register_config();
+ config.register_config();
 #endif
 
- auto k = integrand->perturbation_order; // order before adding two times
+ auto k = config.order; // order before adding two times
  quick_exit = (k + 1 >= params->max_perturbation_order);
  if (quick_exit) return 0;
 
  // insert the new lines and cols.
- pt1 = get_random_point();
- pt2 = get_random_point();
- integrand->weight->insert2(k, k + 1, pt1, pt2);
+ auto pt1 = get_random_point();
+ auto pt2 = get_random_point();
+ config.insert2(k, k + 1, pt1, pt2);
 
- new_weight = integrand->weight->evaluate();
+ new_weight = config.weight_evaluate();
 
  // The Metropolis ratio
- return delta_t_L_U * delta_t_L_U / ((k + 1) * (k + 2)) * new_weight / integrand->weight->value;
+ return delta_t_L_U * delta_t_L_U / ((k + 1) * (k + 2)) * new_weight / config.weight_value;
 }
 
 dcomplex insert2::accept() {
- auto k = integrand->perturbation_order;
- integrand->weight->value = new_weight;
- integrand->perturbation_order += 2;
- integrand->measure->insert2(k, k + 1, pt1, pt2);
+ config.weight_value = new_weight;
  return 1.0;
 }
 
 void insert2::reject() {
  if (quick_exit) return;
- auto k = integrand->perturbation_order;
- integrand->weight->remove2(k, k + 1);
+ auto k = config.order;
+ config.remove2(k - 2, k - 1);
 }
 
 //// ------------ QMC removal move --------------------------------------
 
 dcomplex remove::attempt() {
 #ifdef REGISTER_CONFIG
- integrand->weight->register_config();
+ config.register_config();
 #endif
 
- auto k = integrand->perturbation_order; // order before removal
+ auto k = config.order; // order before removal
  quick_exit = (k <= params->min_perturbation_order);
  if (quick_exit) return 0;
 
  // remove the line/col
- p = rng(k);                                    // Choose one of the operators for removal
- removed_pt = integrand->weight->get_config(p); // store the point to be remove for later reject
- integrand->weight->remove(p);                  // remove the point for all matrices
- new_weight = integrand->weight->evaluate();    // recompute sum over keldysh indices
+ p = rng(k);                            // Choose one of the operators for removal
+ removed_pt = config.get_config(p);     // store the point to be remove for later reject
+ config.remove(p);                      // remove the point for all matrices
+ new_weight = config.weight_evaluate(); // recompute sum over keldysh indices
 
  // The Metropolis ratio
- return k / delta_t_L_U * new_weight / integrand->weight->value;
+ return k / delta_t_L_U * new_weight / config.weight_value;
 }
 
 dcomplex remove::accept() {
- integrand->weight->value = new_weight;
- integrand->perturbation_order--;
- integrand->measure->remove(p);
+ config.weight_value = new_weight;
  return 1.0;
 }
 
 void remove::reject() {
  if (quick_exit) return;
- integrand->weight->insert(p, removed_pt);
+ config.insert(p, removed_pt);
 }
 
 // ------------ QMC double-removal move --------------------------------------
 
 dcomplex remove2::attempt() {
 #ifdef REGISTER_CONFIG
- integrand->weight->register_config();
+ config.register_config();
 #endif
 
- auto k = integrand->perturbation_order; // order before removal
+ auto k = config.order; // order before removal
  quick_exit = (k - 2 < params->min_perturbation_order);
  if (quick_exit) return 0;
 
@@ -124,77 +114,74 @@ dcomplex remove2::attempt() {
  p1 = rng(k);        // Choose one of the operators for removal
  p2 = rng(k - 1);    //
  if (p2 >= p1) p2++; // if remove p1, and p2 is later, ????? FIXME
- removed_pt1 = integrand->weight->get_config(p1);
- removed_pt2 = integrand->weight->get_config(p2);
- integrand->weight->remove2(p1, p2);
- new_weight = integrand->weight->evaluate(); // recompute sum over keldysh indices
+ removed_pt1 = config.get_config(p1);
+ removed_pt2 = config.get_config(p2);
+ config.remove2(p1, p2);
+ new_weight = config.weight_evaluate(); // recompute sum over keldysh indices
 
  // The Metropolis ratio
- return k * (k - 1) / pow(delta_t_L_U, 2) * new_weight / integrand->weight->value;
+ return k * (k - 1) / pow(delta_t_L_U, 2) * new_weight / config.weight_value;
 }
 
 dcomplex remove2::accept() {
- integrand->weight->value = new_weight;
- integrand->perturbation_order -= 2;
- integrand->measure->remove2(p1, p2);
+ config.weight_value = new_weight;
  return 1.0;
 }
 
 void remove2::reject() {
  if (quick_exit) return;
- integrand->weight->insert2(p1, p2, removed_pt1, removed_pt2);
+ config.insert2(p1, p2, removed_pt1, removed_pt2);
 }
 
 // ------------ QMC vertex shift move --------------------------------------
 
 dcomplex shift::attempt() {
 #ifdef REGISTER_CONFIG
- integrand->weight->register_config();
+ config.register_config();
 #endif
 
- auto k = integrand->perturbation_order; // order
+ auto k = config.order; // order
 
  quick_exit = (k == 0); // In particular if k = 0
  if (quick_exit) return 0;
- p = rng(k);                                    // Choose one of the operators
- removed_pt = integrand->weight->get_config(p); // old time, to be saved for the removal case
+ p = rng(k);                        // Choose one of the operators
+ removed_pt = config.get_config(p); // old time, to be saved for the removal case
 
- new_pt = get_random_point(); // new time
- integrand->weight->change_config(p, new_pt);
- new_weight = integrand->weight->evaluate();
+ auto new_pt = get_random_point(); // new time
+ config.change_config(p, new_pt);
+ new_weight = config.weight_evaluate();
 
  // The Metropolis ratio
- return new_weight / integrand->weight->value;
+ return new_weight / config.weight_value;
 }
 
 dcomplex shift::accept() {
- integrand->weight->value = new_weight;
- integrand->measure->change_config(p, new_pt);
+ config.weight_value = new_weight;
  return 1.0;
 }
 
 void shift::reject() {
  if (quick_exit) return;
- integrand->weight->change_config(p, removed_pt);
+ config.change_config(p, removed_pt);
 }
 
 // ------------ QMC additional time swap move --------------------------------------
 
 dcomplex weight_swap::attempt() {
 #ifdef REGISTER_CONFIG
- integrand->weight->register_config();
+ config.register_config();
 #endif
 
- auto k = integrand->perturbation_order;
+ auto k = config.order;
  keldysh_contour_pt tau;
 
  quick_exit = (k == 0); // In particular if k = 0
  if (quick_exit) return 0;
- p = rng(k);                                 // Choose one of the operators
- swap_pt = integrand->weight->get_config(p); // point whose time is to be swapped
- tau = integrand->weight->get_left_input();  // integrand left input point
- save_swap_pt = swap_pt;                     // save for reject case
- save_tau = tau;                             // save for reject case
+ p = rng(k);                     // Choose one of the operators
+ auto swap_pt = config.get_config(p); // point whose time is to be swapped
+ tau = config.get_left_input();  // integrand left input point
+ save_swap_pt = swap_pt;         // save for reject case
+ save_tau = tau;                 // save for reject case
  // swap times:
  double tau_time = tau.t;
  tau.t = swap_pt.t;
@@ -202,54 +189,53 @@ dcomplex weight_swap::attempt() {
  swap_pt.t = tau_time;
 
  // replace points with swapped times
- integrand->weight->change_config(p, swap_pt);
- integrand->weight->change_left_input(tau);
+ config.change_config(p, swap_pt);
+ config.change_left_input(tau);
 
- new_weight = integrand->weight->evaluate();
+ new_weight = config.weight_evaluate();
 
  // The Metropolis ratio
- return new_weight / integrand->weight->value;
+ return new_weight / config.weight_value;
 }
 
 dcomplex weight_swap::accept() {
- integrand->weight->value = new_weight;
- integrand->measure->change_config(p, swap_pt);
+ config.weight_value = new_weight;
  return 1.0;
 }
 
 void weight_swap::reject() {
  if (quick_exit) return;
- integrand->weight->change_config(p, save_swap_pt);
- integrand->weight->change_left_input(save_tau);
+ config.change_config(p, save_swap_pt);
+ config.change_left_input(save_tau);
 }
 
 // ------------ QMC additional time shift move --------------------------------------
 
 dcomplex weight_shift::attempt() {
 #ifdef REGISTER_CONFIG
- integrand->weight->register_config();
+ config.register_config();
 #endif
  // No quick exit for this move, all orders are concerned
 
- keldysh_contour_pt tau = integrand->weight->get_left_input(); // integrand left input point
- save_tau = tau;                                               // save for reject case
+ keldysh_contour_pt tau = config.get_left_input(); // integrand left input point
+ save_tau = tau;                                   // save for reject case
  tau.t = rng(delta_t) - params->interaction_start; // random time
- tau.k_index = rng(2); // random keldysh index
- integrand->weight->change_left_input(tau);
+ tau.k_index = rng(2);                             // random keldysh index
+ config.change_left_input(tau);
 
- new_weight = integrand->weight->evaluate();
+ new_weight = config.weight_evaluate();
 
  // The Metropolis ratio
- return new_weight / integrand->weight->value;
+ return new_weight / config.weight_value;
 }
 
 dcomplex weight_shift::accept() {
- integrand->weight->value = new_weight;
+ config.weight_value = new_weight;
  return 1.0;
 }
 
 void weight_shift::reject() {
  // No quick exit for this move, all orders are concerned
- integrand->weight->change_left_input(save_tau);
+ config.change_left_input(save_tau);
 }
 }

@@ -2,12 +2,11 @@
 #include "./measure.hpp"
 #include "./parameters.hpp"
 #include "./qmc_data.hpp"
-#include "./weight.hpp"
 
 namespace moves {
 
 struct common {
- std::shared_ptr<Integrand> integrand;
+ Configuration& config;
  const solve_parameters_t *params;
  triqs::mc_tools::random_generator &rng;
  random_x_generator rxg;
@@ -16,9 +15,9 @@ struct common {
  bool quick_exit = false;
  dcomplex new_weight = 0;
 
- common(std::shared_ptr<Integrand> integrand, const solve_parameters_t *params, const double t_max,
+ common(Configuration* config, const solve_parameters_t *params, const double t_max,
         triqs::mc_tools::random_generator &rng)
-    : integrand(integrand), params(params), rng(rng) {
+    : config(*config), params(params), rng(rng) {
   rxg = random_x_generator();
   delta_t = params->interaction_start + t_max;
   delta_t_L_U = delta_t * rxg.size() * params->U;
@@ -34,7 +33,6 @@ struct common {
 // ------------ QMC insertion move --------------------------------------
 
 struct insert : common {
- keldysh_contour_pt pt;
 
  using common::common;
  dcomplex attempt();
@@ -45,7 +43,6 @@ struct insert : common {
 // ------------ QMC double-insertion move --------------------------------------
 
 struct insert2 : common {
- keldysh_contour_pt pt1, pt2;
 
  using common::common;
  dcomplex attempt();
@@ -81,7 +78,6 @@ struct remove2 : common {
 
 struct shift : common {
  keldysh_contour_pt removed_pt;
- keldysh_contour_pt new_pt;
  int p;
 
  using common::common;
@@ -93,7 +89,7 @@ struct shift : common {
 //-----------QMC additional time swap move------------
 
 struct weight_swap : common {
- keldysh_contour_pt save_swap_pt, swap_pt;
+ keldysh_contour_pt save_swap_pt;
  keldysh_contour_pt save_tau;
  int p;
 

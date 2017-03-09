@@ -1,8 +1,5 @@
 #include "./solver_core.hpp"
-#include "./accumulator.hpp"
 #include "./moves.hpp"
-#include "./weight.hpp"
-#include <chrono>
 #include <gsl/gsl_integration.h>
 #include <triqs/det_manip.hpp>
 
@@ -19,7 +16,8 @@ solver_core::solver_core(solve_parameters_t const& params)
      nb_measures(0) {
 
 #ifdef REGISTER_CONFIG
- if (triqs::mpi::communicator().rank() == 0) std::cout << "/!\ Configuration Registration ON" << std::endl << std::endl;
+ if (triqs::mpi::communicator().rank() == 0)
+  std::cout << "/!\ Configuration Registration ON" << std::endl << std::endl;
 #endif
 
  if (params.interaction_start < 0) TRIQS_RUNTIME_ERROR << "interaction_time must be positive";
@@ -29,10 +27,17 @@ solver_core::solver_core(solve_parameters_t const& params)
  // boundaries
  t_max = *std::max_element(params.measure_times.begin(), params.measure_times.end());
  t_max = std::max(t_max, std::get<1>(params.right_input_points[0]));
+ t_min = *std::min_element(params.measure_times.begin(), params.measure_times.end());
+ t_min = std::min(t_min, std::get<1>(params.right_input_points[0]));
+
+ // kernel binning
+ kernels = KernelBinning(t_min, t_max, params.nb_bins, params.max_perturbation_order);
 
  // rank of the Green's function to calculate. For now only 1 is supported.
- if (params.right_input_points.size() % 2 == 0) TRIQS_RUNTIME_ERROR << "There must be an odd number of right input points";
- if (params.right_input_points.size() > 1) TRIQS_RUNTIME_ERROR << "For now only rank 1 Green's functions are supported.";
+ if (params.right_input_points.size() % 2 == 0)
+  TRIQS_RUNTIME_ERROR << "There must be an odd number of right input points";
+ if (params.right_input_points.size() > 1)
+  TRIQS_RUNTIME_ERROR << "For now only rank 1 Green's functions are supported.";
  rank = params.right_input_points.size() / 2;
 
  op_to_measure_spin = std::get<0>(params.right_input_points[0]); // for now
@@ -64,7 +69,7 @@ solver_core::solver_core(solve_parameters_t const& params)
  }
 
  // results arrays
- pn = array<int, 1>(nb_orders);                    // measurement of p_n
+ pn = array<int, 1>(nb_orders);                       // measurement of p_n
  sn = array<dcomplex, 2>(nb_orders, tau_list.size()); // measurement of s_n
  pn_errors = array<double, 1>(nb_orders);
  sn_errors = array<double, 1>(nb_orders);
@@ -76,36 +81,46 @@ solver_core::solver_core(solve_parameters_t const& params)
 };
 
 // --------------------------------
-void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser, gf_view<retime, matrix_valued> g0_greater) {
+void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser,
+                         gf_view<retime, matrix_valued> g0_greater) {
  if (status < not_ready) TRIQS_RUNTIME_ERROR << "Run aborted";
  if (status > not_ready) TRIQS_RUNTIME_ERROR << "Green functions already set up. Cannot change.";
+
  // non interacting Green function
  green_function = g0_keldysh_t{g0_adaptor_t{g0_lesser}, g0_adaptor_t{g0_greater}, params.alpha, t_max};
-
- // choose measure and weight
- Weight* weight = new two_det_weight(green_function, tau_list[0], taup, op_to_measure_spin);
- Measure* measure = create_measure(params.method, weight);
- integrand = std::make_shared<Integrand>(weight, measure);
+ config = Configuration(green_function, tau_list[0], taup, op_to_measure_spin);
 
  // Register moves and measurements
- // Can add single moves only, or double moves only (for the case with ph symmetry), or both simultaneously
  if (params.w_ins_rem > 0) {
-  qmc.add_move(moves::insert{integrand, &params, t_max, qmc.get_rng()}, "insertion", params.w_ins_rem);
-  qmc.add_move(moves::remove{integrand, &params, t_max, qmc.get_rng()}, "removal", params.w_ins_rem);
+  qmc.add_move(moves::insert{&config, &params, t_max, qmc.get_rng()}, "insertion", params.w_ins_rem);
+  qmc.add_move(moves::remove{&config, &params, t_max, qmc.get_rng()}, "removal", params.w_ins_rem);
  }
  if (params.w_dbl > 0) {
-  qmc.add_move(moves::insert2{integrand, &params, t_max, qmc.get_rng()}, "insertion2", params.w_dbl);
-  qmc.add_move(moves::remove2{integrand, &params, t_max, qmc.get_rng()}, "removal2", params.w_dbl);
+  qmc.add_move(moves::insert2{&config, &params, t_max, qmc.get_rng()}, "insertion2", params.w_dbl);
+  qmc.add_move(moves::remove2{&config, &params, t_max, qmc.get_rng()}, "removal2", params.w_dbl);
  }
  if (params.w_shift > 0) {
-  qmc.add_move(moves::shift{integrand, &params, t_max, qmc.get_rng()}, "shift", params.w_shift);
+  qmc.add_move(moves::shift{&config, &params, t_max, qmc.get_rng()}, "shift", params.w_shift);
  }
  if (params.method == 4) {
-  qmc.add_move(moves::weight_swap{integrand, &params, t_max, qmc.get_rng()}, "weight swap", params.w_weight_swap);
-  qmc.add_move(moves::weight_shift{integrand, &params, t_max, qmc.get_rng()}, "weight shift", params.w_weight_shift);
+  qmc.add_move(moves::weight_swap{&config, &params, t_max, qmc.get_rng()}, "weight swap",
+               params.w_weight_swap);
+  qmc.add_move(moves::weight_shift{&config, &params, t_max, qmc.get_rng()}, "weight shift",
+               params.w_weight_shift);
  }
 
- qmc.add_measure(Accumulator(integrand, &pn, &sn, &pn_errors, &sn_errors, &nb_measures), "Measurement");
+ if (params.method == 0) {
+  if (tau_list.size() > 1)
+   TRIQS_RUNTIME_ERROR << "Trying to use a singlepoint measure with multiple input point";
+  qmc.add_measure(WeightSignMeasure(&config, &pn, &sn, &pn_errors, &sn_errors, &nb_measures),
+                  "Weight sign measure");
+ } else if (params.method == 4) {
+  qmc.add_measure(TwoDetCofactMeasure(&config, &kernels, &pn, &sn, &pn_errors, &sn_errors, &nb_measures,
+                                      &tau_list, taup, op_to_measure_spin, &g0_values, green_function),
+                  "Cofact measure");
+ } else {
+  TRIQS_RUNTIME_ERROR << "Cannot recognise the method ID";
+ }
 
  // order zero values
  g0_values = array<dcomplex, 1>(tau_list.size());
@@ -121,7 +136,8 @@ int solver_core::run(const int max_time = -1, const int max_measures = -1) {
  if (status < not_ready) TRIQS_RUNTIME_ERROR << "Run aborted";
  if (status < ready) TRIQS_RUNTIME_ERROR << "Unperturbed Green's functions have not been set !";
  // order zero case
- if (params.max_perturbation_order == 0) TRIQS_RUNTIME_ERROR << "Order zero cannot run, use order_zero method instead";
+ if (params.max_perturbation_order == 0)
+  TRIQS_RUNTIME_ERROR << "Order zero cannot run, use order_zero method instead";
 
  int run_status;
 
@@ -130,7 +146,8 @@ int solver_core::run(const int max_time = -1, const int max_measures = -1) {
   status = running;
   solve_duration = 0;
   if (triqs::mpi::communicator().rank() == 0) std::cout << "Warming up... " << std::flush;
-  run_status = qmc.run(params.n_warmup_cycles, params.length_cycle, triqs::utility::clock_callback(-1), false);
+  run_status =
+      qmc.run(params.n_warmup_cycles, params.length_cycle, triqs::utility::clock_callback(-1), false);
   if (run_status == 2) return finish(run_status); // Received a signal: abort
   if (triqs::mpi::communicator().rank() == 0) std::cout << "done" << std::endl;
  }
@@ -152,8 +169,8 @@ int solver_core::run(const int max_time = -1, const int max_measures = -1) {
  for (int i = 0; i < tau_list.size(); ++i) sn(range(), i) *= prefactor;
  sn_array = reshape_sn(&sn);
 
- config_list = integrand->weight->config_list;
- config_weight = integrand->weight->config_weight;
+ config_list = config.config_list;
+ config_weight = config.config_weight;
  solve_duration = solve_duration + qmc.get_duration();
 
  // print acceptance rates
@@ -201,8 +218,10 @@ int solver_core::finish(const int run_status) {
  if (run_status == 0) status = ready;   // finished
  if (run_status == 2) status = aborted; // Received a signal: abort
 
- if (run_status == 0 and triqs::mpi::communicator().rank() == 0) std::cout << "Run finished" << std::endl << std::endl;
- if (run_status == 2 and triqs::mpi::communicator().rank() == 0) std::cout << "Run aborted" << std::endl << std::endl;
+ if (run_status == 0 and triqs::mpi::communicator().rank() == 0)
+  std::cout << "Run finished" << std::endl << std::endl;
+ if (run_status == 2 and triqs::mpi::communicator().rank() == 0)
+  std::cout << "Run aborted" << std::endl << std::endl;
 
  return run_status;
 }
@@ -234,7 +253,8 @@ std::tuple<double, array<dcomplex, 2>> solver_core::order_zero() {
  array<dcomplex, 2> s0;
 
  if (params.method == 4) {
-  // Uses GSL integration (https://www.gnu.org/software/gsl/manual/html_node/Numerical-integration-examples.html)
+  // Uses GSL integration
+  // (https://www.gnu.org/software/gsl/manual/html_node/Numerical-integration-examples.html)
   gsl_function F;
   F.function = &abs_g0_keldysh_t_inputs;
   auto w = gsl_integration_cquad_workspace_alloc(10000);
@@ -263,8 +283,8 @@ std::tuple<double, array<dcomplex, 2>> solver_core::order_zero() {
  } else { // singlepoint methods only
   c0 = abs(g0_values(0));
  }
-  s0_list() = g0_values / c0;
-  s0 = reshape_sn(&s0_list);
+ s0_list() = g0_values / c0;
+ s0 = reshape_sn(&s0_list);
  if (triqs::mpi::communicator().rank() == 0) {
   std::cout << "done" << std::endl;
   std::cout << "c0 = " << c0 << " error = " << c0_error << std::endl << std::endl;
@@ -272,39 +292,10 @@ std::tuple<double, array<dcomplex, 2>> solver_core::order_zero() {
  return std::tuple<double, array<dcomplex, 2>>{c0, s0};
 }
 
-// --------------------------------
-Measure* solver_core::create_measure(const int method, const Weight* weight) {
-
- if (triqs::mpi::communicator().rank() == 0) std::cout << "Method used: " << method << std::endl;
-
- switch (method) {
-  // singletime measures
-  case 0: // good old way
-   if (tau_list.size() > 1) TRIQS_RUNTIME_ERROR << "Trying to use a singlepoint measure with multiple input point";
-   return new weight_sign_measure(weight);
-   break;
-  // case 1: // same as 0 but with different input times
-  // return new twodet_single_measure(physics_params);
-  // break;
-  //// multitimes measures
-  // case 2: // same as 1 but multitime
-  // return new twodet_multi_measure(physics_params);
-  // break;
-  case 4: // same as 3 but with addionnal Z0 for the weight left time
-          /* going through */
-          // case 3: // same as 2 but with cofact formula
-   return new twodet_cofact_measure(green_function, &tau_list, taup, op_to_measure_spin, &g0_values);
-   break;
-  // default
-  default:
-   TRIQS_RUNTIME_ERROR << "Cannot recognise the method ID";
-   break;
- }
-}
-
 // -------
 array<dcomplex, 3> solver_core::reshape_sn(array<dcomplex, 2>* sn_list) {
- if (second_dim(*sn_list) != tau_list.size()) TRIQS_RUNTIME_ERROR << "The sn list has not the good size to be reshaped.";
+ if (second_dim(*sn_list) != tau_list.size())
+  TRIQS_RUNTIME_ERROR << "The sn list has not the good size to be reshaped.";
  array<dcomplex, 3> sn_array(first_dim(*sn_list), shape_tau_array[0], shape_tau_array[1]);
  int flatten_idx = 0;
  for (int i = 0; i < shape_tau_array[0]; ++i) {
@@ -318,7 +309,8 @@ array<dcomplex, 3> solver_core::reshape_sn(array<dcomplex, 2>* sn_list) {
 
 // -------
 array<dcomplex, 2> solver_core::reshape_sn(array<dcomplex, 1>* sn_list) {
- if (first_dim(*sn_list) != tau_list.size()) TRIQS_RUNTIME_ERROR << "The sn list has not the good size to be reshaped.";
+ if (first_dim(*sn_list) != tau_list.size())
+  TRIQS_RUNTIME_ERROR << "The sn list has not the good size to be reshaped.";
  array<dcomplex, 2> sn_array(shape_tau_array[0], shape_tau_array[1]);
  int flatten_idx = 0;
  for (int i = 0; i < shape_tau_array[0]; ++i) {

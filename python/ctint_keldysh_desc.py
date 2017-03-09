@@ -74,6 +74,8 @@ c.add_constructor("""(**solve_parameters_t)""",
 | verbosity               | int                                              | 0                                              | Verbosity level                                                         |
 +-------------------------+--------------------------------------------------+------------------------------------------------+-------------------------------------------------------------------------+
 | method                  | int                                              | 4                                              | Method                                                                  |
++-------------------------+--------------------------------------------------+------------------------------------------------+-------------------------------------------------------------------------+
+| nb_bins                 | int                                              | 10000                                          | nb of bins for the kernels                                              |
 +-------------------------+--------------------------------------------------+------------------------------------------------+-------------------------------------------------------------------------+ """)
 
 c.add_method("""void set_g0 (gf_view<retime,matrix_valued> g0_lesser, gf_view<retime,matrix_valued> g0_greater)""",
@@ -123,6 +125,10 @@ c.add_property(name = "pn_errors",
 
 c.add_property(name = "sn_errors",
                getter = cfunction("array<double,1> get_sn_errors ()"),
+               doc = """ """)
+
+c.add_property(name = "kernels",
+               getter = cfunction("std::vector<array<dcomplex,3>> get_kernels ()"),
                doc = """ """)
 
 module.add_class(c)
