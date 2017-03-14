@@ -13,6 +13,9 @@ def perturbation_series(_c0, pn, sn, U):
     if c0.size == 1:
         c0 = c0 * np.ones(sn.shape[1:])
 
+    p_is_zero = pn == 0
+    pn[p_is_zero] = 1 # avoids division by zero, works with any non zero value
+
     cn = np.zeros(sn.shape)
     on = np.zeros(sn.shape, dtype=complex)
 
@@ -22,6 +25,8 @@ def perturbation_series(_c0, pn, sn, U):
             cn[0, ...] = c0
         else:
             cn[k, ...] = cn[k-1, ...] * pn[k] / (pn[k-1] * U)
+
+    pn[p_is_zero] = 0 # get back to original pn
 
     on = cn * sn
     return on
@@ -74,6 +79,9 @@ def staircase_perturbation_series(c0, pn, sn, U):
     # U: single value
     # return: (n, m1, ...)-array
 
+    p_is_zero = (pn == 0)
+    pn[p_is_zero] = 1 # avoids division by zero, works with any non zero value
+
     cn = np.zeros(sn.shape[1:])
     on = np.zeros(sn.shape[1:], dtype=complex)
 
@@ -83,6 +91,8 @@ def staircase_perturbation_series(c0, pn, sn, U):
             cn[0, ...] = c0
         else:
             cn[k, ...] = cn[k-1, ...] * pn[k, k] / (pn[k, k-1] * U)
+
+    pn[p_is_zero] = 0 # get back to original pn
 
     on = cn * np.rollaxis(np.diagonal(sn), -1, 0) # np.diagonal sends the diagonalised axis to the left end
 

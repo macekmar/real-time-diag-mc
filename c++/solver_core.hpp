@@ -1,3 +1,4 @@
+#pragma once
 #include "./measure.hpp"
 #include "./qmc_data.hpp"
 #include <assert.h>
@@ -5,8 +6,11 @@
 
 #include <triqs/gfs.hpp>
 
-// template <typename T> using view_t = typename T::view_type;
-using namespace triqs::gfs;
+// using namespace triqs::gfs;
+using namespace triqs::arrays;
+
+auto size_fold = fold([](size_t r, keldysh_contour_pt x) { return r + 1; });
+template <typename ArrayType> size_t size(ArrayType some_array) { return size_fold(some_array, 0); }
 
 // ------------ The main class of the solver -----------------------
 
@@ -19,30 +23,28 @@ class solver_core {
  solve_parameters_t params;
  triqs::mc_tools::mc_generic<dcomplex> qmc;
  keldysh_contour_pt taup;
- std::vector<keldysh_contour_pt> tau_list;
- std::vector<std::size_t> shape_tau_array;
- array<dcomplex, 1> g0_values = array<dcomplex, 1>();
- array<dcomplex, 1> prefactor;
+ array<keldysh_contour_pt, 2> tau_array;
+ array<dcomplex, 2> g0_array;
+ //array<dcomplex, 1> prefactor;
  double t_max, t_min;
  int rank;
  int op_to_measure_spin; // spin of the operator to measure. Not needed when up/down symmetry. Is used to know
                          // which determinant is the big one.
  double solve_duration = 0;
- int nb_measures;
  std::vector<std::vector<double>> config_list;
  std::vector<int> config_weight;
  Status status = not_ready;
  KernelBinning kernels;
+ array<dcomplex, 3> kernels_all;
  array<int, 1> pn;
- array<dcomplex, 2> sn;
- array<dcomplex, 3> sn_array;
- array<double, 1> pn_errors;
- array<double, 1> sn_errors;
+ array<int, 1> pn_all;
+ array<dcomplex, 3> sn;
+ array<dcomplex, 3> sn_all;
 
  int finish(const int run_status);
 
- array<dcomplex, 3> reshape_sn(array<dcomplex, 2>* sn_list);
- array<dcomplex, 2> reshape_sn(array<dcomplex, 1>* sn_list);
+ // array<dcomplex, 3> reshape_sn(array<dcomplex, 2>* sn_list);
+ // array<dcomplex, 2> reshape_sn(array<dcomplex, 1>* sn_list);
 
  public:
  // FIXME change type of arguments after olivier fixes wrapper
@@ -59,12 +61,14 @@ class solver_core {
 
  // getters
  double get_solve_duration() const { return solve_duration; }
- int get_nb_measures() const { return nb_measures; }
+ int get_nb_measures() const { return sum(pn); }
+ int get_nb_measures_all() const { return sum(pn_all); }
  std::vector<std::vector<double>> get_config_list() const { return config_list; }
  std::vector<int> get_config_weight() const { return config_weight; }
  array<int, 1> get_pn() const { return pn; }
- array<dcomplex, 3> get_sn() const { return sn_array; }
- array<double, 1> get_pn_errors() const { return pn_errors; }
- array<double, 1> get_sn_errors() const { return sn_errors; }
- std::vector<array<dcomplex, 3>> get_kernels() const { return kernels.values; }
+ array<int, 1> get_pn_all() const { return pn_all; }
+ array<dcomplex, 3> get_sn() const { return sn; }
+ array<dcomplex, 3> get_sn_all() const { return sn_all; }
+ array<dcomplex, 3> get_kernels() const { return kernels.values; }
+ array<dcomplex, 3> get_kernels_all() const { return kernels_all; }
 };

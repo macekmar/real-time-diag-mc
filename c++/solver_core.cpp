@@ -12,8 +12,7 @@ using triqs::arrays::range;
 // ------------ The main class of the solver ------------------------
 solver_core::solver_core(solve_parameters_t const& params)
    : qmc(params.random_name, params.random_seed, 1.0, params.verbosity, false), // first_sign is not used
-     params(params),
-     nb_measures(0) {
+     params(params) {
 
 #ifdef REGISTER_CONFIG
  if (triqs::mpi::communicator().rank() == 0)
@@ -21,8 +20,8 @@ solver_core::solver_core(solve_parameters_t const& params)
 #endif
 
  if (params.interaction_start < 0) TRIQS_RUNTIME_ERROR << "interaction_time must be positive";
- int nb_orders = params.max_perturbation_order - params.min_perturbation_order + 1;
- if (nb_orders < 2) TRIQS_RUNTIME_ERROR << "The range of perturbation orders must cover at least 2 orders";
+ if (params.max_perturbation_order - params.min_perturbation_order + 1 < 2)
+  TRIQS_RUNTIME_ERROR << "The range of perturbation orders must cover at least 2 orders";
 
  // boundaries
  t_max = *std::max_element(params.measure_times.begin(), params.measure_times.end());
@@ -31,7 +30,9 @@ solver_core::solver_core(solve_parameters_t const& params)
  t_min = std::min(t_min, std::get<1>(params.right_input_points[0]));
 
  // kernel binning
- kernels = KernelBinning(t_min, t_max, params.nb_bins, params.max_perturbation_order);
+ kernels_all = array<dcomplex, 3>(params.max_perturbation_order + 1, params.nb_bins, 2);
+ kernels = KernelBinning(- params.interaction_start, t_max, params.nb_bins,
+                         params.max_perturbation_order, false); // TODO: it should be defined in measure
 
  // rank of the Green's function to calculate. For now only 1 is supported.
  if (params.right_input_points.size() % 2 == 0)
@@ -44,43 +45,33 @@ solver_core::solver_core(solve_parameters_t const& params)
  taup = make_keldysh_contour_pt(params.right_input_points[0]);
 
  // make tau list from left input points lists
- shape_tau_array = {params.measure_times.size(), params.measure_keldysh_indices.size()};
+ tau_array = array<keldysh_contour_pt, 2>(params.measure_times.size(), params.measure_keldysh_indices.size());
+ if (tau_array.is_empty()) TRIQS_RUNTIME_ERROR << "No left input point !";
 
  keldysh_contour_pt tau;
- for (auto time : params.measure_times) {
-  for (auto k_index : params.measure_keldysh_indices) {
-   tau = {params.measure_state, time, k_index};
-   tau_list.emplace_back(tau);
+ for (int i = 0; i < params.measure_times.size(); ++i) {
+  for (int j = 0; j < params.measure_keldysh_indices.size(); ++j) {
+   tau = {params.measure_state, params.measure_times[i], params.measure_keldysh_indices[j]};
+   tau_array(i, j) = tau;
   }
  }
 
- if (tau_list.size() < 1) TRIQS_RUNTIME_ERROR << "No left input point !";
-
- // prefactor
- prefactor = array<dcomplex, 1>(params.max_perturbation_order - params.min_perturbation_order + 1);
- prefactor() = 1.0;
-
- if (params.method == 4)
-  prefactor() /= 2. * (params.interaction_start + t_max); // only for cofact formula with additional integral
-
- dcomplex i_n[4] = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}}; // powers of i
- for (int k = 0; k <= params.max_perturbation_order - params.min_perturbation_order; ++k) {
-  prefactor(k) *= i_n[(k + params.min_perturbation_order) % 4]; // * i^(k)
- }
-
  // results arrays
- pn = array<int, 1>(nb_orders);                       // measurement of p_n
- sn = array<dcomplex, 2>(nb_orders, tau_list.size()); // measurement of s_n
- pn_errors = array<double, 1>(nb_orders);
- sn_errors = array<double, 1>(nb_orders);
+ pn = array<int, 1>(params.max_perturbation_order + 1);     // pn for this process
+ pn_all = array<int, 1>(params.max_perturbation_order + 1); // gather pn for all processes
  pn() = 0;
+ pn_all() = 0;
+
+ sn = array<dcomplex, 3>(params.max_perturbation_order + 1, params.measure_times.size(),
+                         params.measure_keldysh_indices.size()); // multidim array of sn for this process
+ sn_all = array<dcomplex, 3>(params.max_perturbation_order + 1, params.measure_times.size(),
+                             params.measure_keldysh_indices.size()); // multidim array of sn for all processes
  sn() = 0;
- pn_errors() = 0;
- sn_errors() = 0;
- sn_array = reshape_sn(&sn);
+ sn_all() = 0;
 };
 
 // --------------------------------
+// TODO: put the green functions in the parameters dictionnary so as to construct in one step only
 void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser,
                          gf_view<retime, matrix_valued> g0_greater) {
  if (status < not_ready) TRIQS_RUNTIME_ERROR << "Run aborted";
@@ -88,7 +79,11 @@ void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser,
 
  // non interacting Green function
  green_function = g0_keldysh_t{g0_adaptor_t{g0_lesser}, g0_adaptor_t{g0_greater}, params.alpha, t_max};
- config = Configuration(green_function, tau_list[0], taup, op_to_measure_spin);
+ config = Configuration(green_function, tau_array(0, 0), taup, op_to_measure_spin);
+
+ // order zero values
+ auto gf_map = map([this](keldysh_contour_pt tau) { return green_function(tau, taup); });
+ g0_array = make_matrix(gf_map(tau_array));
 
  // Register moves and measurements
  if (params.w_ins_rem > 0) {
@@ -102,7 +97,7 @@ void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser,
  if (params.w_shift > 0) {
   qmc.add_move(moves::shift{&config, &params, t_max, qmc.get_rng()}, "shift", params.w_shift);
  }
- if (params.method == 4) {
+ if (params.method >= 4) {
   qmc.add_move(moves::weight_swap{&config, &params, t_max, qmc.get_rng()}, "weight swap",
                params.w_weight_swap);
   qmc.add_move(moves::weight_shift{&config, &params, t_max, qmc.get_rng()}, "weight shift",
@@ -110,22 +105,21 @@ void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser,
  }
 
  if (params.method == 0) {
-  if (tau_list.size() > 1)
+  if (size(tau_array) > 1)
    TRIQS_RUNTIME_ERROR << "Trying to use a singlepoint measure with multiple input point";
-  qmc.add_measure(WeightSignMeasure(&config, &pn, &sn, &pn_errors, &sn_errors, &nb_measures),
-                  "Weight sign measure");
+  qmc.add_measure(WeightSignMeasure(&config, &pn, &pn_all, &sn, &sn_all), "Weight sign measure");
  } else if (params.method == 4) {
-  qmc.add_measure(TwoDetCofactMeasure(&config, &kernels, &pn, &sn, &pn_errors, &sn_errors, &nb_measures,
-                                      &tau_list, taup, op_to_measure_spin, &g0_values, green_function),
+  qmc.add_measure(TwoDetCofactMeasure(&config, &kernels, &pn, &pn_all, &sn, &sn_all, &tau_array, taup,
+                                      op_to_measure_spin, &g0_array, green_function,
+                                      params.interaction_start + t_max),
                   "Cofact measure");
+ } else if (params.method == 5) {
+  qmc.add_measure(TwoDetKernelMeasure(&config, &kernels, &pn, &pn_all, &sn, &sn_all, &kernels_all, &tau_array,
+                                      taup, op_to_measure_spin, &g0_array, green_function,
+                                      params.interaction_start + t_max),
+                  "Kernel measure");
  } else {
   TRIQS_RUNTIME_ERROR << "Cannot recognise the method ID";
- }
-
- // order zero values
- g0_values = array<dcomplex, 1>(tau_list.size());
- for (int i = 0; i < tau_list.size(); ++i) {
-  g0_values(i) = green_function(tau_list[i], taup);
  }
 
  status = ready;
@@ -153,21 +147,15 @@ int solver_core::run(const int max_time = -1, const int max_measures = -1) {
  }
 
  // accumulate
- int measures_to_do = params.n_cycles - nb_measures;
+ int measures_to_do = params.n_cycles - get_nb_measures();
  if (max_measures > 0) measures_to_do = std::min(measures_to_do, max_measures);
- if (triqs::mpi::communicator().rank() == 0) std::cout << "Accumulate..." << std::endl << std::endl;
+ if (triqs::mpi::communicator().rank() == 0) std::cout << "Accumulate..." << std::endl;
  run_status = qmc.run(measures_to_do, params.length_cycle, triqs::utility::clock_callback(max_time), true);
 
  // Collect results
+ if (triqs::mpi::communicator().rank() == 0) std::cout << "Collecting results..." << std::endl << std::endl;
  mpi::communicator world;
- // use self communicator, gathering the data is done in python later
- // mpi::communicator self(mpi::MPI_COMM_SELF); // does not work but I don't know why
- auto self = world.split(world.rank());
- qmc.collect_results(self);
-
- // prefactor and reshaping sn
- for (int i = 0; i < tau_list.size(); ++i) sn(range(), i) *= prefactor;
- sn_array = reshape_sn(&sn);
+ qmc.collect_results(world);
 
  config_list = config.config_list;
  config_weight = config.config_weight;
@@ -176,7 +164,7 @@ int solver_core::run(const int max_time = -1, const int max_measures = -1) {
  // print acceptance rates
  if (triqs::mpi::communicator().rank() == 0) {
   std::cout << "Duration: " << solve_duration << " seconds" << std::endl;
-  std::cout << "Progress: " << 100 * nb_measures / params.n_cycles << " %" << std::endl;
+  std::cout << "Progress: " << 100 * get_nb_measures() / params.n_cycles << " %" << std::endl;
   std::cout << "Acceptance rates of node 0:" << std::endl;
   double total_weight = 0;
   double total_rate = 0;
@@ -249,10 +237,8 @@ std::tuple<double, array<dcomplex, 2>> solver_core::order_zero() {
  if (triqs::mpi::communicator().rank() == 0) std::cout << "Order zero calculation... ";
  double c0 = 0;
  double c0_error = 0;
- array<dcomplex, 1> s0_list(tau_list.size());
- array<dcomplex, 2> s0;
 
- if (params.method == 4) {
+ if (params.method >= 4) {
   // Uses GSL integration
   // (https://www.gnu.org/software/gsl/manual/html_node/Numerical-integration-examples.html)
   gsl_function F;
@@ -281,10 +267,9 @@ std::tuple<double, array<dcomplex, 2>> solver_core::order_zero() {
   gsl_integration_cquad_workspace_free(w);
 
  } else { // singlepoint methods only
-  c0 = abs(g0_values(0));
+  c0 = abs(g0_array(0, 0));
  }
- s0_list() = g0_values / c0;
- s0 = reshape_sn(&s0_list);
+ array<dcomplex, 2> s0 = g0_array / c0;
  if (triqs::mpi::communicator().rank() == 0) {
   std::cout << "done" << std::endl;
   std::cout << "c0 = " << c0 << " error = " << c0_error << std::endl << std::endl;
@@ -292,32 +277,32 @@ std::tuple<double, array<dcomplex, 2>> solver_core::order_zero() {
  return std::tuple<double, array<dcomplex, 2>>{c0, s0};
 }
 
-// -------
-array<dcomplex, 3> solver_core::reshape_sn(array<dcomplex, 2>* sn_list) {
- if (second_dim(*sn_list) != tau_list.size())
-  TRIQS_RUNTIME_ERROR << "The sn list has not the good size to be reshaped.";
- array<dcomplex, 3> sn_array(first_dim(*sn_list), shape_tau_array[0], shape_tau_array[1]);
- int flatten_idx = 0;
- for (int i = 0; i < shape_tau_array[0]; ++i) {
-  for (int j = 0; j < shape_tau_array[1]; ++j) {
-   sn_array(range(), i, j) = (*sn_list)(range(), flatten_idx);
-   flatten_idx++;
-  }
- }
- return sn_array;
-};
+//// -------
+// array<dcomplex, 3> solver_core::reshape_sn(array<dcomplex, 2>* sn_list) {
+// if (second_dim(*sn_list) != tau_list.size())
+//  TRIQS_RUNTIME_ERROR << "The sn list has not the good size to be reshaped.";
+// array<dcomplex, 3> sn_array(first_dim(*sn_list), shape_tau_array[0], shape_tau_array[1]);
+// int flatten_idx = 0;
+// for (int i = 0; i < shape_tau_array[0]; ++i) {
+//  for (int j = 0; j < shape_tau_array[1]; ++j) {
+//   sn_array(range(), i, j) = (*sn_list)(range(), flatten_idx);
+//   flatten_idx++;
+//  }
+// }
+// return sn_array;
+//};
 
-// -------
-array<dcomplex, 2> solver_core::reshape_sn(array<dcomplex, 1>* sn_list) {
- if (first_dim(*sn_list) != tau_list.size())
-  TRIQS_RUNTIME_ERROR << "The sn list has not the good size to be reshaped.";
- array<dcomplex, 2> sn_array(shape_tau_array[0], shape_tau_array[1]);
- int flatten_idx = 0;
- for (int i = 0; i < shape_tau_array[0]; ++i) {
-  for (int j = 0; j < shape_tau_array[1]; ++j) {
-   sn_array(i, j) = (*sn_list)(flatten_idx);
-   flatten_idx++;
-  }
- }
- return sn_array;
-};
+//// -------
+// array<dcomplex, 2> solver_core::reshape_sn(array<dcomplex, 1>* sn_list) {
+// if (first_dim(*sn_list) != tau_list.size())
+//  TRIQS_RUNTIME_ERROR << "The sn list has not the good size to be reshaped.";
+// array<dcomplex, 2> sn_array(shape_tau_array[0], shape_tau_array[1]);
+// int flatten_idx = 0;
+// for (int i = 0; i < shape_tau_array[0]; ++i) {
+//  for (int j = 0; j < shape_tau_array[1]; ++j) {
+//   sn_array(i, j) = (*sn_list)(flatten_idx);
+//   flatten_idx++;
+//  }
+// }
+// return sn_array;
+//};

@@ -103,6 +103,10 @@ c.add_property(name = "nb_measures",
                getter = cfunction("int get_nb_measures ()"),
                doc = """ """)
 
+c.add_property(name = "nb_measures_all",
+               getter = cfunction("int get_nb_measures_all ()"),
+               doc = """ """)
+
 c.add_property(name = "config_list",
                getter = cfunction("std::vector<std::vector<double>> get_config_list ()"),
                doc = """ """)
@@ -115,20 +119,24 @@ c.add_property(name = "pn",
                getter = cfunction("array<int,1> get_pn ()"),
                doc = """ """)
 
+c.add_property(name = "pn_all",
+               getter = cfunction("array<int,1> get_pn_all ()"),
+               doc = """ """)
+
 c.add_property(name = "sn",
                getter = cfunction("array<dcomplex,3> get_sn ()"),
                doc = """ """)
 
-c.add_property(name = "pn_errors",
-               getter = cfunction("array<double,1> get_pn_errors ()"),
-               doc = """ """)
-
-c.add_property(name = "sn_errors",
-               getter = cfunction("array<double,1> get_sn_errors ()"),
+c.add_property(name = "sn_all",
+               getter = cfunction("array<dcomplex,3> get_sn_all ()"),
                doc = """ """)
 
 c.add_property(name = "kernels",
-               getter = cfunction("std::vector<array<dcomplex,3>> get_kernels ()"),
+               getter = cfunction("array<dcomplex,3> get_kernels ()"),
+               doc = """ """)
+
+c.add_property(name = "kernels_all",
+               getter = cfunction("array<dcomplex,3> get_kernels_all ()"),
                doc = """ """)
 
 module.add_class(c)

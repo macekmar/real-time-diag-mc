@@ -9,231 +9,148 @@
 using namespace triqs::statistics;
 namespace mpi = triqs::mpi;
 
+inline bool my_isnan(dcomplex v) { return std::isnan(v.imag()) or std::isnan(v.real()); };
+
 struct KernelBinning {
- std::vector<array<dcomplex, 3>> values; // 3D: binning, p, keldysh index
+ // each bin is [t_min + n*bin_length; t_min + (n+1)*bin_length[, for n from 0 to nb_bins-1
+ array<dcomplex, 3> values; // 3D: order, binning, keldysh index
+ array<int, 3> nb_values;
  double t_min, t_max, bin_length;
+ int nb_bins;
+ array<keldysh_contour_pt, 2> coord_array;
 
  KernelBinning(){};
- KernelBinning(double t_min, double t_max, int nb_bins, int max_order)
-    : t_max(t_max), t_min(t_min), bin_length((t_max - t_min) / nb_bins) {
-  for (int k = 1; k <= max_order; ++k) {
-   values.emplace_back(array<dcomplex, 3>(nb_bins, k, 2));
-   values[k - 1]() = 0;
+ KernelBinning(double t_min, double t_max, int nb_bins, int max_order, bool match_boundaries = false)
+    : t_max(t_max), t_min(t_min), bin_length((t_max - t_min) / nb_bins), nb_bins(nb_bins) {
+
+  if (match_boundaries) {
+   double delta_t = t_max - t_min;
+   t_min -= 0.5 * delta_t / (nb_bins - 1);
+   t_max += 0.5 * delta_t / (nb_bins - 1);
+   bin_length = (t_max - t_min) / nb_bins;
+  std::cout << "DEBUG: bin_length = " << bin_length << std::endl;
   }
+
+  values = array<dcomplex, 3>(max_order + 1, nb_bins, 2); // from order 0 to order max_order
+  values() = 0;
+  nb_values = array<int, 3>(max_order + 1, nb_bins, 2);
+  nb_values() = 0;
+
+  coord_array = array<keldysh_contour_pt, 2>(nb_bins, 2);
+  double time = t_min + 0.5 * bin_length; // middle of th bin
+  std::cout << "DEBUG: " << time << std::endl;
+  for (int i = 0; i < nb_bins; ++i) {
+	  if (std::abs(time) < 1e-6) time = 0; // temp fix to make sure a bin match exactly with t'=0 (if match_bundary is true)
+   for (int k_index : {0, 1}) {
+    coord_array(i, k_index) = {0, time, k_index};
+   }
+   time += bin_length;
+  }
+  std::cout << "DEBUG: " << time - bin_length << std::endl;
  };
 
- void add(keldysh_contour_pt alpha, int order, int p, dcomplex value) {
-  assert(t_min <= alpha.t);
-  assert(alpha.t <= t_max);
+ void add(int order, keldysh_contour_pt alpha, dcomplex value) {
+  assert(t_min <= alpha.t and alpha.t <= t_max);
   int bin = int((alpha.t - t_min) / bin_length);
-  values[order - 1](bin, p, alpha.k_index) += value;
+  bin = std::min(bin, nb_bins - 1); // avoids leak of values for alpha.t == t_max
+  assert(0 <= bin and bin <= nb_bins-1);
+  values(order, bin, alpha.k_index) += value;
+  nb_values(order, bin, alpha.k_index)++;
+ };
+
+ dcomplex get(int order, keldysh_contour_pt alpha) {
+  assert(t_min <= alpha.t and alpha.t <= t_max);
+  int bin = int((alpha.t - t_min) / bin_length);
+  bin = std::min(bin, nb_bins - 1); // avoids leak of values for alpha.t == t_max
+  return values(order, bin, alpha.k_index);
  };
 };
 
+// -----------------------
 
 class WeightSignMeasure {
 
  private:
  Configuration& config;
  array<int, 1>& pn;
- array<dcomplex, 2>& sn;
- array<double, 1>& pn_errors;
- array<double, 1>& sn_errors;
- int size_n;
- int& nb_measures;
+ array<int, 1>& pn_all;
+ array<dcomplex, 3>& sn;
+ array<dcomplex, 3>& sn_all;
+ array<dcomplex, 3> sn_accum;
+ int nb_orders;
  histogram histogram_pn;
- array<dcomplex, 2> sn_node;
 
  public:
- // ----------
- WeightSignMeasure(Configuration* config, array<int, 1>* pn, array<dcomplex, 2>* sn,
-                   array<double, 1>* pn_errors, array<double, 1>* sn_errors, int* nb_measures)
-    : config(*config),
-      pn(*pn),
-      sn(*sn),
-      pn_errors(*pn_errors),
-      sn_errors(*sn_errors),
-      nb_measures(*nb_measures),
-      sn_node(*sn) {
+ WeightSignMeasure(Configuration* config, array<int, 1>* pn, array<int, 1>* pn_all, array<dcomplex, 3>* sn,
+                   array<dcomplex, 3>* sn_all);
 
-  size_n = first_dim(*pn);
-  histogram_pn = histogram(0, size_n - 1);
-  sn_node() = 0;
- }
+ void accumulate(dcomplex sign);
 
- // ----------
- void accumulate(dcomplex sign) {
-
-  histogram_pn << config.order;
-  // FIXME: first dim of sn_node is out of range if min_perturbation_order is not zero !
-  sn_node(config.order, range()) += config.weight_value / std::abs(config.weight_value);
- }
-
- // ----------
- void collect_results(mpi::communicator c) {
-
-  histogram histogram_pn_full = mpi_reduce(histogram_pn, c);
-  auto data_histogram_pn = histogram_pn_full.data();
-  nb_measures = histogram_pn_full.n_data_pts();
-
-  sn = mpi::reduce(sn_node, c);
-
-  // Computing the average and error values
-  for (int k = 0; k < size_n; k++) {
-   pn(k) = data_histogram_pn(k);
-   if (pn(k) == 0) pn(k) = 1; // Avoids divide by zero, sn(k) should be zero in this case
-   sn(k, range()) = sn(k, range()) / pn(k);
-
-   // FIXME : explicit formula for the error bar jacknife of a series of 0 and 1
-   // pn_errors(k) =
-   //    (1 / double(pow(nb_measures, 2))) * sqrt((nb_measures - 1) * data_histogram_pn(k) * (nb_measures -
-   //    data_histogram_pn(k)));
-
-   // FIXME : explicit formula as well for the error bar of the sn using a jacknife
-   // sn_errors(k) = (2 / double(pow(data_histogram_pn(k), 2))) *
-   //               sqrt((data_histogram_pn(k) - 1) * data_histogram_sn(k) * (data_histogram_pn(k) -
-   //               data_histogram_sn(k)));
-   sn_errors(k) = nan("");
-   pn_errors(k) = nan("");
-  }
- }
+ void collect_results(mpi::communicator c);
 };
+
+// -----------------------
 
 class TwoDetCofactMeasure {
 
  private:
  Configuration& config;
- KernelBinning& kernels;
+ KernelBinning& kernels_binning;
  array<int, 1>& pn;
- array<dcomplex, 2>& sn;
- array<double, 1>& pn_errors;
- array<double, 1>& sn_errors;
- int size_n;
- int& nb_measures;
+ array<int, 1>& pn_all;
+ array<dcomplex, 3>& sn;
+ array<dcomplex, 3>& sn_all;
+ array<dcomplex, 3> sn_accum;
+ int nb_orders;
  histogram histogram_pn;
- array<dcomplex, 2> sn_node;
- const std::vector<keldysh_contour_pt>* tau_list;
+ const array<keldysh_contour_pt, 2>& tau_array;
  const keldysh_contour_pt taup;
  const int op_to_measure_spin;
- const array<dcomplex, 1>* g0_values;
+ const array<dcomplex, 2>& g0_array;
  g0_keldysh_t green_function;
+ const double delta_t;
 
  public:
- // ----------
- TwoDetCofactMeasure(Configuration* config, KernelBinning* kernels, array<int, 1>* pn, array<dcomplex, 2>* sn,
-                     array<double, 1>* pn_errors, array<double, 1>* sn_errors, int* nb_measures,
-                     const std::vector<keldysh_contour_pt>* tau_list, const keldysh_contour_pt taup,
-                     const int op_to_measure_spin, const array<dcomplex, 1>* g0_values,
-                     g0_keldysh_t green_function)
-    : config(*config),
-      kernels(*kernels),
-      pn(*pn),
-      sn(*sn),
-      pn_errors(*pn_errors),
-      sn_errors(*sn_errors),
-      nb_measures(*nb_measures),
-      sn_node(*sn),
-      tau_list(tau_list),
-      taup(taup),
-      op_to_measure_spin(op_to_measure_spin),
-      g0_values(g0_values),
-      green_function(green_function) {
+ TwoDetCofactMeasure(Configuration* config, KernelBinning* kernels_binning, array<int, 1>* pn,
+                     array<int, 1>* pn_all, array<dcomplex, 3>* sn, array<dcomplex, 3>* sn_all,
+                     const array<keldysh_contour_pt, 2>* tau_array, const keldysh_contour_pt taup,
+                     const int op_to_measure_spin, const array<dcomplex, 2>* g0_array,
+                     g0_keldysh_t green_function, const double delta_t);
 
-  size_n = first_dim(*pn);
-  histogram_pn = histogram(0, size_n - 1);
-  sn_node() = 0;
- }
+ void accumulate(dcomplex sign);
 
- // ----------
- void accumulate(dcomplex sign) {
+ void collect_results(mpi::communicator c);
+};
 
-  histogram_pn << config.order;
+// -----------------------
 
-  keldysh_contour_pt alpha_p_right, alpha_tmp;
-  auto matrix_0 = &(config.matrices[op_to_measure_spin]);
-  auto matrix_1 = &(config.matrices[1 - op_to_measure_spin]);
-  dcomplex kernel;
-  int signs[2] = {1, -1};
-  int n = config.order; // perturbation order
-  array<dcomplex, 1> value(tau_list->size());
+class TwoDetKernelMeasure {
 
-  if (n == 0) {
+ private:
+ Configuration& config;
+ KernelBinning& kernels_binning;
+ array<int, 1>& pn;
+ array<int, 1>& pn_all;
+ array<dcomplex, 3>& sn;
+ array<dcomplex, 3>& sn_all;
+ array<dcomplex, 3>& kernels_all;
+ int nb_orders;
+ histogram histogram_pn;
+ const array<keldysh_contour_pt, 2>& tau_array;
+ const keldysh_contour_pt taup;
+ const int op_to_measure_spin;
+ const array<dcomplex, 2>& g0_array;
+ g0_keldysh_t green_function;
+ const double delta_t;
 
-   value() = *g0_values;
+ public:
+ TwoDetKernelMeasure(Configuration* config, KernelBinning* kernels_binning, array<int, 1>* pn,
+                     array<int, 1>* pn_all, array<dcomplex, 3>* sn, array<dcomplex, 3>* sn_all,
+                     array<dcomplex, 3>* kernels_all, const array<keldysh_contour_pt, 2>* tau_array,
+                     const keldysh_contour_pt taup, const int op_to_measure_spin,
+                     const array<dcomplex, 2>* g0_array, g0_keldysh_t green_function, const double delta_t);
 
-  } else {
+ void accumulate(dcomplex sign);
 
-   value() = 0;
-   auto tau_weight = config.get_left_input();
-   matrix_0->remove(n, n); // remove tau_w and taup
-
-   alpha_tmp = taup;
-   matrix_0->roll_matrix(det_manip<g0_keldysh_t>::RollDirection::Left);
-
-   for (int p = 0; p < n; ++p) {
-    for (int k_index : {1, 0}) {
-     if (k_index == 1) alpha_p_right = matrix_0->get_y((p - 1 + n) % n);
-     alpha_p_right = flip_index(alpha_p_right);
-     // matrix_0->change_one_row_and_one_col(p, (p - 1 + n) % n, flip_index(matrix_0->get_x(p)),
-     //                                     alpha_tmp);
-     // Change the p keldysh index on the left (row) and the p point on the right (col).
-     // The p point on the right is effectively changed only when k_index=1.
-     matrix_0->change_row(p, flip_index(matrix_0->get_x(p)));
-     matrix_0->change_col((p - 1 + n) % n, alpha_tmp);
-
-     // matrix_1->change_one_row_and_one_col(p, p, flip_index(matrix_1->get_x(p)),
-     // flip_index(matrix_1->get_y(p)));
-     matrix_1->change_row(p, flip_index(matrix_1->get_x(p)));
-     matrix_1->change_col(p, flip_index(matrix_1->get_y(p)));
-
-     // nice_print(*matrix_0, p);
-     kernel = recompute_sum_keldysh_indices(config.matrices, n - 1, op_to_measure_spin, p) *
-              signs[(n + p + k_index) % 2];
-     kernels.add(alpha_p_right, n, p, kernel / std::abs(config.weight_value));
-
-     for (int i = 0; i < tau_list->size(); ++i) {
-      value(i) += green_function((*tau_list)[i], alpha_p_right) * kernel;
-     }
-
-     if (k_index == 0) alpha_tmp = alpha_p_right;
-    }
-   }
-   matrix_0->change_col(n - 1, alpha_tmp);
-
-   matrix_0->insert(n, n, tau_weight, taup);
-  }
-
-
-  // FIXME: first dim of sn_node is out of range if min_perturbation_order is not zero !
-  sn_node(config.order, range()) += value / std::abs(config.weight_value);
- }
-
- // ----------
- void collect_results(mpi::communicator c) {
-
-  histogram histogram_pn_full = mpi_reduce(histogram_pn, c);
-  auto data_histogram_pn = histogram_pn_full.data();
-  nb_measures = histogram_pn_full.n_data_pts();
-
-  sn = mpi::reduce(sn_node, c);
-
-  // Computing the average and error values
-  for (int k = 0; k < size_n; k++) {
-   pn(k) = data_histogram_pn(k);
-   if (pn(k) == 0) pn(k) = 1; // Avoids divide by zero, sn(k) should be zero in this case
-   sn(k, range()) = sn(k, range()) / pn(k);
-
-   // FIXME : explicit formula for the error bar jacknife of a series of 0 and 1
-   // pn_errors(k) =
-   //    (1 / double(pow(nb_measures, 2))) * sqrt((nb_measures - 1) * data_histogram_pn(k) * (nb_measures -
-   //    data_histogram_pn(k)));
-
-   // FIXME : explicit formula as well for the error bar of the sn using a jacknife
-   // sn_errors(k) = (2 / double(pow(data_histogram_pn(k), 2))) *
-   //               sqrt((data_histogram_pn(k) - 1) * data_histogram_sn(k) * (data_histogram_pn(k) -
-   //               data_histogram_sn(k)));
-   sn_errors(k) = nan("");
-   pn_errors(k) = nan("");
-  }
- }
+ void collect_results(mpi::communicator c);
 };
