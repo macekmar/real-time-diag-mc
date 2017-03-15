@@ -31,8 +31,8 @@ solver_core::solver_core(solve_parameters_t const& params)
 
  // kernel binning
  kernels_all = array<dcomplex, 3>(params.max_perturbation_order + 1, params.nb_bins, 2);
- kernels = KernelBinning(- params.interaction_start, t_max, params.nb_bins,
-                         params.max_perturbation_order, false); // TODO: it should be defined in measure
+ kernels_binning = KernelBinning(- params.interaction_start, t_max, params.nb_bins,
+                         params.max_perturbation_order, true); // TODO: it should be defined in measure
 
  // rank of the Green's function to calculate. For now only 1 is supported.
  if (params.right_input_points.size() % 2 == 0)
@@ -109,12 +109,12 @@ void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser,
    TRIQS_RUNTIME_ERROR << "Trying to use a singlepoint measure with multiple input point";
   qmc.add_measure(WeightSignMeasure(&config, &pn, &pn_all, &sn, &sn_all), "Weight sign measure");
  } else if (params.method == 4) {
-  qmc.add_measure(TwoDetCofactMeasure(&config, &kernels, &pn, &pn_all, &sn, &sn_all, &tau_array, taup,
+  qmc.add_measure(TwoDetCofactMeasure(&config, &kernels_binning, &pn, &pn_all, &sn, &sn_all, &tau_array, taup,
                                       op_to_measure_spin, &g0_array, green_function,
                                       params.interaction_start + t_max),
                   "Cofact measure");
  } else if (params.method == 5) {
-  qmc.add_measure(TwoDetKernelMeasure(&config, &kernels, &pn, &pn_all, &sn, &sn_all, &kernels_all, &tau_array,
+  qmc.add_measure(TwoDetKernelMeasure(&config, &kernels_binning, &pn, &pn_all, &sn, &sn_all, &kernels_all, &tau_array,
                                       taup, op_to_measure_spin, &g0_array, green_function,
                                       params.interaction_start + t_max),
                   "Kernel measure");
@@ -277,32 +277,3 @@ std::tuple<double, array<dcomplex, 2>> solver_core::order_zero() {
  return std::tuple<double, array<dcomplex, 2>>{c0, s0};
 }
 
-//// -------
-// array<dcomplex, 3> solver_core::reshape_sn(array<dcomplex, 2>* sn_list) {
-// if (second_dim(*sn_list) != tau_list.size())
-//  TRIQS_RUNTIME_ERROR << "The sn list has not the good size to be reshaped.";
-// array<dcomplex, 3> sn_array(first_dim(*sn_list), shape_tau_array[0], shape_tau_array[1]);
-// int flatten_idx = 0;
-// for (int i = 0; i < shape_tau_array[0]; ++i) {
-//  for (int j = 0; j < shape_tau_array[1]; ++j) {
-//   sn_array(range(), i, j) = (*sn_list)(range(), flatten_idx);
-//   flatten_idx++;
-//  }
-// }
-// return sn_array;
-//};
-
-//// -------
-// array<dcomplex, 2> solver_core::reshape_sn(array<dcomplex, 1>* sn_list) {
-// if (first_dim(*sn_list) != tau_list.size())
-//  TRIQS_RUNTIME_ERROR << "The sn list has not the good size to be reshaped.";
-// array<dcomplex, 2> sn_array(shape_tau_array[0], shape_tau_array[1]);
-// int flatten_idx = 0;
-// for (int i = 0; i < shape_tau_array[0]; ++i) {
-//  for (int j = 0; j < shape_tau_array[1]; ++j) {
-//   sn_array(i, j) = (*sn_list)(flatten_idx);
-//   flatten_idx++;
-//  }
-// }
-// return sn_array;
-//};

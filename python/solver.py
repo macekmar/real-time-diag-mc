@@ -221,6 +221,8 @@ def save_staircase_solve(g0_lesser, g0_greater, _parameters, filename, kind_list
 
         S = SolverCore(**parameters)
         S.set_g0(g0_lesser, g0_greater)
+        kernels = S.kernels_all
+        kernels[...] = 0
 
         # order zero and initializing arrays
         if k == 1:
@@ -236,6 +238,7 @@ def save_staircase_solve(g0_lesser, g0_greater, _parameters, filename, kind_list
             pn[0, 0] = 1
             sn_all[0, 0, ...] = s0
             sn[0, 0, ...] = s0
+            kernels[0, ...] = S.kernels_all[0, ...]
 
         status = 1
         while status == 1:
@@ -245,6 +248,7 @@ def save_staircase_solve(g0_lesser, g0_greater, _parameters, filename, kind_list
             pn[k, :k+1] = S.pn
             sn_all[k, :k+1, ...] = S.sn_all
             sn[k, :k+1, ...] = S.sn
+            kernels[k, ...] = S.kernels_all[k, ...]
 
             if world.rank == 0:
                 print pn_all
@@ -261,6 +265,7 @@ def save_staircase_solve(g0_lesser, g0_greater, _parameters, filename, kind_list
                 print "Number of measures (all procs, all orders):", S.nb_measures_all
                 print
                 save(solve_duration + S.solve_duration, S.nb_measures_all, parameters, on_result[:k+1], on_error[:k+1], filename, kind_list, world.size)
+                save_add(kernels, 'kernels', filename)
 
         solve_duration += S.solve_duration
         if status == 2: break # Received signal, terminate

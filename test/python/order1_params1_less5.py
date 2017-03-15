@@ -16,15 +16,15 @@ p["muR"] = 0.
 g0_lesser, g0_greater = make_g0_semi_circular(**p)
 
 times = np.linspace(-40.0, 0.0, 101)
-times = times[::10] # divide by 10 the size because oldway takes more time
 p = {}
 p["right_input_points"] = [(0, 0.0, 1)] # lesser
 p["interaction_start"] = 40.0
 p["measure_state"] = 0
 p["measure_keldysh_indices"] = [0] # lesser
+p["measure_times"] = times
 p["U"] = 2.5 # U_qmc
 p["min_perturbation_order"] = 0
-p["max_perturbation_order"] = 1
+p["max_perturbation_order"] = 2
 p["alpha"] = 0.0
 p["n_warmup_cycles"] = 1000
 p["length_cycle"] = 50
@@ -32,31 +32,32 @@ p["n_cycles"] = 100000
 p["w_dbl"] = 0
 p["w_shift"] = 0
 p["w_weight_swap"] = 0.2
-p["method"] = 0
+p["method"] = 5
 
-on = np.empty((2, len(times)), dtype=complex)
-
-for i, t in enumerate(times):
-    p["measure_times"] = [t]
-    S = SolverCore(**p)
-    S.set_g0(g0_lesser, g0_greater)
-
-    c0, _ = S.order_zero
-    S.run(-1)
-
-    on[:, i] = np.squeeze(perturbation_series(c0, S.pn, S.sn, p["U"]))
+filename = 'out_files/' + os.path.basename(__file__)[:-3] + '_save.out.h5'
+on, on_error = save_staircase_solve(g0_lesser, g0_greater, p, filename, ['less'], 30)
 
 if mpi.is_master_node():
-    with HDFArchive('out_files/' + os.path.basename(__file__)[:-3] + '.out.h5', 'w') as ar:  # A file to store the results
+    # A file to store the results
+    with HDFArchive('out_files/' + os.path.basename(__file__)[:-3] + '.out.h5', 'w') as ar:  
         ar.create_group('less')
         less = ar['less']
         less['on'] = on
         less['times'] = times
 
+if on.shape != (3, 101):
+    raise RuntimeError, 'FAILED: on shape is ' + str(on.shape) + ' but should be (3, 101)'
+
+# order 0
+o0_less = np.array([g0_lesser(t)[0, 0] for t in times], dtype=complex)
+if not np.allclose(on[0], o0_less, rtol=0.001, atol=0.0001):
+    raise RuntimeError, 'FAILED order 0'
+
+# order 1
 with HDFArchive('ref_data/order1_params1.ref.h5', 'r') as ar:
-    if not np.array_equal(times, ar['less']['times'][::10]):
+    if not np.array_equal(times, ar['less']['times']):
         raise RuntimeError, 'FAILED: times are different'
 
-    if not np.allclose(on[1], ar['less']['o1'][::10], rtol=0.01, atol=0.005):
-        raise RuntimeError, 'FAILED'
+    if not np.allclose(on[1], ar['less']['o1'], rtol=0.001, atol=0.01):
+        raise RuntimeError, 'FAILED order 1'
 

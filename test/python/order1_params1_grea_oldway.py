@@ -15,9 +15,7 @@ p["muR"] = 0.
 
 g0_lesser, g0_greater = make_g0_semi_circular(**p)
 
-S = SolverCore(g0_lesser, g0_greater)
-
-times = np.linspace(-40.0, 0.0, 101)
+times = np.linspace(-40.0, 0.0, 101) # time grid of the reference file
 times = times[::10] # divide by 10 the size because oldway takes more time
 p = {}
 p["right_input_points"] = [(0, 0.0, 0)] # greater
@@ -26,6 +24,7 @@ p["measure_state"] = 0
 p["measure_keldysh_indices"] = [1] # greater
 p["U"] = 2.5 # U_qmc
 p["min_perturbation_order"] = 0
+p["max_perturbation_order"] = 1
 p["alpha"] = 0.0
 p["n_warmup_cycles"] = 1000
 p["length_cycle"] = 50
@@ -38,15 +37,13 @@ on = np.empty((2, len(times)), dtype=complex)
 
 for i, t in enumerate(times):
     p["measure_times"] = [t]
+    S = SolverCore(**p)
+    S.set_g0(g0_lesser, g0_greater)
 
-    p["max_perturbation_order"] = 0
-    (p0, s0), _ = S.solve(**p)
-    c0 = abs(p0 * s0)
+    c0, _ = S.order_zero
+    S.run(-1)
 
-    p["max_perturbation_order"] = 1
-    (pn, sn), _ = S.solve(**p)
-
-    on[:, i] = perturbation_series(c0, pn, sn, p["U"])[:]
+    on[:, i] = np.squeeze(perturbation_series(c0, S.pn, S.sn, p["U"]))
 
 if mpi.is_master_node():
     with HDFArchive('out_files/' + os.path.basename(__file__)[:-3] + '.out.h5', 'w') as ar:  # A file to store the results

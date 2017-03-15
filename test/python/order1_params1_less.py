@@ -39,9 +39,7 @@ S.set_g0(g0_lesser, g0_greater)
 
 c0, _ = S.order_zero
 
-status = 1
-while status ==1:
-    status = S.run(-1)
+S.run(-1)
 
 on = perturbation_series(c0, S.pn, S.sn, p["U"])
 on = np.squeeze(on)

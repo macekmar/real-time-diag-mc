@@ -204,7 +204,7 @@ TwoDetKernelMeasure::TwoDetKernelMeasure(Configuration* config, KernelBinning* k
 // ----------
 void TwoDetKernelMeasure::accumulate(dcomplex sign) {
 
- histogram_pn << config.order; // TODO: pn is already accumulated in kernels_binning
+ histogram_pn << config.order;
 
  keldysh_contour_pt alpha_p_right, alpha_tmp;
  auto matrix_0 = &(config.matrices[op_to_measure_spin]);
@@ -243,8 +243,6 @@ void TwoDetKernelMeasure::accumulate(dcomplex sign) {
     // nice_print(*matrix_0, p);
     kernel = recompute_sum_keldysh_indices(config.matrices, n - 1, op_to_measure_spin, p) *
              signs[(n + p + k_index) % 2];
-    // std::cout << "DEBUG: " << alpha_p_right.t << " : " << kernel / std::abs(config.weight_value) <<
-    // std::endl;
     kernels_binning.add(n, alpha_p_right, kernel / std::abs(config.weight_value));
 
     if (k_index == 0) alpha_tmp = alpha_p_right;
@@ -268,26 +266,19 @@ void TwoDetKernelMeasure::collect_results(mpi::communicator c) {
  pn_all = mpi::mpi_all_reduce(pn, c);
 
  // gather kernels
+ array<dcomplex, 3> kernels = kernels_binning.get_values();
+
  dcomplex i_n[4] = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}}; // powers of i
  for (int k = 0; k < nb_orders; k++) {
-  kernels_binning.values(k, ellipsis()) *= i_n[k % 4] / (2 * delta_t);
+  kernels(k, ellipsis()) *= i_n[k % 4] / (2 * delta_t);
  }
 
- std::cout << "DEBUG: nb_values = " << sum(kernels_binning.nb_values) << std::endl;
+ kernels_all = mpi::mpi_all_reduce(kernels, c);
 
- array<dcomplex, 3> kernels = kernels_binning.values / kernels_binning.nb_values;
- foreach (kernels, [&kernels](size_t i, size_t j, size_t k) {
-  if (my_isnan(kernels(i, j, k))) kernels(i, j, k) = 0;
- })
-  ;
-
- kernels_all = mpi::mpi_all_reduce(kernels_binning.values, c);
- array<int, 3> nb_values_all = mpi::mpi_all_reduce(kernels_binning.nb_values, c);
- kernels_all /= nb_values_all;
- foreach (kernels_all, [this](size_t i, size_t j, size_t k) {
-  if (my_isnan(kernels_all(i, j, k))) kernels_all(i, j, k) = 0;
- })
-  ;
+ for (int k = 0; k < nb_orders; ++k) {
+  if (pn(k) != 0) kernels(k, ellipsis()) /= pn(k);
+  if (pn_all(k) != 0) kernels_all(k, ellipsis()) /= pn_all(k);
+ }
 
  // compute sn from kernels
  keldysh_contour_pt tau;
@@ -296,54 +287,11 @@ void TwoDetKernelMeasure::collect_results(mpi::communicator c) {
    for (int a = 0; a < third_dim(sn); ++a) {       // for each tau (keldysh index)
     tau = tau_array(i, a);
     auto gf_map = map([&](keldysh_contour_pt alpha) { return green_function(tau, alpha); });
-    sn(order, i, a) = sum(gf_map(kernels_binning.coord_array) * kernels(order, ellipsis()));
-    sn_all(order, i, a) = sum(gf_map(kernels_binning.coord_array) * kernels_all(order, ellipsis()));
+    auto gf_tau_alpha = gf_map(kernels_binning.coord_array());
+    sn(order, i, a) = sum(gf_tau_alpha * kernels(order, ellipsis()));
+    sn_all(order, i, a) = sum(gf_tau_alpha * kernels_all(order, ellipsis()));
    }
   }
  }
 
- // keldysh_contour_pt alpha_p;
- // keldysh_contour_pt tau;
- // for (int order = 0; order < nb_orders; ++order) { // for each order
- // int flatten_idx = 0;
- // for (int i = 0; i < second_dim(sn); ++i) { // for each tau (time)
- //  for (int a = 0; a < third_dim(sn); ++a) { // for each tau (keldysh index)
- //   if (order == 0)
- //    sn(0, i, a) = (*g0_array)(flatten_idx);
- //   else {
- //    tau = (*tau_array)[flatten_idx];
- //    for (int k_index : {1, 0}) { // for each kernel (keldych index)
- //     double time = kernels.t_min;
- //     for (int j = 0; j < kernels.nb_bins; ++j) { // for each kernel (time)
- //      alpha_p = {0, time, k_index};
- //      sn(order, i, a) += green_function(tau, alpha_p) * kernels.values(order - 1, j, k_index);
- //      time += kernels.bin_length;
- //     }
- //    }
- //   }
- //   flatten_idx++;
- //  }
- // }
- //}
-
- //// gather sn and kernels
- // sn_all = mpi::mpi_all_reduce(sn, c);
- // kernels_binning.all_reduce(c);
-
- // for (int k = 1; k < nb_orders; k++) {
- // if (pn(k) != 0) {
- //  sn(k, ellipsis()) /= pn(k);
- //  kernels_binning.values(k - 1, ellipsis()) /= pn(k);
- // } else {
- //  sn(k, ellipsis()) = 0;
- //  kernels_binning.values(k - 1, ellipsis()) = 0;
- // }
- // if (pn_all(k) != 0) {
- //  sn_all(k, ellipsis()) /= pn_all(k);
- //  kernels_binning.values_all(k - 1, ellipsis()) /= pn(k);
- // } else {
- //  sn_all(k, ellipsis()) = 0;
- //  kernels_binning.values_all(k - 1, ellipsis()) = 0;
- // }
- //}
 }

@@ -34,7 +34,7 @@ class solver_core {
  std::vector<std::vector<double>> config_list;
  std::vector<int> config_weight;
  Status status = not_ready;
- KernelBinning kernels;
+ KernelBinning kernels_binning;
  array<dcomplex, 3> kernels_all;
  array<int, 1> pn;
  array<int, 1> pn_all;
@@ -69,6 +69,6 @@ class solver_core {
  array<int, 1> get_pn_all() const { return pn_all; }
  array<dcomplex, 3> get_sn() const { return sn; }
  array<dcomplex, 3> get_sn_all() const { return sn_all; }
- array<dcomplex, 3> get_kernels() const { return kernels.values; }
+ array<dcomplex, 3> get_kernels() const { return kernels_binning.get_values(); }
  array<dcomplex, 3> get_kernels_all() const { return kernels_all; }
 };
