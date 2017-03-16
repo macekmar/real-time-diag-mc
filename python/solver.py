@@ -1,7 +1,7 @@
 # from pytriqs.utility import mpi
 from mpi4py import MPI
 from ctint_keldysh import SolverCore
-from perturbation_series import perturbation_series, staircase_perturbation_series
+from perturbation_series import perturbation_series, staircase_perturbation_series, staircase_perturbation_series_cum
 import numpy as np
 import itertools
 from pytriqs.archive import HDFArchive
@@ -85,8 +85,9 @@ def single_solve(g0_lesser, g0_greater, parameters, max_time=-1, histogram=False
     on = perturbation_series(c0, S.pn, S.sn, parameters['U'])
     on_error = variance_error(on, world)
     output = (np.squeeze(on), np.squeeze(on_error))
-    print "Number of measures (all procs):", S.nb_measures_all
-    print
+    if world.rank == 0:
+        print "Number of measures (all procs):", S.nb_measures_all
+        print
 
     if histogram:
         list_hist = gather_histogram(S, world)
@@ -122,8 +123,9 @@ def save_single_solve(g0_lesser, g0_greater, parameters, filename, kind_list, sa
             save_add(S.kernels_all, 'kernels', filename)
 
         output = (np.squeeze(on), np.squeeze(on_error))
-        print "Number of measures (all procs):", S.nb_measures_all
-        print
+        if world.rank == 0:
+            print "Number of measures (all procs):", S.nb_measures_all
+            print
 
         if histogram:
             list_hist = gather_histogram(S, world)
@@ -147,6 +149,7 @@ def staircase_solve(g0_lesser, g0_greater, _parameters, max_time=-1):
     parameters["min_perturbation_order"] = 0
     max_order = parameters["max_perturbation_order"]
     solve_duration = 0
+    nb_measures = 0
 
     for k in range(1, max_order + 1):
 
@@ -183,7 +186,7 @@ def staircase_solve(g0_lesser, g0_greater, _parameters, max_time=-1):
 
         if world.rank == 0:
             print "Duration (all orders):", solve_duration
-            print "Number of measures (all procs, all orders):", S.nb_measures_all
+            print "Number of measures (all procs, all orders):", nb_measures + S.nb_measures_all
             print
 
         if status == 2 : break # Received signal, terminate
@@ -211,6 +214,7 @@ def save_staircase_solve(g0_lesser, g0_greater, _parameters, filename, kind_list
     parameters["min_perturbation_order"] = 0
     max_order = parameters["max_perturbation_order"]
     solve_duration = 0
+    nb_measures = 0
 
     for k in range(1, max_order + 1):
 
@@ -221,8 +225,6 @@ def save_staircase_solve(g0_lesser, g0_greater, _parameters, filename, kind_list
 
         S = SolverCore(**parameters)
         S.set_g0(g0_lesser, g0_greater)
-        kernels = S.kernels_all
-        kernels[...] = 0
 
         # order zero and initializing arrays
         if k == 1:
@@ -233,12 +235,13 @@ def save_staircase_solve(g0_lesser, g0_greater, _parameters, filename, kind_list
             pn = pn_all.copy()
             sn_all = np.empty(pn_all.shape + s0.shape, dtype=complex) * np.nan
             sn = sn_all.copy()
+            kernels = np.empty((max_order+1,) + S.kernels_all.shape[1:], dtype=complex)
+            kernels[...] = 0
 
             pn_all[0, 0] = 1 # needed to avoid NaNs, any non zero value works
             pn[0, 0] = 1
             sn_all[0, 0, ...] = s0
             sn[0, 0, ...] = s0
-            kernels[0, ...] = S.kernels_all[0, ...]
 
         status = 1
         while status == 1:
@@ -249,9 +252,12 @@ def save_staircase_solve(g0_lesser, g0_greater, _parameters, filename, kind_list
             sn_all[k, :k+1, ...] = S.sn_all
             sn[k, :k+1, ...] = S.sn
             kernels[k, ...] = S.kernels_all[k, ...]
+            if k == 1:
+                kernels[0, ...] = S.kernels_all[0, ...]
 
             if world.rank == 0:
                 print pn_all
+                print kernels[k, -1]
 
             on_result = staircase_perturbation_series(c0, pn_all, sn_all, parameters['U'])
 
@@ -261,10 +267,11 @@ def save_staircase_solve(g0_lesser, g0_greater, _parameters, filename, kind_list
             on_error = variance_error(on, world)
 
             if world.rank == 0:
+                print "Order", k
                 print "Duration (all orders):", solve_duration + S.solve_duration
-                print "Number of measures (all procs, all orders):", S.nb_measures_all
+                print "Number of measures (all procs, all orders):", nb_measures + S.nb_measures_all
                 print
-                save(solve_duration + S.solve_duration, S.nb_measures_all, parameters, on_result[:k+1], on_error[:k+1], filename, kind_list, world.size)
+                save(solve_duration + S.solve_duration, nb_measures + S.nb_measures_all, parameters, on_result[:k+1], on_error[:k+1], filename, kind_list, world.size)
                 save_add(kernels, 'kernels', filename)
 
         solve_duration += S.solve_duration
