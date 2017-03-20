@@ -88,5 +88,9 @@ struct solve_parameters_t {
 
  /// nb of bins for the kernels
  int nb_bins = 10000;
+
+ /// weight minimum value
+ // TODO: rename in weight_offset or something
+ double weight_min = 0.;
  
 };

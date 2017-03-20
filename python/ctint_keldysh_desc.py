@@ -76,6 +76,8 @@ c.add_constructor("""(**solve_parameters_t)""",
 | method                  | int                                              | 4                                              | Method                                                                  |
 +-------------------------+--------------------------------------------------+------------------------------------------------+-------------------------------------------------------------------------+
 | nb_bins                 | int                                              | 10000                                          | nb of bins for the kernels                                              |
++-------------------------+--------------------------------------------------+------------------------------------------------+-------------------------------------------------------------------------+
+| weight_min              | double                                           | 0.                                             | weight minimum value                                                    |
 +-------------------------+--------------------------------------------------+------------------------------------------------+-------------------------------------------------------------------------+ """)
 
 c.add_method("""void set_g0 (gf_view<retime,matrix_valued> g0_lesser, gf_view<retime,matrix_valued> g0_greater)""",
@@ -137,6 +139,10 @@ c.add_property(name = "kernels",
 
 c.add_property(name = "kernels_all",
                getter = cfunction("array<dcomplex,3> get_kernels_all ()"),
+               doc = """ """)
+
+c.add_property(name = "nb_values",
+               getter = cfunction("array<int,3> get_nb_values ()"),
                doc = """ """)
 
 module.add_class(c)

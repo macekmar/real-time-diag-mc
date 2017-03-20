@@ -36,6 +36,7 @@ template <> struct py_converter<solve_parameters_t> {
   PyDict_SetItemString( d, "verbosity"              , convert_to_python(x.verbosity));
   PyDict_SetItemString( d, "method"                 , convert_to_python(x.method));
   PyDict_SetItemString( d, "nb_bins"                , convert_to_python(x.nb_bins));
+  PyDict_SetItemString( d, "weight_min"             , convert_to_python(x.weight_min));
   return d;
  }
 
@@ -78,6 +79,7 @@ template <> struct py_converter<solve_parameters_t> {
   _get_optional(dic, "verbosity"              , res.verbosity                 ,0);
   _get_optional(dic, "method"                 , res.method                    ,4);
   _get_optional(dic, "nb_bins"                , res.nb_bins                   ,10000);
+  _get_optional(dic, "weight_min"             , res.weight_min                ,0.);
   return res;
  }
 
@@ -108,7 +110,7 @@ template <> struct py_converter<solve_parameters_t> {
   std::stringstream fs, fs2; int err=0;
 
 #ifndef TRIQS_ALLOW_UNUSED_PARAMETERS
-  std::vector<std::string> ks, all_keys = {"right_input_points","interaction_start","measure_state","measure_times","measure_keldysh_indices","alpha","U","w_ins_rem","w_dbl","w_shift","w_weight_swap","w_weight_shift","max_perturbation_order","min_perturbation_order","n_cycles","length_cycle","n_warmup_cycles","random_seed","random_name","max_time","verbosity","method","nb_bins"};
+  std::vector<std::string> ks, all_keys = {"right_input_points","interaction_start","measure_state","measure_times","measure_keldysh_indices","alpha","U","w_ins_rem","w_dbl","w_shift","w_weight_swap","w_weight_shift","max_perturbation_order","min_perturbation_order","n_cycles","length_cycle","n_warmup_cycles","random_seed","random_name","max_time","verbosity","method","nb_bins","weight_min"};
   pyref keys = PyDict_Keys(dic);
   if (!convertible_from_python<std::vector<std::string>>(keys, true)) {
    fs << "\nThe dict keys are not strings";
@@ -143,6 +145,7 @@ template <> struct py_converter<solve_parameters_t> {
   _check_optional <int                                             >(dic, fs, err, "verbosity"              , "int");
   _check_optional <int                                             >(dic, fs, err, "method"                 , "int");
   _check_optional <int                                             >(dic, fs, err, "nb_bins"                , "int");
+  _check_optional <double                                          >(dic, fs, err, "weight_min"             , "double");
   if (err) goto _error;
   return true;
 

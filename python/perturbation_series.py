@@ -74,29 +74,45 @@ def perturbation_series_errors(c0, pn, sn, U, c0_error, pn_error, sn_error):
 def staircase_perturbation_series(c0, pn, sn, U):
     # TODO: sanity checks
     # c0: single value
-    # pn: (n, n)-array
-    # sn: (n, n, m1, ...)-array
+    # pn: list of 1D arrays
+    # sn: list of ND arrays
     # U: single value
-    # return: (n, m1, ...)-array
+    # return: N+1D array
 
-    cn = np.zeros(sn.shape[1:])
-    on = np.zeros(sn.shape[1:], dtype=complex)
+    assert(len(pn) > 1)
+    assert(len(sn) == len(pn))
+    for i in range(len(pn)-1):
+        assert(len(pn[i+1]) > len(pn[i]))
+        assert(len(sn[i]) == len(pn[i]))
+    assert(len(sn[-1]) == len(pn[-1]))
 
-    for k in range(0, sn.shape[0]):
+    nb_orders = len(pn[-1])
+    cn = np.zeros((nb_orders,), dtype=complex)
+    on = np.zeros(sn[-1].shape, dtype=complex)
 
-        if (k==0):
-            cn[0, ...] = c0
-        else:
-            if pn[k, k-1] != 0:
-                cn[k, ...] = cn[k-1, ...] * pn[k, k] / (pn[k, k-1] * U)
+    # fill in cn
+    cn[0] = c0
+    k = 1
+    for i in range(len(pn)):
+
+        while k < len(pn[i]):
+            if pn[i][k-1] != 0:
+                cn[k] = cn[k-1] * pn[i][k] / (pn[i][k-1] * U)
             else:
-                cn[k, ...] = cn[k-2, ...] * pn[k, k] / (pn[k, k-2] * U * U)
+                cn[k] = cn[k-2] * pn[i][k] / (pn[i][k-2] * U * U)
+            k += 1
 
-    on = cn * np.rollaxis(np.diagonal(sn), -1, 0) # np.diagonal sends the diagonalised axis to the left end
+    # fill in on
+    k = 0
+    for i in range(len(sn)):
+        while k < len(sn[i]):
+            on[k, ...] = cn[k] * sn[i][k, ...]
+            k += 1
 
     return on
 
 
+# TO BE VERIFIED
 def staircase_perturbation_series_cum(c0, _pn, sn, U):
     # TODO: sanity checks
     # c0: single value

@@ -35,7 +35,7 @@ p["w_weight_swap"] = 0.2
 p["method"] = 5
 
 filename = 'out_files/' + os.path.basename(__file__)[:-3] + '_save.out.h5'
-on, on_error = save_staircase_solve(g0_lesser, g0_greater, p, filename, ['less'], 30)
+on, on_error = staircase_solve(g0_lesser, g0_greater, p, filename, ['less'], 30)
 
 if mpi.is_master_node():
     # A file to store the results

@@ -71,4 +71,5 @@ class solver_core {
  array<dcomplex, 3> get_sn_all() const { return sn_all; }
  array<dcomplex, 3> get_kernels() const { return kernels_binning.get_values(); }
  array<dcomplex, 3> get_kernels_all() const { return kernels_all; }
+ array<int, 3> get_nb_values() const { return kernels_binning.get_nb_values(); }
 };

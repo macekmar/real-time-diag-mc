@@ -31,8 +31,9 @@ solver_core::solver_core(solve_parameters_t const& params)
 
  // kernel binning
  kernels_all = array<dcomplex, 3>(params.max_perturbation_order + 1, params.nb_bins, 2);
- kernels_binning = KernelBinning(- params.interaction_start, t_max, params.nb_bins,
-                         params.max_perturbation_order, true); // TODO: it should be defined in measure
+ kernels_binning =
+     KernelBinning(-params.interaction_start, t_max, params.nb_bins, params.max_perturbation_order,
+                   true); // TODO: it should be defined in measure
 
  // rank of the Green's function to calculate. For now only 1 is supported.
  if (params.right_input_points.size() % 2 == 0)
@@ -79,7 +80,7 @@ void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser,
 
  // non interacting Green function
  green_function = g0_keldysh_t{g0_adaptor_t{g0_lesser}, g0_adaptor_t{g0_greater}, params.alpha, t_max};
- config = Configuration(green_function, tau_array(0, 0), taup, op_to_measure_spin);
+ config = Configuration(green_function, tau_array(0, 0), taup, op_to_measure_spin, params.weight_min);
 
  // order zero values
  auto gf_map = map([this](keldysh_contour_pt tau) { return green_function(tau, taup); });
@@ -114,8 +115,8 @@ void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser,
                                       params.interaction_start + t_max),
                   "Cofact measure");
  } else if (params.method == 5) {
-  qmc.add_measure(TwoDetKernelMeasure(&config, &kernels_binning, &pn, &pn_all, &sn, &sn_all, &kernels_all, &tau_array,
-                                      taup, op_to_measure_spin, &g0_array, green_function,
+  qmc.add_measure(TwoDetKernelMeasure(&config, &kernels_binning, &pn, &pn_all, &sn, &sn_all, &kernels_all,
+                                      &tau_array, taup, op_to_measure_spin, &g0_array, green_function,
                                       params.interaction_start + t_max),
                   "Kernel measure");
  } else {
@@ -219,22 +220,24 @@ struct integrand_params {
  g0_keldysh_t green_function;
  keldysh_contour_pt tau;
  keldysh_contour_pt taup;
+ double weight_min;
 
- integrand_params(g0_keldysh_t green_function, int state, int k_index, keldysh_contour_pt taup)
-    : green_function(green_function), tau{state, 0., k_index}, taup(taup){};
+ integrand_params(g0_keldysh_t green_function, int state, int k_index, keldysh_contour_pt taup,
+                  double weight_min)
+    : green_function(green_function), tau{state, 0., k_index}, taup(taup), weight_min(weight_min){};
 };
 
 double abs_g0_keldysh_t_inputs(double t, void* _params) {
  auto params = static_cast<integrand_params*>(_params);
  keldysh_contour_pt tau = params->tau;
  tau.t = t;
- return std::abs(params->green_function(tau, params->taup));
+ return std::abs(params->green_function(tau, params->taup)) + params->weight_min;
 };
 
 std::tuple<double, array<dcomplex, 2>> solver_core::order_zero() {
  if (status < not_ready) TRIQS_RUNTIME_ERROR << "Run aborted";
  if (status < ready) TRIQS_RUNTIME_ERROR << "Unperturbed Green's functions have not been set!";
- if (triqs::mpi::communicator().rank() == 0) std::cout << "Order zero calculation... ";
+ if (triqs::mpi::communicator().rank() == 0) std::cout << "Order zero calculation... " << std::flush;
  double c0 = 0;
  double c0_error = 0;
 
@@ -249,7 +252,7 @@ std::tuple<double, array<dcomplex, 2>> solver_core::order_zero() {
   double value_error;
 
   for (int a : {0, 1}) {
-   integrand_params int_params(green_function, 0, a, taup);
+   integrand_params int_params(green_function, 0, a, taup, config.get_weight_min());
    F.params = &int_params;
    gsl_integration_cquad(&F,                        // function to integrate
                          -params.interaction_start, // lower boundary
@@ -276,4 +279,3 @@ std::tuple<double, array<dcomplex, 2>> solver_core::order_zero() {
  }
  return std::tuple<double, array<dcomplex, 2>>{c0, s0};
 }
-

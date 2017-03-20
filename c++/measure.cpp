@@ -293,5 +293,4 @@ void TwoDetKernelMeasure::collect_results(mpi::communicator c) {
    }
   }
  }
-
 }

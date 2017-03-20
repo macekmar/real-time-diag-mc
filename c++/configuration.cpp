@@ -1,8 +1,8 @@
 #include "./configuration.hpp"
 
 Configuration::Configuration(g0_keldysh_t green_function, const keldysh_contour_pt tau,
-                             const keldysh_contour_pt taup, const int op_to_measure_spin)
-   : op_to_measure_spin(op_to_measure_spin), order(0) {
+                             const keldysh_contour_pt taup, const int op_to_measure_spin, double weight_min)
+   : op_to_measure_spin(op_to_measure_spin), order(0), weight_min(weight_min) {
 
  // Initialize the M-matrices. 100 is the initial alocated space.
  for (auto spin : {up, down}) matrices.emplace_back(green_function, 100);
@@ -63,7 +63,8 @@ keldysh_contour_pt Configuration::get_right_input() {
 };
 
 dcomplex Configuration::weight_evaluate() {
- return recompute_sum_keldysh_indices(matrices, matrices[1 - op_to_measure_spin].size());
+ double offset = std::pow(weight_min, order + 1);
+ return recompute_sum_keldysh_indices(matrices, matrices[1 - op_to_measure_spin].size()) + offset;
 };
 
 void Configuration::register_config() {
