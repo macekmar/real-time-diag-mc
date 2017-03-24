@@ -1,8 +1,17 @@
 #include "./configuration.hpp"
 
 Configuration::Configuration(g0_keldysh_t green_function, const keldysh_contour_pt tau,
-                             const keldysh_contour_pt taup, const int op_to_measure_spin, double weight_min)
-   : op_to_measure_spin(op_to_measure_spin), order(0), weight_min(weight_min) {
+                             const keldysh_contour_pt taup, const int op_to_measure_spin,
+                             array<double, 1> weight_offsets, double weight_blur_time, int max_order)
+   : op_to_measure_spin(op_to_measure_spin), order(0), weight_offsets(weight_offsets), weight_blur_time(weight_blur_time), max_order(max_order) {
+
+ weight_sum = array<double, 1>(max_order + 1);
+ weight_sum() = 0;
+ nb_values = array<int, 1>(max_order + 1);
+ nb_values() = 0;
+
+ if (first_dim(weight_offsets) <= max_order) 
+  TRIQS_RUNTIME_ERROR << "There is not enough offset values !";
 
  // Initialize the M-matrices. 100 is the initial alocated space.
  for (auto spin : {up, down}) matrices.emplace_back(green_function, 100);
@@ -63,8 +72,20 @@ keldysh_contour_pt Configuration::get_right_input() {
 };
 
 dcomplex Configuration::weight_evaluate() {
- double offset = std::pow(weight_min, order + 1);
- return recompute_sum_keldysh_indices(matrices, matrices[1 - op_to_measure_spin].size()) + offset;
+ double value = std::abs(recompute_sum_keldysh_indices(matrices, matrices[1 - op_to_measure_spin].size()));
+ weight_sum(order) += value;
+ nb_values(order)++;
+
+ if (weight_offsets(order) < 0 or value < weight_offsets(order)) {
+  keldysh_contour_pt tau_save = get_left_input();
+  keldysh_contour_pt tau = tau_save;
+  tau.t += weight_blur_time;
+  change_left_input(tau);
+  value += std::abs(recompute_sum_keldysh_indices(matrices, matrices[1 - op_to_measure_spin].size()));
+  change_left_input(tau_save);
+ }
+
+ return value;
 };
 
 void Configuration::register_config() {

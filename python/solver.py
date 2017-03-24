@@ -135,12 +135,17 @@ def staircase_solve(g0_lesser, g0_greater, _parameters, filename=None, kind_list
     else:
         orders = list(range(2, max_order + 1, 2))
 
-    pn_all = (len(orders) + 1) * [[]]
-    pn     = (len(orders) + 1) * [[]]
-    sn_all = (len(orders) + 1) * [[]]
-    sn     = (len(orders) + 1) * [[]]
-    kernels = (len(orders) + 1) * [[]]
-    nb_kernels = (len(orders) + 1) * [[]]
+    U_list = parameters["U"]
+    if len(U_list) < len(orders):
+        raise RuntimeError, 'Number of U must match number of non zero orders'
+    parameters["U"] = U_list[0]
+
+    pn_all = (len(orders) + 1) * [None]
+    pn     = (len(orders) + 1) * [None]
+    sn_all = (len(orders) + 1) * [None]
+    sn     = (len(orders) + 1) * [None]
+    kernels = (max_order + 1) * [None]
+    nb_kernels = (max_order + 1) * [None]
 
     # order zero
     S = SolverCore(**parameters)
@@ -152,13 +157,15 @@ def staircase_solve(g0_lesser, g0_greater, _parameters, filename=None, kind_list
     sn_all[0] = s0[np.newaxis, :]
     sn[0] = s0[np.newaxis, :]
 
+    k_catchup = 0
     for i, k in enumerate(orders):
-        i += 1
+        i += 1 # i=0 is reserved for order zero
 
         if world.rank == 0:
             print "---------------- Order", k, "----------------"
 
         parameters["max_perturbation_order"] = k
+        parameters["U"] = U_list[i - 1]
 
         S = SolverCore(**parameters)
         S.set_g0(g0_lesser, g0_greater)
@@ -171,9 +178,10 @@ def staircase_solve(g0_lesser, g0_greater, _parameters, filename=None, kind_list
             pn[i] = S.pn
             sn_all[i] = S.sn_all
             sn[i] = S.sn
-            # TODO: kernels are stored like a mess, do something
-            kernels[i] = S.kernels_all[k, ...]
-            nb_kernels[i] = S.nb_values[k, ...]
+            while k_catchup <= k:
+                kernels[k_catchup] = S.kernels_all[k_catchup, ...]
+                nb_kernels[k_catchup] = S.nb_values[k_catchup, ...]
+                k_catchup += 1
 
             if world.rank == 0:
                 for i_print in range(i+1):
@@ -186,7 +194,7 @@ def staircase_solve(g0_lesser, g0_greater, _parameters, filename=None, kind_list
             pn_nonzero = pn_nonzero[nonzero_ind].astype(np.float32)
             if len(pn_nonzero) >= 2:
                 power = float(nonzero_ind[-1] - nonzero_ind[-2])
-                U_proposed = parameters['U'] * pow(pn_nonzero[-2] / pn_nonzero[-1], 1. / power)
+                U_proposed = parameters['U'] * pow(2. * pn_nonzero[-2] / pn_nonzero[-1], 1. / power)
             else:
                 U_proposed = None
 
@@ -208,8 +216,8 @@ def staircase_solve(g0_lesser, g0_greater, _parameters, filename=None, kind_list
                 print
                 if save:
                     wright(solve_duration + S.solve_duration, nb_measures + S.nb_measures_all, parameters, on_result[:k+1], on_error[:k+1], filename, kind_list, world.size)
-                    wright_add(kernels, 'kernels', filename)
-                    wright_add(nb_kernels, 'nb_kernels', filename)
+                    wright_add(np.array(kernels[:k+1], dtype=complex), 'kernels', filename)
+                    wright_add(np.array(nb_kernels[:k+1], dtype=int), 'nb_kernels', filename)
 
         solve_duration += S.solve_duration
         nb_measures += S.nb_measures_all

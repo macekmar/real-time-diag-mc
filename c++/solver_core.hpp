@@ -31,8 +31,6 @@ class solver_core {
  int op_to_measure_spin; // spin of the operator to measure. Not needed when up/down symmetry. Is used to know
                          // which determinant is the big one.
  double solve_duration = 0;
- std::vector<std::vector<double>> config_list;
- std::vector<int> config_weight;
  Status status = not_ready;
  KernelBinning kernels_binning;
  array<dcomplex, 3> kernels_all;
@@ -63,8 +61,8 @@ class solver_core {
  double get_solve_duration() const { return solve_duration; }
  int get_nb_measures() const { return sum(pn); }
  int get_nb_measures_all() const { return sum(pn_all); }
- std::vector<std::vector<double>> get_config_list() const { return config_list; }
- std::vector<int> get_config_weight() const { return config_weight; }
+ std::vector<std::vector<double>> get_config_list() const { return config.config_list; }
+ std::vector<int> get_config_weight() const { return config.config_weight; }
  array<int, 1> get_pn() const { return pn; }
  array<int, 1> get_pn_all() const { return pn_all; }
  array<dcomplex, 3> get_sn() const { return sn; }

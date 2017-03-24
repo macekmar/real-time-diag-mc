@@ -9,7 +9,9 @@ class Configuration {
  private:
  double singular_threshold = 1e-4; // for det_manip. Not ideal to be defined here
  int op_to_measure_spin = 0;
- double weight_min = 0; // minimal absolute value of the weight
+ int max_order = 0;
+ array<double, 1> weight_sum;
+ array<int, 1> nb_values;
 
  // Configuration(const Configuration&) = delete;  // non construction-copyable
  // void operator=(const Configuration&) = delete; // non copyable
@@ -18,6 +20,8 @@ class Configuration {
  std::vector<det_manip<g0_keldysh_t>> matrices; // M matrices for up and down
  dcomplex weight_value;                         // Sum of determinants of the last accepted config
  int order;
+ array<double, 1> weight_offsets;
+ double weight_blur_time;
 
  // registered configurations
  std::vector<std::vector<double>> config_list;
@@ -26,7 +30,7 @@ class Configuration {
 
  Configuration(){};
  Configuration(g0_keldysh_t green_function, const keldysh_contour_pt tau, const keldysh_contour_pt taup,
-               const int op_to_measure_spin, double weight_min);
+               const int op_to_measure_spin, array<double, 1> weight_offsets, double weight_blur_time, int max_order);
  void insert(int k, keldysh_contour_pt pt);
  void insert2(int k1, int k2, keldysh_contour_pt pt1, keldysh_contour_pt pt2);
  void remove(int k);
@@ -41,5 +45,6 @@ class Configuration {
 
  void register_config();
 
- double get_weight_min() const { return weight_min; };
+ array<double, 1> get_weight_sum() const { return weight_sum; };
+ array<int, 1> get_nb_values() const { return nb_values; };
 };
