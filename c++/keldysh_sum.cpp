@@ -1,8 +1,8 @@
 #include "./qmc_data.hpp"
+#include "./configuration.hpp"
 
-#define REGENERATE_MATRIX_BEFORE_EACH_GRAY_CODE
+//#define REGENERATE_MATRIX_BEFORE_EACH_GRAY_CODE
 
-/// Gray code determinant rotation. Returns the sum of prod of det for all keldysh configurations.
 
 void nice_print(det_manip<g0_keldysh_t> det, int p) {
  int n = det.size();
@@ -22,32 +22,31 @@ void nice_print(det_manip<g0_keldysh_t> det, int p) {
 
 
 // ---------------- Cofact * det ------------------
-dcomplex recompute_sum_keldysh_indices(std::vector<det_manip<g0_keldysh_t>>& matrices, int k, int v, int p) {
- return recompute_sum_keldysh_indices(&(matrices[v]), &(matrices[1 - v]), k, p);
-}
+/// Gray code cofactor rotation.
+// TODO: write down the formula this implements
+dcomplex Configuration::keldysh_sum_cofact(int p) {
 
-dcomplex recompute_sum_keldysh_indices(det_manip<g0_keldysh_t>* matrix_0, det_manip<g0_keldysh_t>* matrix_1, int k, int p) {
+ if (order > 63) TRIQS_RUNTIME_ERROR << "order overflow";
+ if (order < 1) TRIQS_RUNTIME_ERROR << "order cannot be zero";
 
- if (k > 63) TRIQS_RUNTIME_ERROR << "k overflow";
-
- if (k == 0) {
-  return matrix_0->determinant() * matrix_1->determinant();
+ if (order == 1) {
+  return matrices[0].determinant() * matrices[1].determinant();
  }
 
 #ifdef REGENERATE_MATRIX_BEFORE_EACH_GRAY_CODE
- matrix_0->regenerate();
- matrix_1->regenerate();
+ matrices[0].regenerate();
+ matrices[1].regenerate();
 #endif
 
  dcomplex res = 0;
  keldysh_contour_pt pt, pt_l, pt_r;
  int sign = -1;                    // Starting with a flip, so -1 -> 1, which is needed in the first iteration
- auto two_to_k = uint64_t(1) << k; // shifts the bits k times to the left
+ auto two_to_k = uint64_t(1) << order - 1; // shifts the bits order - 1 times to the left
  for (uint64_t n = 0; n < two_to_k; ++n) {
 
   // The bit to flip to obtain the next element. Will be the index of line/col to be changed.
   // Cf Numerical Recipes, sect. 20.2
-  int nlc = (n < two_to_k - 1 ? ffs(~n) : k) - 1; // ffs starts at 1, returns the position of the 1st (least significant) bit set
+  int nlc = (n < two_to_k - 1 ? ffs(~n) : order - 1) - 1; // ffs starts at 1, returns the position of the 1st (least significant) bit set
                                                   // to 1. ~n has bites inversed compared with n.
 
   int nlc_p = nlc;
@@ -55,39 +54,40 @@ dcomplex recompute_sum_keldysh_indices(det_manip<g0_keldysh_t>* matrix_0, det_ma
   nlc_p = nlc >= p ? nlc + 1 : nlc;
 
 
-  pt_l = flip_index(matrix_0->get_x(nlc_p));
-  pt_r = flip_index(matrix_0->get_y(nlc));
-  // matrix_0->change_one_row_and_one_col(nlc_p, nlc, pt_l, pt_r);
-  matrix_0->change_row(nlc_p, pt_l);
-  matrix_0->change_col(nlc, pt_r);
+  pt_l = flip_index(matrices[0].get_x(nlc_p));
+  pt_r = flip_index(matrices[0].get_y(nlc));
+  // matrices[0].change_one_row_and_one_col(nlc_p, nlc, pt_l, pt_r);
+  matrices[0].change_row(nlc_p, pt_l);
+  matrices[0].change_col(nlc, pt_r);
 
-  pt = flip_index(matrix_1->get_x(nlc_p));
-  // matrix_1->change_one_row_and_one_col(nlc_p, nlc_p, pt, pt);
-  matrix_1->change_row(nlc_p, pt);
-  matrix_1->change_col(nlc_p, pt);
+  pt = flip_index(matrices[1].get_x(nlc_p));
+  // matrices[1].change_one_row_and_one_col(nlc_p, nlc_p, pt, pt);
+  matrices[1].change_row(nlc_p, pt);
+  matrices[1].change_col(nlc_p, pt);
 
-  // nice_print(matrix_0, p);
-  res += sign * matrix_0->determinant() * matrix_1->determinant();
+  // nice_print(matrices[0], p);
+  res += sign * matrices[0].determinant() * matrices[1].determinant();
   sign = -sign;
 
   if (!(std::isfinite(real(res)) & std::isfinite(imag(res))))
-   TRIQS_RUNTIME_ERROR << "NAN for n = " << n << ", res = " << res << ", k = " << k << ", p = " << p << ", nlc = " << nlc
-                       << ", nlc_p = " << nlc_p << ", det0 = " << matrix_0->determinant()
-                       << ", det1 = " << matrix_1->determinant();
+   TRIQS_RUNTIME_ERROR << "NAN for n = " << n << ", res = " << res << ", order = " << order << ", p = " << p << ", nlc = " << nlc
+                       << ", nlc_p = " << nlc_p << ", det0 = " << matrices[0].determinant()
+                       << ", det1 = " << matrices[1].determinant();
  }
 
  return res;
 }
 
 // ---------------- det * det ------------------
-dcomplex recompute_sum_keldysh_indices(std::vector<det_manip<g0_keldysh_t>>& matrices, int k) {
+/// Gray code determinant rotation. Returns the sum of prod of det for all keldysh configurations.
+dcomplex Configuration::keldysh_sum() {
 
- if (k > 63) TRIQS_RUNTIME_ERROR << "k overflow";
+ if (order > 63) TRIQS_RUNTIME_ERROR << "order overflow";
 
- if (k == 0) {
+ if (order == 0) {
   dcomplex res0 = matrices[0].determinant() * matrices[1].determinant();
   if (!(std::isfinite(real(res0)) & std::isfinite(imag(res0))))
-   TRIQS_RUNTIME_ERROR << "NAN for n = 0, res = " << res0 << ", k = " << k;
+   TRIQS_RUNTIME_ERROR << "NAN for n = 0, res = " << res0 << ", order = " << order;
   // return matrices[0].determinant() * matrices[1].determinant();
   return res0;
  }
@@ -100,12 +100,12 @@ dcomplex recompute_sum_keldysh_indices(std::vector<det_manip<g0_keldysh_t>>& mat
  dcomplex res = 0;
  keldysh_contour_pt pt;
  int sign = -1;                    // Starting with a flip, so -1 -> 1, which is needed in the first iteration
- auto two_to_k = uint64_t(1) << k; // shifts the bits k times to the left
+ auto two_to_k = uint64_t(1) << order; // shifts the bits order times to the left
  for (uint64_t n = 0; n < two_to_k; ++n) {
 
   // The bit to flip to obtain the next element. Will be the index of line/col to be changed.
   // Cf Numerical Recipes, sect. 20.2
-  int nlc = (n < two_to_k - 1 ? ffs(~n) : k) - 1; // ffs starts at 1, returns the position of the 1st (least significant) bit set
+  int nlc = (n < two_to_k - 1 ? ffs(~n) : order) - 1; // ffs starts at 1, returns the position of the 1st (least significant) bit set
                                                   // to 1. ~n has bites inversed compared with n.
 
   for (auto spin : {up, down}) {
@@ -120,7 +120,7 @@ dcomplex recompute_sum_keldysh_indices(std::vector<det_manip<g0_keldysh_t>>& mat
   sign = -sign;
 
   if (!(std::isfinite(real(res)) & std::isfinite(imag(res)))) {
-   TRIQS_RUNTIME_ERROR << "NAN for n = " << n << ", res = " << res << ", k = " << k << ", nlc = " << nlc
+   TRIQS_RUNTIME_ERROR << "NAN for n = " << n << ", res = " << res << ", order = " << order << ", nlc = " << nlc
                        << ", det0 = " << matrices[0].determinant() << ", det1 = " << matrices[1].determinant();
   }
  }
@@ -128,7 +128,7 @@ dcomplex recompute_sum_keldysh_indices(std::vector<det_manip<g0_keldysh_t>>& mat
  return res;
 }
 
-
+/* Following are one matrix keldysh sums
 // ---------------- Cofact ------------------
 dcomplex recompute_sum_keldysh_indices(det_manip<g0_keldysh_t>& matrix, int k, int p) {
 
@@ -212,3 +212,5 @@ dcomplex recompute_sum_keldysh_indices(det_manip<g0_keldysh_t>& matrix, int k) {
 
  return res;
 }
+*/
+

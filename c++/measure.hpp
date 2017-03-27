@@ -103,8 +103,6 @@ class TwoDetCofactMeasure {
  int nb_orders;
  histogram histogram_pn;
  const array<keldysh_contour_pt, 2>& tau_array;
- const keldysh_contour_pt taup;
- const int op_to_measure_spin;
  const array<dcomplex, 2>& g0_array;
  g0_keldysh_t green_function;
  const double delta_t;
@@ -112,8 +110,7 @@ class TwoDetCofactMeasure {
  public:
  TwoDetCofactMeasure(Configuration* config, KernelBinning* kernels_binning, array<int, 1>* pn,
                      array<int, 1>* pn_all, array<dcomplex, 3>* sn, array<dcomplex, 3>* sn_all,
-                     const array<keldysh_contour_pt, 2>* tau_array, const keldysh_contour_pt taup,
-                     const int op_to_measure_spin, const array<dcomplex, 2>* g0_array,
+                     const array<keldysh_contour_pt, 2>* tau_array, const array<dcomplex, 2>* g0_array,
                      g0_keldysh_t green_function, const double delta_t);
 
  void accumulate(dcomplex sign);
@@ -136,8 +133,6 @@ class TwoDetKernelMeasure {
  int nb_orders;
  histogram histogram_pn;
  const array<keldysh_contour_pt, 2>& tau_array;
- const keldysh_contour_pt taup;
- const int op_to_measure_spin;
  const array<dcomplex, 2>& g0_array;
  g0_keldysh_t green_function;
  const double delta_t;
@@ -146,7 +141,6 @@ class TwoDetKernelMeasure {
  TwoDetKernelMeasure(Configuration* config, KernelBinning* kernels_binning, array<int, 1>* pn,
                      array<int, 1>* pn_all, array<dcomplex, 3>* sn, array<dcomplex, 3>* sn_all,
                      array<dcomplex, 3>* kernels_all, const array<keldysh_contour_pt, 2>* tau_array,
-                     const keldysh_contour_pt taup, const int op_to_measure_spin,
                      const array<dcomplex, 2>* g0_array, g0_keldysh_t green_function, const double delta_t);
 
  void accumulate(dcomplex sign);

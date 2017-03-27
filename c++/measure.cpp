@@ -59,7 +59,6 @@ TwoDetCofactMeasure::TwoDetCofactMeasure(Configuration* config, KernelBinning* k
                                          array<int, 1>* pn, array<int, 1>* pn_all, array<dcomplex, 3>* sn,
                                          array<dcomplex, 3>* sn_all,
                                          const array<keldysh_contour_pt, 2>* tau_array,
-                                         const keldysh_contour_pt taup, const int op_to_measure_spin,
                                          const array<dcomplex, 2>* g0_array, g0_keldysh_t green_function,
                                          const double delta_t)
    : config(*config),
@@ -69,8 +68,6 @@ TwoDetCofactMeasure::TwoDetCofactMeasure(Configuration* config, KernelBinning* k
      sn(*sn),
      sn_all(*sn_all),
      tau_array(*tau_array),
-     taup(taup),
-     op_to_measure_spin(op_to_measure_spin),
      g0_array(*g0_array),
      green_function(green_function),
      delta_t(delta_t) {
@@ -86,58 +83,26 @@ void TwoDetCofactMeasure::accumulate(dcomplex sign) {
 
  histogram_pn << config.order;
 
- keldysh_contour_pt alpha_p_right, alpha_tmp;
- auto matrix_0 = &(config.matrices[op_to_measure_spin]);
- auto matrix_1 = &(config.matrices[1 - op_to_measure_spin]);
- dcomplex kernel;
- int signs[2] = {1, -1};
- int n = config.order; // perturbation order
  array<dcomplex, 2> value = g0_array;
  value() = 0;
 
- if (n == 0) {
+ if (config.order == 0) {
 
   value += g0_array;
 
  } else {
 
-  value() = 0;
-  auto tau_weight = config.get_left_input();
-  matrix_0->remove(n, n); // remove tau_w and taup
+  array<dcomplex, 2> kernels = config.kernels_evaluate_cofact();
+  keldysh_contour_pt alpha_p;
 
-  alpha_tmp = taup;
-  matrix_0->roll_matrix(det_manip<g0_keldysh_t>::RollDirection::Left);
-
-  // TODO: put the cofactor calculation into the Configuration class
-  for (int p = 0; p < n; ++p) {
+  for (int p = 0; p < config.order; ++p) {
+   alpha_p = config.get_config(p);
    for (int k_index : {1, 0}) {
-    if (k_index == 1) alpha_p_right = matrix_0->get_y((p - 1 + n) % n);
-    alpha_p_right = flip_index(alpha_p_right);
-    // matrix_0->change_one_row_and_one_col(p, (p - 1 + n) % n, flip_index(matrix_0->get_x(p)),
-    //                                     alpha_tmp);
-    // Change the p keldysh index on the left (row) and the p point on the right (col).
-    // The p point on the right is effectively changed only when k_index=1.
-    matrix_0->change_row(p, flip_index(matrix_0->get_x(p)));
-    matrix_0->change_col((p - 1 + n) % n, alpha_tmp);
-
-    // matrix_1->change_one_row_and_one_col(p, p, flip_index(matrix_1->get_x(p)),
-    // flip_index(matrix_1->get_y(p)));
-    matrix_1->change_row(p, flip_index(matrix_1->get_x(p)));
-    matrix_1->change_col(p, flip_index(matrix_1->get_y(p)));
-
-    // nice_print(*matrix_0, p);
-    kernel = recompute_sum_keldysh_indices(config.matrices, n - 1, op_to_measure_spin, p) *
-             signs[(n + p + k_index) % 2];
-
-    auto gf_map = map([&](keldysh_contour_pt tau) { return green_function(tau, alpha_p_right); });
-    value += make_matrix(gf_map(tau_array)) * kernel;
-
-    if (k_index == 0) alpha_tmp = alpha_p_right;
+    alpha_p = flip_index(alpha_p);
+    auto gf_map = map([&](keldysh_contour_pt tau) { return green_function(tau, alpha_p); });
+    value += make_matrix(gf_map(tau_array)) * kernels(p, k_index);
    }
   }
-  matrix_0->change_col(n - 1, alpha_tmp);
-
-  matrix_0->insert(n, n, tau_weight, taup);
  }
 
  sn_accum(config.order, ellipsis()) += value / std::abs(config.weight_value);
@@ -180,7 +145,6 @@ TwoDetKernelMeasure::TwoDetKernelMeasure(Configuration* config, KernelBinning* k
                                          array<int, 1>* pn, array<int, 1>* pn_all, array<dcomplex, 3>* sn,
                                          array<dcomplex, 3>* sn_all, array<dcomplex, 3>* kernels_all,
                                          const array<keldysh_contour_pt, 2>* tau_array,
-                                         const keldysh_contour_pt taup, const int op_to_measure_spin,
                                          const array<dcomplex, 2>* g0_array, g0_keldysh_t green_function,
                                          const double delta_t)
    : config(*config),
@@ -191,8 +155,6 @@ TwoDetKernelMeasure::TwoDetKernelMeasure(Configuration* config, KernelBinning* k
      sn_all(*sn_all),
      kernels_all(*kernels_all),
      tau_array(*tau_array),
-     taup(taup),
-     op_to_measure_spin(op_to_measure_spin),
      g0_array(*g0_array),
      green_function(green_function),
      delta_t(delta_t) {
@@ -206,51 +168,19 @@ void TwoDetKernelMeasure::accumulate(dcomplex sign) {
 
  histogram_pn << config.order;
 
- keldysh_contour_pt alpha_p_right, alpha_tmp;
- auto matrix_0 = &(config.matrices[op_to_measure_spin]);
- auto matrix_1 = &(config.matrices[1 - op_to_measure_spin]);
- dcomplex kernel;
- int signs[2] = {1, -1};
- int n = config.order; // perturbation order
-
- if (n == 0) {
-  kernels_binning.add(0, taup, 1 / std::abs(config.weight_value));
+ if (config.order == 0) {
+  kernels_binning.add(0, config.get_right_input(), 1 / std::abs(config.weight_value));
 
  } else {
+  keldysh_contour_pt alpha_p;
 
-  auto tau_weight = config.get_left_input();
-  matrix_0->remove(n, n); // remove tau_w and taup
-
-  alpha_tmp = taup;
-  matrix_0->roll_matrix(det_manip<g0_keldysh_t>::RollDirection::Left);
-
-  for (int p = 0; p < n; ++p) {
+  for (int p = 0; p < config.order; ++p) {
+   alpha_p = config.get_config(p);
    for (int k_index : {1, 0}) {
-    if (k_index == 1) alpha_p_right = matrix_0->get_y((p - 1 + n) % n);
-    alpha_p_right = flip_index(alpha_p_right);
-    // matrix_0->change_one_row_and_one_col(p, (p - 1 + n) % n, flip_index(matrix_0->get_x(p)),
-    //                                     alpha_tmp);
-    // Change the p keldysh index on the left (row) and the p point on the right (col).
-    // The p point on the right is effectively changed only when k_index=1.
-    matrix_0->change_row(p, flip_index(matrix_0->get_x(p)));
-    matrix_0->change_col((p - 1 + n) % n, alpha_tmp);
-
-    // matrix_1->change_one_row_and_one_col(p, p, flip_index(matrix_1->get_x(p)),
-    // flip_index(matrix_1->get_y(p)));
-    matrix_1->change_row(p, flip_index(matrix_1->get_x(p)));
-    matrix_1->change_col(p, flip_index(matrix_1->get_y(p)));
-
-    // nice_print(*matrix_0, p);
-    kernel = recompute_sum_keldysh_indices(config.matrices, n - 1, op_to_measure_spin, p) *
-             signs[(n + p + k_index) % 2];
-    kernels_binning.add(n, alpha_p_right, kernel / std::abs(config.weight_value));
-
-    if (k_index == 0) alpha_tmp = alpha_p_right;
+    alpha_p = flip_index(alpha_p);
+    kernels_binning.add(config.order, alpha_p, config.accepted_kernels(p, k_index) / std::abs(config.weight_value));
    }
   }
-  matrix_0->change_col(n - 1, alpha_tmp);
-
-  matrix_0->insert(n, n, tau_weight, taup);
  }
 }
 
@@ -270,7 +200,8 @@ void TwoDetKernelMeasure::collect_results(mpi::communicator c) {
 
  dcomplex i_n[4] = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}}; // powers of i
  for (int k = 0; k < nb_orders; k++) {
-  kernels(k, ellipsis()) *= i_n[k % 4] / (2 * delta_t);
+  kernels(k, ellipsis()) *= i_n[k % 4];
+  //kernels(k, ellipsis()) *= i_n[k % 4] / (2 * delta_t);
  }
 
  kernels_all = mpi::mpi_all_reduce(kernels, c);

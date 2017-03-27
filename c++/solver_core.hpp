@@ -25,11 +25,8 @@ class solver_core {
  keldysh_contour_pt taup;
  array<keldysh_contour_pt, 2> tau_array;
  array<dcomplex, 2> g0_array;
- //array<dcomplex, 1> prefactor;
  double t_max, t_min;
  int rank;
- int op_to_measure_spin; // spin of the operator to measure. Not needed when up/down symmetry. Is used to know
-                         // which determinant is the big one.
  double solve_duration = 0;
  Status status = not_ready;
  KernelBinning kernels_binning;
@@ -40,9 +37,6 @@ class solver_core {
  array<dcomplex, 3> sn_all;
 
  int finish(const int run_status);
-
- // array<dcomplex, 3> reshape_sn(array<dcomplex, 2>* sn_list);
- // array<dcomplex, 2> reshape_sn(array<dcomplex, 1>* sn_list);
 
  public:
  // FIXME change type of arguments after olivier fixes wrapper

@@ -62,13 +62,3 @@ struct g0_keldysh_t {
 
 enum spin { up, down };
 
-// ------------ keldysh sum gray code ------------------------------
-using triqs::det_manip::det_manip;
-
-dcomplex recompute_sum_keldysh_indices(std::vector<det_manip<g0_keldysh_t>> &matrices, int k, int v, int p);
-dcomplex recompute_sum_keldysh_indices(det_manip<g0_keldysh_t> *matrix_0, det_manip<g0_keldysh_t> *matrix_1, int k, int p);
-dcomplex recompute_sum_keldysh_indices(std::vector<det_manip<g0_keldysh_t>> &matrices, int k);
-dcomplex recompute_sum_keldysh_indices(det_manip<g0_keldysh_t> &matrix, int k, int p);
-dcomplex recompute_sum_keldysh_indices(det_manip<g0_keldysh_t> &matrix, int k);
-
-void nice_print(det_manip<g0_keldysh_t> det, int p);
