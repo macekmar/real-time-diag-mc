@@ -103,6 +103,10 @@ c.add_property(name = "solve_duration",
                getter = cfunction("double get_solve_duration ()"),
                doc = """ """)
 
+c.add_property(name = "solve_duration_all",
+               getter = cfunction("double get_solve_duration_all ()"),
+               doc = """ """)
+
 c.add_property(name = "nb_measures",
                getter = cfunction("int get_nb_measures ()"),
                doc = """ """)

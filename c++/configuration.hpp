@@ -7,7 +7,7 @@ using triqs::det_manip::det_manip;
 class Configuration {
 
  private:
- double singular_threshold = 1e-4; // for det_manip. Not ideal to be defined here
+ double singular_threshold; // for det_manip
  int max_order = 0;
  array<double, 1> weight_sum;
  array<int, 1> nb_values;
@@ -24,6 +24,8 @@ class Configuration {
  double weight_blur_time;
  array<dcomplex, 2> current_kernels;
  array<dcomplex, 2> accepted_kernels;
+ array<int, 1> nb_cofact;
+ array<int, 1> nb_inverse;
 
  // registered configurations
  std::vector<std::vector<double>> config_list;

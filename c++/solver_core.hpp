@@ -28,6 +28,7 @@ class solver_core {
  double t_max, t_min;
  int rank;
  double solve_duration = 0;
+ double solve_duration_all = 0;
  Status status = not_ready;
  KernelBinning kernels_binning;
  array<dcomplex, 3> kernels_all;
@@ -53,6 +54,7 @@ class solver_core {
 
  // getters
  double get_solve_duration() const { return solve_duration; }
+ double get_solve_duration_all() const { return solve_duration_all; }
  int get_nb_measures() const { return sum(pn); }
  int get_nb_measures_all() const { return sum(pn_all); }
  std::vector<std::vector<double>> get_config_list() const { return config.config_list; }

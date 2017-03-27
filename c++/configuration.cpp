@@ -3,12 +3,20 @@
 Configuration::Configuration(g0_keldysh_t green_function, const keldysh_contour_pt tau,
                              const keldysh_contour_pt taup, array<double, 1> weight_offsets,
                              double weight_blur_time, int max_order)
-   : order(0), weight_offsets(weight_offsets), weight_blur_time(weight_blur_time), max_order(max_order) {
+   : singular_threshold(1e-4),
+     order(0),
+     weight_offsets(weight_offsets),
+     weight_blur_time(weight_blur_time),
+     max_order(max_order) {
 
  weight_sum = array<double, 1>(max_order + 1);
  weight_sum() = 0;
  nb_values = array<int, 1>(max_order + 1);
  nb_values() = 0;
+ nb_cofact = array<int, 1>(max_order);
+ nb_cofact() = 0;
+ nb_inverse = array<int, 1>(max_order);
+ nb_inverse() = 0;
 
  if (first_dim(weight_offsets) <= max_order) TRIQS_RUNTIME_ERROR << "There is not enough offset values !";
 
@@ -76,8 +84,9 @@ array<dcomplex, 2> Configuration::kernels_evaluate_inverse() {
 
  array<dcomplex, 2> kernels(order, 2);
  kernels() = 0;
- dcomplex dets, inv_value;
+ dcomplex det1, inv_value;
  int ap[64] = {0};
+ bool is_singular;
 
  keldysh_contour_pt pt;
  int sign = -1; // Starting with a flip, so -1 -> 1, which is needed in the first iteration
@@ -97,14 +106,37 @@ array<dcomplex, 2> Configuration::kernels_evaluate_inverse() {
    matrices[spin].change_col(nlc, pt);
   }
 
-  dets = sign * matrices[0].determinant() * matrices[1].determinant();
-  for (int p = 0; p < order; ++p) {
-   inv_value = matrices[0].inverse_matrix(p, order);
-   if (!(std::isfinite(real(inv_value)) & std::isfinite(imag(inv_value))))
-    TRIQS_RUNTIME_ERROR << "NAN for n = " << n << ", inv_value = " << inv_value << ", order = " << order
-                        << ", nlc = " << nlc << ", det0 = " << matrices[0].determinant()
-                        << ", det1 = " << matrices[1].determinant();
-   kernels(p, ap[p]) += inv_value * dets;
+  det1 = sign * matrices[1].determinant();
+  if (std::abs(matrices[0].determinant()) < singular_threshold) {
+   // matrix is singular, calculate cofactors
+   nb_cofact(order - 1)++;
+   int signs[2] = {1, -1};
+   keldysh_contour_pt tau = get_left_input();
+   keldysh_contour_pt alpha_tmp;
+   keldysh_contour_pt alpha = matrices[0].get_y(0);
+   // nice_print(matrices[0], 100);
+   matrices[0].remove(order, 0);
+   // nice_print(matrices[0], 0);
+   for (int p = 0; p < order; ++p) {
+    kernels(p, ap[p]) += signs[(p + order) % 2] * matrices[0].determinant() * det1;
+    alpha_tmp = matrices[0].get_y(p);
+    matrices[0].change_col(p, alpha);
+    alpha = alpha_tmp;
+    // nice_print(matrices[0], p+1);
+   }
+   matrices[0].insert(order, order, tau, alpha);
+   // nice_print(matrices[0], 100);
+
+  } else {
+   nb_inverse(order - 1)++;
+   for (int p = 0; p < order; ++p) {
+    inv_value = matrices[0].inverse_matrix(p, order);
+    // if (!(std::isfinite(real(inv_value)) & std::isfinite(imag(inv_value))))
+    // TRIQS_RUNTIME_ERROR << "NAN for n = " << n << ", inv_value = " << inv_value << ", order = " << order
+    //                     << ", nlc = " << nlc << ", det0 = " << matrices[0].determinant()
+    //                     << ", det1 = " << matrices[1].determinant();
+    kernels(p, ap[p]) += inv_value * matrices[0].determinant() * det1;
+   }
   }
   sign = -sign;
  }
@@ -156,8 +188,8 @@ array<dcomplex, 2> Configuration::kernels_evaluate_cofact() {
 // -----------------------
 double Configuration::weight_kernels() {
  if (order == 0) return 1.; // is this a good value ?
-  current_kernels = kernels_evaluate_cofact();
- //current_kernels = kernels_evaluate_inverse();
+ // current_kernels = kernels_evaluate_cofact();
+ current_kernels = kernels_evaluate_inverse();
  return sum(abs(current_kernels));
 };
 

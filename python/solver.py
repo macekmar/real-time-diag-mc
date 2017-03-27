@@ -170,9 +170,14 @@ def staircase_solve(g0_lesser, g0_greater, _parameters, filename=None, kind_list
         S = SolverCore(**parameters)
         S.set_g0(g0_lesser, g0_greater)
 
-        status = 1
-        while status == 1:
+        abort = False
+        end_subrun = False
+        while not (abort or end_subrun):
             status = S.run(save_period)
+
+            status_all = world.allgather(status)
+            abort = 2 in status_all
+            end_subrun = 1 not in status_all # subrun ends when all proc are done with it
 
             pn_all[i] = S.pn_all
             pn[i] = S.pn
@@ -206,6 +211,8 @@ def staircase_solve(g0_lesser, g0_greater, _parameters, filename=None, kind_list
             on = staircase_perturbation_series(c0, pn[:i+1], sn[:i+1], parameters['U'])
             on_error = variance_error(on, world)
 
+            print "Number of measures (procs", world.rank, ", this order):", S.nb_measures
+
             if world.rank == 0:
                 print datetime.now(), ": Order", k
                 print "Duration (this orders):", S.solve_duration
@@ -221,7 +228,7 @@ def staircase_solve(g0_lesser, g0_greater, _parameters, filename=None, kind_list
 
         solve_duration += S.solve_duration
         nb_measures += S.nb_measures_all
-        if status == 2: break # Received signal, terminate
+        if abort: break # Received signal, terminate
 
     return np.squeeze(on_result), np.squeeze(on_error)
 

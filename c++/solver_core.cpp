@@ -15,7 +15,7 @@ solver_core::solver_core(solve_parameters_t const& params)
      params(params) {
 
 #ifdef REGISTER_CONFIG
- if (triqs::mpi::communicator().rank() == 0)
+ if (mpi::communicator().rank() == 0)
   std::cout << "/!\ Configuration Registration ON" << std::endl << std::endl;
 #endif
 
@@ -133,42 +133,48 @@ int solver_core::run(const int max_time = -1, const int max_measures = -1) {
  if (params.max_perturbation_order == 0)
   TRIQS_RUNTIME_ERROR << "Order zero cannot run, use order_zero method instead";
 
+ mpi::communicator world;
+ MPI_Barrier(MPI_COMM_WORLD);
+
  int run_status;
 
  // warmup if run has not started yet
  if (status == ready) {
   status = running;
   solve_duration = 0;
-  if (triqs::mpi::communicator().rank() == 0) std::cout << "Warming up... " << std::flush;
+  if (world.rank() == 0) std::cout << "Warming up... " << std::flush;
   run_status =
       qmc.run(params.n_warmup_cycles, params.length_cycle, triqs::utility::clock_callback(-1), false);
   if (run_status == 2) return finish(run_status); // Received a signal: abort
-  if (triqs::mpi::communicator().rank() == 0) std::cout << "done" << std::endl;
+  if (world.rank() == 0) std::cout << "done" << std::endl;
  }
 
  // accumulate
  int measures_to_do = params.n_cycles - get_nb_measures();
  if (max_measures > 0) measures_to_do = std::min(measures_to_do, max_measures);
- if (triqs::mpi::communicator().rank() == 0) std::cout << "Accumulate..." << std::endl;
+ if (world.rank() == 0) std::cout << "Accumulate..." << std::endl;
  run_status = qmc.run(measures_to_do, params.length_cycle, triqs::utility::clock_callback(max_time), true);
 
  // Collect results
- if (triqs::mpi::communicator().rank() == 0) std::cout << "Collecting results..." << std::endl << std::endl;
- mpi::communicator world;
+ if (world.rank() == 0) std::cout << "Collecting results..." << std::endl << std::endl;
  qmc.collect_results(world);
 
  solve_duration = solve_duration + qmc.get_duration();
+ solve_duration_all = mpi::mpi_all_reduce(solve_duration);
 
  array<double, 1> weight_sum = config.get_weight_sum();
- weight_sum = triqs::mpi::mpi_all_reduce(weight_sum);
+ weight_sum = mpi::mpi_all_reduce(weight_sum);
  array<int, 1> nb_values = config.get_nb_values();
- nb_values = triqs::mpi::mpi_all_reduce(nb_values);
+ nb_values = mpi::mpi_all_reduce(nb_values);
  array<double, 1> weight_avg = weight_sum / nb_values;
 
+ array<int, 1> nb_cofact = mpi::mpi_all_reduce(config.nb_cofact);
+ array<int, 1> nb_inverse = mpi::mpi_all_reduce(config.nb_inverse);
+
  // print acceptance rates
- if (triqs::mpi::communicator().rank() == 0) {
+ if (world.rank() == 0) {
   std::cout << "Duration: " << solve_duration << " seconds" << std::endl;
-  std::cout << "Progress: " << 100 * get_nb_measures() / params.n_cycles << " %" << std::endl;
+  std::cout << "Progress: " << 100 * get_nb_measures_all() / (params.n_cycles * world.size()) << " %" << std::endl;
   std::cout << "Acceptance rates of node 0:" << std::endl;
   double total_weight = 0;
   double total_rate = 0;
@@ -196,7 +202,8 @@ int solver_core::run(const int max_time = -1, const int max_measures = -1) {
   }
   std::cout << "> All moves: " << total_rate / total_weight << std::endl;
   std::cout << "Attempted config weight average:" << std::endl << weight_avg << std::endl;
-  std::cout << "Weight offsets:" << std::endl << config.weight_offsets << std::endl;
+  //std::cout << "Weight offsets:" << std::endl << config.weight_offsets << std::endl;
+  std::cout << "cofact vs inverse : " << nb_cofact << " / " << nb_inverse << std::endl;
   std::cout << std::endl;
  }
 
@@ -209,12 +216,11 @@ int solver_core::run(const int max_time = -1, const int max_measures = -1) {
 int solver_core::finish(const int run_status) {
  if (run_status == 1) TRIQS_RUNTIME_ERROR << "finish cannot be called when the run is not finished";
 
- if (run_status == 0) status = ready;   // finished
  if (run_status == 2) status = aborted; // Received a signal: abort
 
- if (run_status == 0 and triqs::mpi::communicator().rank() == 0)
+ if (run_status == 0 and mpi::communicator().rank() == 0)
   std::cout << "Run finished" << std::endl << std::endl;
- if (run_status == 2 and triqs::mpi::communicator().rank() == 0)
+ if (run_status == 2 and mpi::communicator().rank() == 0)
   std::cout << "Run aborted" << std::endl << std::endl;
 
  return run_status;
@@ -254,7 +260,7 @@ double abs_g0_keldysh_t_inputs(double t, void* _params) {
 std::tuple<double, array<dcomplex, 2>> solver_core::order_zero() {
  if (status < not_ready) TRIQS_RUNTIME_ERROR << "Run aborted";
  if (status < ready) TRIQS_RUNTIME_ERROR << "Unperturbed Green's functions have not been set!";
- if (triqs::mpi::communicator().rank() == 0) std::cout << "Order zero calculation... " << std::flush;
+ if (mpi::communicator().rank() == 0) std::cout << "Order zero calculation... " << std::flush;
  double c0 = 0;
  double c0_error = 0;
 
@@ -291,7 +297,7 @@ std::tuple<double, array<dcomplex, 2>> solver_core::order_zero() {
   c0 = abs(g0_array(0, 0));
  }
  array<dcomplex, 2> s0 = g0_array / c0;
- if (triqs::mpi::communicator().rank() == 0) {
+ if (mpi::communicator().rank() == 0) {
   std::cout << "done" << std::endl;
   std::cout << "c0 = " << c0 << " error = " << c0_error << std::endl << std::endl;
  }
