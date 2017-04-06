@@ -16,6 +16,8 @@ class Configuration {
 
  // Configuration(const Configuration&) = delete;  // non construction-copyable
  // void operator=(const Configuration&) = delete; // non copyable
+ void kernels_evaluate_cofact();
+ void kernels_evaluate_inverse();
 
  public:
  std::vector<det_manip<g0_keldysh_alpha_t>>
@@ -51,10 +53,6 @@ class Configuration {
 
  dcomplex keldysh_sum();
  dcomplex keldysh_sum_cofact(int p);
- double square_norm_matrix0() const;
- double update_threshold();
- array<dcomplex, 2> kernels_evaluate_cofact();
- array<dcomplex, 2> kernels_evaluate_inverse();
  double weight_kernels();
  dcomplex weight_evaluate();
 

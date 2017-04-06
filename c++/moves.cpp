@@ -27,7 +27,7 @@ dcomplex insert::attempt() {
 
 dcomplex insert::accept() {
  config.weight_value = new_weight;
- config.accepted_kernels = config.current_kernels;
+ config.accepted_kernels() = config.current_kernels();
  return 1.0;
 }
 
@@ -60,7 +60,7 @@ dcomplex insert2::attempt() {
 
 dcomplex insert2::accept() {
  config.weight_value = new_weight;
- config.accepted_kernels = config.current_kernels;
+ config.accepted_kernels() = config.current_kernels();
  return 1.0;
 }
 
@@ -93,7 +93,7 @@ dcomplex remove::attempt() {
 
 dcomplex remove::accept() {
  config.weight_value = new_weight;
- config.accepted_kernels = config.current_kernels;
+ config.accepted_kernels() = config.current_kernels();
  return 1.0;
 }
 
@@ -128,7 +128,7 @@ dcomplex remove2::attempt() {
 
 dcomplex remove2::accept() {
  config.weight_value = new_weight;
- config.accepted_kernels = config.current_kernels;
+ config.accepted_kernels() = config.current_kernels();
  return 1.0;
 }
 
@@ -161,7 +161,7 @@ dcomplex shift::attempt() {
 
 dcomplex shift::accept() {
  config.weight_value = new_weight;
- config.accepted_kernels = config.current_kernels;
+ config.accepted_kernels() = config.current_kernels();
  return 1.0;
 }
 
@@ -205,7 +205,7 @@ dcomplex weight_swap::attempt() {
 
 dcomplex weight_swap::accept() {
  config.weight_value = new_weight;
- config.accepted_kernels = config.current_kernels;
+ config.accepted_kernels() = config.current_kernels();
  return 1.0;
 }
 
@@ -237,7 +237,7 @@ dcomplex weight_shift::attempt() {
 
 dcomplex weight_shift::accept() {
  config.weight_value = new_weight;
- config.accepted_kernels = config.current_kernels;
+ config.accepted_kernels() = config.current_kernels();
  return 1.0;
 }
 

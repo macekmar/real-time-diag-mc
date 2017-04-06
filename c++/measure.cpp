@@ -92,7 +92,6 @@ void TwoDetCofactMeasure::accumulate(dcomplex sign) {
 
  } else {
 
-  array<dcomplex, 2> kernels = config.kernels_evaluate_cofact();
   keldysh_contour_pt alpha_p;
 
   for (int p = 0; p < config.order; ++p) {
@@ -100,7 +99,7 @@ void TwoDetCofactMeasure::accumulate(dcomplex sign) {
    for (int k_index : {1, 0}) {
     alpha_p = flip_index(alpha_p);
     auto gf_map = map([&](keldysh_contour_pt tau) { return green_function(tau, alpha_p); });
-    value += make_matrix(gf_map(tau_array)) * kernels(p, k_index);
+    value += make_matrix(gf_map(tau_array)) * config.accepted_kernels(p, k_index);
    }
   }
  }

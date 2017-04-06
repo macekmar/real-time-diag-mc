@@ -9,6 +9,12 @@ Configuration::Configuration(g0_keldysh_alpha_t green_function, const keldysh_co
      weight_blur_time(weight_blur_time),
      max_order(max_order) {
 
+ current_kernels = array<dcomplex, 2>(max_order, 2);
+ current_kernels() = 0;
+ accepted_kernels = array<dcomplex, 2>(max_order, 2);
+ accepted_kernels() = 0;
+
+
  weight_sum = array<double, 1>(max_order + 1);
  weight_sum() = 0;
  nb_values = array<long, 1>(max_order + 1);
@@ -71,7 +77,7 @@ keldysh_contour_pt Configuration::get_left_input() const { return matrices[0].ge
 keldysh_contour_pt Configuration::get_right_input() const { return matrices[0].get_y(order); };
 
 // -----------------------
-array<dcomplex, 2> Configuration::kernels_evaluate_inverse() {
+void Configuration::kernels_evaluate_inverse() {
  if (order > 63) TRIQS_RUNTIME_ERROR << "order overflow";
 
  assert(order > 0); // no kernel for order zero
@@ -81,8 +87,7 @@ array<dcomplex, 2> Configuration::kernels_evaluate_inverse() {
  matrices[1].regenerate();
 #endif
 
- array<dcomplex, 2> kernels(order, 2);
- kernels() = 0;
+ current_kernels() = 0;
  dcomplex det1, det0, inv_value;
  int ap[64] = {0};
 
@@ -123,7 +128,7 @@ array<dcomplex, 2> Configuration::kernels_evaluate_inverse() {
    for (int p = 0; p < order; ++p) {
     det0 = matrices[0].determinant();
     //if (not(isfinite(det0))) std::cout << "bwa2";
-    kernels(p, ap[p]) += signs[(p + order) % 2] * matrices[0].determinant() * det1;
+    current_kernels(p, ap[p]) += signs[(p + order) % 2] * matrices[0].determinant() * det1;
     alpha_tmp = matrices[0].get_y(p);
     matrices[0].change_col(p, alpha);
     alpha = alpha_tmp;
@@ -134,27 +139,25 @@ array<dcomplex, 2> Configuration::kernels_evaluate_inverse() {
   } else {
    nb_inverse(order - 1)++;
    for (int p = 0; p < order; ++p) {
-    dcomplex inv_value = matrices[0].inverse_matrix(p, order);
+    inv_value = matrices[0].inverse_matrix(p, order);
     //if (inv_value == 0. or not isfinite(inv_value)) {
     // std::cout << "bwa3";
     // nb_inverse(order - 1)--;
     // goto cofactors;
     //};
-    kernels(p, ap[p]) += inv_value * det0 * det1;
+    current_kernels(p, ap[p]) += inv_value * det0 * det1;
    }
   }
   sign = -sign;
  }
 
- return kernels;
 };
 
 // -----------------------
 // TODO: write down the formula this implements
-array<dcomplex, 2> Configuration::kernels_evaluate_cofact() {
+void Configuration::kernels_evaluate_cofact() {
  assert(order > 0); // no kernel for order zero
 
- array<dcomplex, 2> kernels(order, 2);
  auto tau = get_left_input();
  auto taup = get_right_input();
  int signs[2] = {1, -1};
@@ -180,22 +183,21 @@ array<dcomplex, 2> Configuration::kernels_evaluate_cofact() {
    matrices[1].change_row(p, flip_index(matrices[1].get_x(p)));
    matrices[1].change_col(p, flip_index(matrices[1].get_y(p)));
 
-   kernels(p, k_index) = keldysh_sum_cofact(p) * signs[(order + p + k_index) % 2];
+   current_kernels(p, k_index) = keldysh_sum_cofact(p) * signs[(order + p + k_index) % 2];
   }
   alpha_tmp = alpha_p_right;
  }
  matrices[0].change_col(order - 1, alpha_tmp);
  matrices[0].insert(order, order, tau, taup);
 
- return kernels;
 };
 
 // -----------------------
 double Configuration::weight_kernels() {
  if (order == 0) return 1.; // is this a good value ?
- // current_kernels = kernels_evaluate_cofact();
- current_kernels = kernels_evaluate_inverse();
- return sum(abs(current_kernels));
+ // kernels_evaluate_cofact();
+ kernels_evaluate_inverse();
+ return sum(abs( current_kernels(range(0, order), range()) ));
 };
 
 // -----------------------
