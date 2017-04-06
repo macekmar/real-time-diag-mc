@@ -31,7 +31,7 @@ inline keldysh_contour_pt flip_index(keldysh_contour_pt const &t) { return {t.x,
  * It is the function that appears in the calculation of the determinant (det_manip, cf below).
  * It is in fact a lambda, but I need its explicit type below to declare det_manip, so I write it explicitly here.
  */
-struct g0_keldysh_t {
+struct g0_keldysh_alpha_t {
 
  g0_adaptor_t g0_lesser;
  g0_adaptor_t g0_greater;
@@ -43,6 +43,30 @@ struct g0_keldysh_t {
   // at equal time, discard Keldysh index and use g_lesser
   // do not put alpha for the time_max even at equal time
   if (a == b) return g0_lesser(a.x, b.x, a.t, b.t) - ((b.t == t_max) ? 0_j : 1_j * alpha);
+
+  //  // mapping: is it lesser or greater?
+  //  //  a    b    (a.time > b.time)   L/G ?
+  //  //  0    0           1             G
+  //  //  0    0           0             L
+  //  //  1    1           1             L
+  //  //  1    1           0             G
+  //  //
+  //  //  0    1           *             L
+  //  //  1    0           *             G
+  bool is_greater = (a.k_index == b.k_index ? (a.k_index xor (a.t > b.t)) : a.k_index);
+  return (is_greater ? g0_greater(a.x, b.x, a.t, b.t) : g0_lesser(a.x, b.x, a.t, b.t));
+ }
+};
+
+struct g0_keldysh_t {
+
+ g0_adaptor_t g0_lesser;
+ g0_adaptor_t g0_greater;
+
+ dcomplex operator()(keldysh_contour_pt const &a, keldysh_contour_pt const &b) const {
+
+  // at equal time, discard Keldysh index and use g_lesser
+  if (a == b) return g0_lesser(a.x, b.x, a.t, b.t);
 
   //  // mapping: is it lesser or greater?
   //  //  a    b    (a.time > b.time)   L/G ?

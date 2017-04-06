@@ -76,11 +76,12 @@ def staircase_perturbation_series(c0, pn, sn, U):
     # c0: single value
     # pn: list of 1D arrays
     # sn: list of ND arrays
-    # U: single value
+    # U: list
     # return: N+1D array
 
     assert(len(pn) > 1)
     assert(len(sn) == len(pn))
+    assert(len(U) >= len(pn) - 1)
     for i in range(len(pn)-1):
         assert(len(pn[i+1]) > len(pn[i]))
         assert(len(sn[i]) == len(pn[i]))
@@ -97,9 +98,9 @@ def staircase_perturbation_series(c0, pn, sn, U):
 
         while k < len(pn[i]):
             if pn[i][k-1] != 0:
-                cn[k] = cn[k-1] * pn[i][k] / (pn[i][k-1] * U)
+                cn[k] = cn[k-1] * pn[i][k] / (pn[i][k-1] * U[i-1])
             else:
-                cn[k] = cn[k-2] * pn[i][k] / (pn[i][k-2] * U * U)
+                cn[k] = cn[k-2] * pn[i][k] / (pn[i][k-2] * U[i-1] * U[i-1])
             k += 1
 
     # fill in on
@@ -109,7 +110,7 @@ def staircase_perturbation_series(c0, pn, sn, U):
             on[k, ...] = cn[k] * sn[i][k, ...]
             k += 1
 
-    return on
+    return on, cn
 
 
 # TO BE VERIFIED

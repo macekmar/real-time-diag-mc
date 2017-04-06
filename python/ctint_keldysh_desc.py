@@ -80,6 +80,8 @@ c.add_constructor("""(**solve_parameters_t)""",
 | weight_offsets          | array<double, 1>                                 |                                                | weight offsets value for each order                                     |
 +-------------------------+--------------------------------------------------+------------------------------------------------+-------------------------------------------------------------------------+
 | weight_blur_time        | double                                           |                                                | weight blurring parameter                                               |
++-------------------------+--------------------------------------------------+------------------------------------------------+-------------------------------------------------------------------------+
+| singular_threshold      | double                                           | 1e-3                                           |                                                                         |
 +-------------------------+--------------------------------------------------+------------------------------------------------+-------------------------------------------------------------------------+ """)
 
 c.add_method("""void set_g0 (gf_view<retime,matrix_valued> g0_lesser, gf_view<retime,matrix_valued> g0_greater)""",
@@ -108,11 +110,11 @@ c.add_property(name = "solve_duration_all",
                doc = """ """)
 
 c.add_property(name = "nb_measures",
-               getter = cfunction("int get_nb_measures ()"),
+               getter = cfunction("long get_nb_measures ()"),
                doc = """ """)
 
 c.add_property(name = "nb_measures_all",
-               getter = cfunction("int get_nb_measures_all ()"),
+               getter = cfunction("long get_nb_measures_all ()"),
                doc = """ """)
 
 c.add_property(name = "config_list",
@@ -124,11 +126,11 @@ c.add_property(name = "config_weight",
                doc = """ """)
 
 c.add_property(name = "pn",
-               getter = cfunction("array<int,1> get_pn ()"),
+               getter = cfunction("array<long,1> get_pn ()"),
                doc = """ """)
 
 c.add_property(name = "pn_all",
-               getter = cfunction("array<int,1> get_pn_all ()"),
+               getter = cfunction("array<long,1> get_pn_all ()"),
                doc = """ """)
 
 c.add_property(name = "sn",
@@ -147,8 +149,8 @@ c.add_property(name = "kernels_all",
                getter = cfunction("array<dcomplex,3> get_kernels_all ()"),
                doc = """ """)
 
-c.add_property(name = "nb_values",
-               getter = cfunction("array<int,3> get_nb_values ()"),
+c.add_property(name = "nb_kernels",
+               getter = cfunction("array<long,3> get_nb_kernels ()"),
                doc = """ """)
 
 module.add_class(c)

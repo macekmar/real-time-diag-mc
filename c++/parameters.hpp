@@ -94,5 +94,7 @@ struct solve_parameters_t {
 
  /// weight blurring parameter
  double weight_blur_time;
+
+ double singular_threshold = 1e-3;
  
 };

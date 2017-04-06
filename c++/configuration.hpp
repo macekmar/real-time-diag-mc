@@ -4,19 +4,21 @@
 
 using triqs::det_manip::det_manip;
 
+inline bool isfinite(dcomplex value) { return std::isfinite(real(value)) & std::isfinite(imag(value)); };
+
 class Configuration {
 
  private:
  double singular_threshold; // for det_manip
  int max_order = 0;
  array<double, 1> weight_sum;
- array<int, 1> nb_values;
+ array<long, 1> nb_values;
 
  // Configuration(const Configuration&) = delete;  // non construction-copyable
  // void operator=(const Configuration&) = delete; // non copyable
 
  public:
- std::vector<det_manip<g0_keldysh_t>>
+ std::vector<det_manip<g0_keldysh_alpha_t>>
      matrices;          // M matrices for up and down, the first one contains tau and taup (it is the big one)
  dcomplex weight_value; // Sum of determinants of the last accepted config
  int order;
@@ -24,8 +26,8 @@ class Configuration {
  double weight_blur_time;
  array<dcomplex, 2> current_kernels;
  array<dcomplex, 2> accepted_kernels;
- array<int, 1> nb_cofact;
- array<int, 1> nb_inverse;
+ array<long, 1> nb_cofact;
+ array<long, 1> nb_inverse;
 
  // registered configurations
  std::vector<std::vector<double>> config_list;
@@ -33,8 +35,8 @@ class Configuration {
  bool stop_register = false;
 
  Configuration(){};
- Configuration(g0_keldysh_t green_function, const keldysh_contour_pt tau, const keldysh_contour_pt taup,
-               array<double, 1> weight_offsets, double weight_blur_time, int max_order);
+ Configuration(g0_keldysh_alpha_t green_function, const keldysh_contour_pt tau, const keldysh_contour_pt taup,
+               array<double, 1> weight_offsets, double weight_blur_time, int max_order, double singular_threshold);
 
  void insert(int k, keldysh_contour_pt pt);
  void insert2(int k1, int k2, keldysh_contour_pt pt1, keldysh_contour_pt pt2);
@@ -49,6 +51,8 @@ class Configuration {
 
  dcomplex keldysh_sum();
  dcomplex keldysh_sum_cofact(int p);
+ double square_norm_matrix0() const;
+ double update_threshold();
  array<dcomplex, 2> kernels_evaluate_cofact();
  array<dcomplex, 2> kernels_evaluate_inverse();
  double weight_kernels();
@@ -57,7 +61,7 @@ class Configuration {
  void register_config();
 
  array<double, 1> get_weight_sum() const { return weight_sum; };
- array<int, 1> get_nb_values() const { return nb_values; };
+ array<long, 1> get_nb_values() const { return nb_values; };
 };
 
-void nice_print(det_manip<g0_keldysh_t> det, int p);
+void nice_print(det_manip<g0_keldysh_alpha_t> det, int p);

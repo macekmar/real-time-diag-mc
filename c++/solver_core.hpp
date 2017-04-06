@@ -18,6 +18,7 @@ enum Status { aborted, not_ready, ready, running };
 
 class solver_core {
 
+ g0_keldysh_alpha_t green_function_alpha;
  g0_keldysh_t green_function;
  Configuration config;
  solve_parameters_t params;
@@ -31,13 +32,16 @@ class solver_core {
  double solve_duration_all = 0;
  Status status = not_ready;
  KernelBinning kernels_binning;
+ array<dcomplex, 3> kernels;
  array<dcomplex, 3> kernels_all;
- array<int, 1> pn;
- array<int, 1> pn_all;
+ array<long, 1> pn;
+ array<long, 1> pn_all;
  array<dcomplex, 3> sn;
  array<dcomplex, 3> sn_all;
 
  int finish(const int run_status);
+
+ std::function<bool()> make_callback(int time_in_seconds);
 
  public:
  // FIXME change type of arguments after olivier fixes wrapper
@@ -55,15 +59,15 @@ class solver_core {
  // getters
  double get_solve_duration() const { return solve_duration; }
  double get_solve_duration_all() const { return solve_duration_all; }
- int get_nb_measures() const { return sum(pn); }
- int get_nb_measures_all() const { return sum(pn_all); }
+ long get_nb_measures() const { return sum(pn); }
+ long get_nb_measures_all() const { return sum(pn_all); }
  std::vector<std::vector<double>> get_config_list() const { return config.config_list; }
  std::vector<int> get_config_weight() const { return config.config_weight; }
- array<int, 1> get_pn() const { return pn; }
- array<int, 1> get_pn_all() const { return pn_all; }
+ array<long, 1> get_pn() const { return pn; }
+ array<long, 1> get_pn_all() const { return pn_all; }
  array<dcomplex, 3> get_sn() const { return sn; }
  array<dcomplex, 3> get_sn_all() const { return sn_all; }
- array<dcomplex, 3> get_kernels() const { return kernels_binning.get_values(); }
+ array<dcomplex, 3> get_kernels() const { return kernels; }
  array<dcomplex, 3> get_kernels_all() const { return kernels_all; }
- array<int, 3> get_nb_values() const { return kernels_binning.get_nb_values(); }
+ array<long, 3> get_nb_kernels() const { return kernels_binning.get_nb_values(); }
 };

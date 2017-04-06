@@ -31,6 +31,7 @@ solver_core::solver_core(solve_parameters_t const& params)
 
  // kernel binning
  kernels_all = array<dcomplex, 3>(params.max_perturbation_order + 1, params.nb_bins, 2);
+ kernels     = array<dcomplex, 3>(params.max_perturbation_order + 1, params.nb_bins, 2);
  kernels_binning =
      KernelBinning(-params.interaction_start, t_max, params.nb_bins, params.max_perturbation_order,
                    true); // TODO: it should be defined in measure
@@ -57,8 +58,8 @@ solver_core::solver_core(solve_parameters_t const& params)
  }
 
  // results arrays
- pn = array<int, 1>(params.max_perturbation_order + 1);     // pn for this process
- pn_all = array<int, 1>(params.max_perturbation_order + 1); // gather pn for all processes
+ pn = array<long, 1>(params.max_perturbation_order + 1);     // pn for this process
+ pn_all = array<long, 1>(params.max_perturbation_order + 1); // gather pn for all processes
  pn() = 0;
  pn_all() = 0;
 
@@ -78,9 +79,10 @@ void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser,
  if (status > not_ready) TRIQS_RUNTIME_ERROR << "Green functions already set up. Cannot change.";
 
  // non interacting Green function
- green_function = g0_keldysh_t{g0_adaptor_t{g0_lesser}, g0_adaptor_t{g0_greater}, params.alpha, t_max};
- config = Configuration(green_function, tau_array(0, 0), taup, params.weight_offsets, params.weight_blur_time,
-                        params.max_perturbation_order);
+ green_function_alpha = g0_keldysh_alpha_t{g0_adaptor_t{g0_lesser}, g0_adaptor_t{g0_greater}, params.alpha, t_max};
+ green_function = g0_keldysh_t{g0_adaptor_t{g0_lesser}, g0_adaptor_t{g0_greater}};
+ config = Configuration(green_function_alpha, tau_array(0, 0), taup, params.weight_offsets, params.weight_blur_time,
+                        params.max_perturbation_order, params.singular_threshold);
 
  // order zero values
  auto gf_map = map([this](keldysh_contour_pt tau) { return green_function(tau, taup); });
@@ -114,7 +116,7 @@ void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser,
                                       &g0_array, green_function, params.interaction_start + t_max),
                   "Cofact measure");
  } else if (params.method == 5) {
-  qmc.add_measure(TwoDetKernelMeasure(&config, &kernels_binning, &pn, &pn_all, &sn, &sn_all, &kernels_all,
+  qmc.add_measure(TwoDetKernelMeasure(&config, &kernels_binning, &pn, &pn_all, &sn, &sn_all, &kernels, &kernels_all,
                                       &tau_array, &g0_array, green_function,
                                       params.interaction_start + t_max),
                   "Kernel measure");
@@ -123,6 +125,12 @@ void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser,
  }
 
  status = ready;
+};
+
+// --------------------------------
+std::function<bool()> solver_core::make_callback(int time_in_seconds) {
+ auto clock_callback = triqs::utility::clock_callback(time_in_seconds);
+ return [clock_callback]() {MPI_Barrier(MPI_COMM_WORLD); return clock_callback();};
 };
 
 // --------------------------------
@@ -156,20 +164,21 @@ int solver_core::run(const int max_time = -1, const int max_measures = -1) {
  run_status = qmc.run(measures_to_do, params.length_cycle, triqs::utility::clock_callback(max_time), true);
 
  // Collect results
- if (world.rank() == 0) std::cout << "Collecting results..." << std::endl << std::endl;
+ if (world.rank() == 0) std::cout << "Collecting results... " << std::flush;
  qmc.collect_results(world);
+ if (world.rank() == 0) std::cout << "done" << std::endl << std::endl;
 
  solve_duration = solve_duration + qmc.get_duration();
  solve_duration_all = mpi::mpi_all_reduce(solve_duration);
 
  array<double, 1> weight_sum = config.get_weight_sum();
  weight_sum = mpi::mpi_all_reduce(weight_sum);
- array<int, 1> nb_values = config.get_nb_values();
+ array<long, 1> nb_values = config.get_nb_values();
  nb_values = mpi::mpi_all_reduce(nb_values);
  array<double, 1> weight_avg = weight_sum / nb_values;
 
- array<int, 1> nb_cofact = mpi::mpi_all_reduce(config.nb_cofact);
- array<int, 1> nb_inverse = mpi::mpi_all_reduce(config.nb_inverse);
+ array<long, 1> nb_cofact = mpi::mpi_all_reduce(config.nb_cofact);
+ array<long, 1> nb_inverse = mpi::mpi_all_reduce(config.nb_inverse);
 
  // print acceptance rates
  if (world.rank() == 0) {

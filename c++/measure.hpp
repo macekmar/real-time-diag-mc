@@ -15,7 +15,7 @@ class KernelBinning {
 
  private:
  array<dcomplex, 3> values; // 3D: order, binning, keldysh index
- array<int, 3> nb_values;   // 3D: order, binning, keldysh index
+ array<long, 3> nb_values;   // 3D: order, binning, keldysh index
  double t_min, t_max, bin_length;
  int nb_bins;
 
@@ -34,7 +34,7 @@ class KernelBinning {
 
   values = array<dcomplex, 3>(max_order + 1, nb_bins, 2); // from order 0 to order max_order
   values() = 0;
-  nb_values = array<int, 3>(max_order + 1, nb_bins, 2);
+  nb_values = array<long, 3>(max_order + 1, nb_bins, 2);
   nb_values() = 0;
 
   coord_array = array<keldysh_contour_pt, 2>(nb_bins, 2);
@@ -59,7 +59,7 @@ class KernelBinning {
  };
 
  array<dcomplex, 3> get_values() const { return values; };  // copy
- array<int, 3> get_nb_values() const { return nb_values; }; // copy
+ array<long, 3> get_nb_values() const { return nb_values; }; // copy
 
  // array_const_view<keldysh_contour_pt, 2> get_coord_array() const { return coord_array(); }; // view
  // doesnt work ??
@@ -71,8 +71,8 @@ class WeightSignMeasure {
 
  private:
  Configuration& config;
- array<int, 1>& pn;
- array<int, 1>& pn_all;
+ array<long, 1>& pn;
+ array<long, 1>& pn_all;
  array<dcomplex, 3>& sn;
  array<dcomplex, 3>& sn_all;
  array<dcomplex, 3> sn_accum;
@@ -80,7 +80,7 @@ class WeightSignMeasure {
  histogram histogram_pn;
 
  public:
- WeightSignMeasure(Configuration* config, array<int, 1>* pn, array<int, 1>* pn_all, array<dcomplex, 3>* sn,
+ WeightSignMeasure(Configuration* config, array<long, 1>* pn, array<long, 1>* pn_all, array<dcomplex, 3>* sn,
                    array<dcomplex, 3>* sn_all);
 
  void accumulate(dcomplex sign);
@@ -95,8 +95,8 @@ class TwoDetCofactMeasure {
  private:
  Configuration& config;
  KernelBinning& kernels_binning;
- array<int, 1>& pn;
- array<int, 1>& pn_all;
+ array<long, 1>& pn;
+ array<long, 1>& pn_all;
  array<dcomplex, 3>& sn;
  array<dcomplex, 3>& sn_all;
  array<dcomplex, 3> sn_accum;
@@ -108,8 +108,8 @@ class TwoDetCofactMeasure {
  const double delta_t;
 
  public:
- TwoDetCofactMeasure(Configuration* config, KernelBinning* kernels_binning, array<int, 1>* pn,
-                     array<int, 1>* pn_all, array<dcomplex, 3>* sn, array<dcomplex, 3>* sn_all,
+ TwoDetCofactMeasure(Configuration* config, KernelBinning* kernels_binning, array<long, 1>* pn,
+                     array<long, 1>* pn_all, array<dcomplex, 3>* sn, array<dcomplex, 3>* sn_all,
                      const array<keldysh_contour_pt, 2>* tau_array, const array<dcomplex, 2>* g0_array,
                      g0_keldysh_t green_function, const double delta_t);
 
@@ -125,10 +125,11 @@ class TwoDetKernelMeasure {
  private:
  Configuration& config;
  KernelBinning& kernels_binning;
- array<int, 1>& pn;
- array<int, 1>& pn_all;
+ array<long, 1>& pn;
+ array<long, 1>& pn_all;
  array<dcomplex, 3>& sn;
  array<dcomplex, 3>& sn_all;
+ array<dcomplex, 3>& kernels;
  array<dcomplex, 3>& kernels_all;
  int nb_orders;
  histogram histogram_pn;
@@ -138,9 +139,9 @@ class TwoDetKernelMeasure {
  const double delta_t;
 
  public:
- TwoDetKernelMeasure(Configuration* config, KernelBinning* kernels_binning, array<int, 1>* pn,
-                     array<int, 1>* pn_all, array<dcomplex, 3>* sn, array<dcomplex, 3>* sn_all,
-                     array<dcomplex, 3>* kernels_all, const array<keldysh_contour_pt, 2>* tau_array,
+ TwoDetKernelMeasure(Configuration* config, KernelBinning* kernels_binning, array<long, 1>* pn,
+                     array<long, 1>* pn_all, array<dcomplex, 3>* sn, array<dcomplex, 3>* sn_all,
+                     array<dcomplex, 3>* kernels, array<dcomplex, 3>* kernels_all, const array<keldysh_contour_pt, 2>* tau_array,
                      const array<dcomplex, 2>* g0_array, g0_keldysh_t green_function, const double delta_t);
 
  void accumulate(dcomplex sign);

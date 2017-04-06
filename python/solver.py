@@ -45,7 +45,7 @@ def gather_histogram(solver, comm=MPI.COMM_WORLD):
 
     return list_histograms_all
 
-def wright(duration, nb_measures, parameters, on, on_error, filename, kind_list, nb_proc):
+def write(duration, nb_measures, parameters, on, on_error, filename, kind_list, nb_proc):
     # before using save, check kind_list has the good shape
     with HDFArchive(filename, 'w') as ar:
         ar['nb_proc'] = nb_proc
@@ -62,7 +62,7 @@ def wright(duration, nb_measures, parameters, on, on_error, filename, kind_list,
 
     print 'Saved in', filename
 
-def wright_add(data, data_name, filename):
+def write_add(data, data_name, filename):
     with HDFArchive(filename, 'a') as ar:
         ar[data_name] = data
 
@@ -94,8 +94,8 @@ def single_solve(g0_lesser, g0_greater, parameters, filename=None, kind_list=Non
         on_error = variance_error(on, world)
 
         if save and world.rank == 0:
-            wright(S.solve_duration, S.nb_measures_all, parameters, on, on_error, filename, kind_list, world.size)
-            wright_add(S.kernels_all, 'kernels', filename)
+            write(S.solve_duration, S.nb_measures_all, parameters, on, on_error, filename, kind_list, world.size)
+            write_add(S.kernels_all, 'kernels', filename)
 
         output = (np.squeeze(on), np.squeeze(on_error))
         if world.rank == 0:
@@ -185,7 +185,7 @@ def staircase_solve(g0_lesser, g0_greater, _parameters, filename=None, kind_list
             sn[i] = S.sn
             while k_catchup <= k:
                 kernels[k_catchup] = S.kernels_all[k_catchup, ...]
-                nb_kernels[k_catchup] = S.nb_values[k_catchup, ...]
+                nb_kernels[k_catchup] = S.nb_kernels[k_catchup, ...]
                 k_catchup += 1
 
             if world.rank == 0:
@@ -204,31 +204,34 @@ def staircase_solve(g0_lesser, g0_greater, _parameters, filename=None, kind_list
                 U_proposed = None
 
             # calculates results
-            on_result = staircase_perturbation_series(c0, pn_all[:i+1], sn_all[:i+1], parameters['U'])
+            on_result, cn_result = staircase_perturbation_series(c0, pn_all[:i+1], sn_all[:i+1], U_list)
 
             # Calculate error
             # estimation using the variance of the On obtained on each process (assumes each process is equivalent)
-            on = staircase_perturbation_series(c0, pn[:i+1], sn[:i+1], parameters['U'])
+            on, cn = staircase_perturbation_series(c0, pn[:i+1], sn[:i+1], U_list)
             on_error = variance_error(on, world)
 
-            print "Number of measures (procs", world.rank, ", this order):", S.nb_measures
+            # print "Number of measures (procs", world.rank, ", this order):", S.nb_measures
 
             if world.rank == 0:
                 print datetime.now(), ": Order", k
-                print "Duration (this orders):", S.solve_duration
+                print "Duration (this order):", S.solve_duration
                 print "Duration (all orders):", solve_duration + S.solve_duration
                 print "Number of measures (all procs, this order):", S.nb_measures_all
                 print "Number of measures (all procs, all orders):", nb_measures + S.nb_measures_all
                 print "U proposed:", U_proposed, "(current is", parameters['U'], ")"
                 print
                 if save:
-                    wright(solve_duration + S.solve_duration, nb_measures + S.nb_measures_all, parameters, on_result[:k+1], on_error[:k+1], filename, kind_list, world.size)
-                    wright_add(np.array(kernels[:k+1], dtype=complex), 'kernels', filename)
-                    wright_add(np.array(nb_kernels[:k+1], dtype=int), 'nb_kernels', filename)
+                    write(solve_duration + S.solve_duration, nb_measures + S.nb_measures_all, parameters, on_result[:k+1], on_error[:k+1], filename, kind_list, world.size)
+                    write_add(np.array(kernels[:k+1], dtype=complex), 'kernels', filename)
+                    write_add(np.array(nb_kernels[:k+1], dtype=int), 'nb_kernels', filename)
+                    write_add(np.array(cn_result), 'cn', filename)
 
         solve_duration += S.solve_duration
         nb_measures += S.nb_measures_all
         if abort: break # Received signal, terminate
+
+    del S
 
     return np.squeeze(on_result), np.squeeze(on_error)
 

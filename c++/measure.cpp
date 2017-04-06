@@ -6,7 +6,7 @@ namespace mpi = triqs::mpi;
 
 
 // ----------
-WeightSignMeasure::WeightSignMeasure(Configuration* config, array<int, 1>* pn, array<int, 1>* pn_all,
+WeightSignMeasure::WeightSignMeasure(Configuration* config, array<long, 1>* pn, array<long, 1>* pn_all,
                                      array<dcomplex, 3>* sn, array<dcomplex, 3>* sn_all)
    : config(*config), pn(*pn), pn_all(*pn_all), sn(*sn), sn_all(*sn_all) {
 
@@ -56,7 +56,7 @@ void WeightSignMeasure::collect_results(mpi::communicator c) {
 
 // ----------
 TwoDetCofactMeasure::TwoDetCofactMeasure(Configuration* config, KernelBinning* kernels_binning,
-                                         array<int, 1>* pn, array<int, 1>* pn_all, array<dcomplex, 3>* sn,
+                                         array<long, 1>* pn, array<long, 1>* pn_all, array<dcomplex, 3>* sn,
                                          array<dcomplex, 3>* sn_all,
                                          const array<keldysh_contour_pt, 2>* tau_array,
                                          const array<dcomplex, 2>* g0_array, g0_keldysh_t green_function,
@@ -142,8 +142,8 @@ void TwoDetCofactMeasure::collect_results(mpi::communicator c) {
 
 // ----------
 TwoDetKernelMeasure::TwoDetKernelMeasure(Configuration* config, KernelBinning* kernels_binning,
-                                         array<int, 1>* pn, array<int, 1>* pn_all, array<dcomplex, 3>* sn,
-                                         array<dcomplex, 3>* sn_all, array<dcomplex, 3>* kernels_all,
+                                         array<long, 1>* pn, array<long, 1>* pn_all, array<dcomplex, 3>* sn,
+                                         array<dcomplex, 3>* sn_all, array<dcomplex, 3>* kernels, array<dcomplex, 3>* kernels_all,
                                          const array<keldysh_contour_pt, 2>* tau_array,
                                          const array<dcomplex, 2>* g0_array, g0_keldysh_t green_function,
                                          const double delta_t)
@@ -153,6 +153,7 @@ TwoDetKernelMeasure::TwoDetKernelMeasure(Configuration* config, KernelBinning* k
      pn_all(*pn_all),
      sn(*sn),
      sn_all(*sn_all),
+     kernels(*kernels),
      kernels_all(*kernels_all),
      tau_array(*tau_array),
      g0_array(*g0_array),
@@ -186,17 +187,23 @@ void TwoDetKernelMeasure::accumulate(dcomplex sign) {
 
 // ----------
 void TwoDetKernelMeasure::collect_results(mpi::communicator c) {
+ MPI_Barrier(MPI_COMM_WORLD);
 
  // gather pn
+ if (c.rank() == 0) std::cout << "Gathering pn..." << std::endl;
  auto data_histogram_pn = histogram_pn.data();
 
  for (int k = 0; k < nb_orders; k++) {
   pn(k) = data_histogram_pn(k);
  }
+ std::cout << "rank " << c.rank() << ": reducing " << sum(pn) << std::endl;
  pn_all = mpi::mpi_all_reduce(pn, c);
 
+ std::cout << "rank " << c.rank() << ": nb of measures: " << sum(pn) << std::endl;
+
  // gather kernels
- array<dcomplex, 3> kernels = kernels_binning.get_values();
+ if (c.rank() == 0) std::cout << "Gathering kernels..." << std::endl;
+ kernels = kernels_binning.get_values();
 
  dcomplex i_n[4] = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}}; // powers of i
  for (int k = 0; k < nb_orders; k++) {
@@ -212,6 +219,7 @@ void TwoDetKernelMeasure::collect_results(mpi::communicator c) {
  }
 
  // compute sn from kernels
+ if (c.rank() == 0) std::cout << "Computing sn from kernels..." << std::endl;
  keldysh_contour_pt tau;
  for (int order = 0; order < nb_orders; ++order) { // for each order
   for (int i = 0; i < second_dim(sn); ++i) {       // for each tau (time)
