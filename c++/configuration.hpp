@@ -4,8 +4,6 @@
 
 using triqs::det_manip::det_manip;
 
-inline bool isfinite(dcomplex value) { return std::isfinite(real(value)) & std::isfinite(imag(value)); };
-
 class Configuration {
 
  private:
@@ -24,8 +22,6 @@ class Configuration {
      matrices;          // M matrices for up and down, the first one contains tau and taup (it is the big one)
  dcomplex weight_value; // Sum of determinants of the last accepted config
  int order;
- array<double, 1> weight_offsets;
- double weight_blur_time;
  array<dcomplex, 2> current_kernels;
  array<dcomplex, 2> accepted_kernels;
  array<long, 1> nb_cofact;
@@ -38,7 +34,7 @@ class Configuration {
 
  Configuration(){};
  Configuration(g0_keldysh_alpha_t green_function, const keldysh_contour_pt tau, const keldysh_contour_pt taup,
-               array<double, 1> weight_offsets, double weight_blur_time, int max_order, double singular_threshold);
+               int max_order, double singular_threshold);
 
  void insert(int k, keldysh_contour_pt pt);
  void insert2(int k1, int k2, keldysh_contour_pt pt1, keldysh_contour_pt pt2);

@@ -1,12 +1,10 @@
 #include "./configuration.hpp"
 
 Configuration::Configuration(g0_keldysh_alpha_t green_function, const keldysh_contour_pt tau,
-                             const keldysh_contour_pt taup, array<double, 1> weight_offsets,
-                             double weight_blur_time, int max_order, double singular_threshold)
+                             const keldysh_contour_pt taup,
+                             int max_order, double singular_threshold)
    : singular_threshold(singular_threshold),
      order(0),
-     weight_offsets(weight_offsets),
-     weight_blur_time(weight_blur_time),
      max_order(max_order) {
 
  current_kernels = array<dcomplex, 2>(max_order, 2);
@@ -23,8 +21,6 @@ Configuration::Configuration(g0_keldysh_alpha_t green_function, const keldysh_co
  nb_cofact() = 0;
  nb_inverse = array<long, 1>(max_order);
  nb_inverse() = 0;
-
- if (first_dim(weight_offsets) <= max_order) TRIQS_RUNTIME_ERROR << "There is not enough offset values !";
 
  // Initialize the M-matrices. 100 is the initial alocated space.
  for (auto spin : {up, down}) matrices.emplace_back(green_function, 100);
@@ -101,7 +97,6 @@ void Configuration::kernels_evaluate_inverse() {
   int nlc = (n < two_to_k - 1 ? ffs(~n) : order) -
             1; // ffs starts at 1, returns the position of the 1st (least significant) bit set
                // to 1. ~n has bites inversed compared with n.
-  //ap[nlc] = (ap[nlc] + 1) % 2;
   ap[nlc] = 1 - ap[nlc];
 
   for (auto spin : {up, down}) {
@@ -112,40 +107,27 @@ void Configuration::kernels_evaluate_inverse() {
 
   det1 = sign * matrices[1].determinant();
   det0 = matrices[0].determinant();
-  // std::cout << "DEBUG: det0 = " << std::abs(det0) << " / det1 = " << std::abs(det1) << std::endl;
-  //if (not(isfinite(det0) and isfinite(det1))) std::cout << "bwa";
-   if (std::abs(det0) < matrices[0].get_hadamard_bound() * singular_threshold) {
+  if (not std::isnormal(std::abs(det0))) {
   // matrix is singular, calculate cofactors
-  cofactors:
    nb_cofact(order - 1)++;
    int signs[2] = {1, -1};
    keldysh_contour_pt tau = get_left_input();
    keldysh_contour_pt alpha_tmp;
    keldysh_contour_pt alpha = matrices[0].get_y(0);
-   // nice_print(matrices[0], 100);
    matrices[0].remove(order, 0);
-   // nice_print(matrices[0], 0);
    for (int p = 0; p < order; ++p) {
     det0 = matrices[0].determinant();
-    //if (not(isfinite(det0))) std::cout << "bwa2";
     current_kernels(p, ap[p]) += signs[(p + order) % 2] * matrices[0].determinant() * det1;
     alpha_tmp = matrices[0].get_y(p);
     matrices[0].change_col(p, alpha);
     alpha = alpha_tmp;
-    // nice_print(matrices[0], p+1);
    }
    matrices[0].insert(order, order, tau, alpha);
-   // nice_print(matrices[0], 100);
   } else {
    nb_inverse(order - 1)++;
    for (int p = 0; p < order; ++p) {
     inv_value = matrices[0].inverse_matrix(p, order);
-    //if (inv_value == 0. or not isfinite(inv_value)) {
-    // std::cout << "bwa3";
-    // nb_inverse(order - 1)--;
-    // goto cofactors;
-    //};
-    current_kernels(p, ap[p]) += inv_value * det0 * det1;
+	current_kernels(p, ap[p]) += inv_value * det0 * det1;
    }
   }
   sign = -sign;
@@ -154,6 +136,7 @@ void Configuration::kernels_evaluate_inverse() {
 };
 
 // -----------------------
+// Deprecated
 // TODO: write down the formula this implements
 void Configuration::kernels_evaluate_cofact() {
  assert(order > 0); // no kernel for order zero
@@ -195,8 +178,8 @@ void Configuration::kernels_evaluate_cofact() {
 // -----------------------
 double Configuration::weight_kernels() {
  if (order == 0) return 1.; // is this a good value ?
- // kernels_evaluate_cofact();
  kernels_evaluate_inverse();
+
  return sum(abs( current_kernels(range(0, order), range()) ));
 };
 
@@ -207,22 +190,6 @@ dcomplex Configuration::weight_evaluate() {
  nb_values(order)++;
  return value;
 }
-// dcomplex Configuration::weight_evaluate() {
-// double value = std::abs(keldysh_sum());
-// weight_sum(order) += value;
-// nb_values(order)++;
-
-// if (weight_offsets(order) < 0 or value < weight_offsets(order)) {
-//  keldysh_contour_pt tau_save = get_left_input();
-//  keldysh_contour_pt tau = tau_save;
-//  tau.t += weight_blur_time;
-//  change_left_input(tau);
-//  value += std::abs(keldysh_sum());
-//  change_left_input(tau_save);
-// }
-
-// return value;
-//};
 
 // -----------------------
 void Configuration::register_config() {

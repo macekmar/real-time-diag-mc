@@ -84,17 +84,11 @@ struct solve_parameters_t {
  //int verbosity = ((triqs::mpi::communicator().rank() == 0) ? 3 : 0); // silence the slave nodes
 
  /// Method
- int method = 4;
+ int method = 5;
 
  /// nb of bins for the kernels
  int nb_bins = 10000;
 
- /// weight offsets value for each order
- array<double, 1> weight_offsets;
-
- /// weight blurring parameter
- double weight_blur_time;
-
  double singular_threshold = 1e-3;
- 
+
 };

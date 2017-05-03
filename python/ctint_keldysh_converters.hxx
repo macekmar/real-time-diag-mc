@@ -36,8 +36,6 @@ template <> struct py_converter<solve_parameters_t> {
   PyDict_SetItemString( d, "verbosity"              , convert_to_python(x.verbosity));
   PyDict_SetItemString( d, "method"                 , convert_to_python(x.method));
   PyDict_SetItemString( d, "nb_bins"                , convert_to_python(x.nb_bins));
-  PyDict_SetItemString( d, "weight_offsets"         , convert_to_python(x.weight_offsets));
-  PyDict_SetItemString( d, "weight_blur_time"       , convert_to_python(x.weight_blur_time));
   PyDict_SetItemString( d, "singular_threshold"     , convert_to_python(x.singular_threshold));
   return d;
  }
@@ -79,10 +77,8 @@ template <> struct py_converter<solve_parameters_t> {
   _get_optional(dic, "random_name"            , res.random_name               ,"");
   _get_optional(dic, "max_time"               , res.max_time                  ,-1);
   _get_optional(dic, "verbosity"              , res.verbosity                 ,0);
-  _get_optional(dic, "method"                 , res.method                    ,4);
+  _get_optional(dic, "method"                 , res.method                    ,5);
   _get_optional(dic, "nb_bins"                , res.nb_bins                   ,10000);
-  res.weight_offsets = convert_from_python<array<double, 1>>(PyDict_GetItemString(dic, "weight_offsets"));
-  res.weight_blur_time = convert_from_python<double>(PyDict_GetItemString(dic, "weight_blur_time"));
   _get_optional(dic, "singular_threshold"     , res.singular_threshold        ,1e-3);
   return res;
  }
@@ -114,7 +110,7 @@ template <> struct py_converter<solve_parameters_t> {
   std::stringstream fs, fs2; int err=0;
 
 #ifndef TRIQS_ALLOW_UNUSED_PARAMETERS
-  std::vector<std::string> ks, all_keys = {"right_input_points","interaction_start","measure_state","measure_times","measure_keldysh_indices","alpha","U","w_ins_rem","w_dbl","w_shift","w_weight_swap","w_weight_shift","max_perturbation_order","min_perturbation_order","n_cycles","length_cycle","n_warmup_cycles","random_seed","random_name","max_time","verbosity","method","nb_bins","weight_offsets","weight_blur_time","singular_threshold"};
+  std::vector<std::string> ks, all_keys = {"right_input_points","interaction_start","measure_state","measure_times","measure_keldysh_indices","alpha","U","w_ins_rem","w_dbl","w_shift","w_weight_swap","w_weight_shift","max_perturbation_order","min_perturbation_order","n_cycles","length_cycle","n_warmup_cycles","random_seed","random_name","max_time","verbosity","method","nb_bins","singular_threshold"};
   pyref keys = PyDict_Keys(dic);
   if (!convertible_from_python<std::vector<std::string>>(keys, true)) {
    fs << "\nThe dict keys are not strings";
@@ -149,8 +145,6 @@ template <> struct py_converter<solve_parameters_t> {
   _check_optional <int                                             >(dic, fs, err, "verbosity"              , "int");
   _check_optional <int                                             >(dic, fs, err, "method"                 , "int");
   _check_optional <int                                             >(dic, fs, err, "nb_bins"                , "int");
-  _check_mandatory<array<double, 1>                                >(dic, fs, err, "weight_offsets"         , "array<double, 1>");
-  _check_mandatory<double                                          >(dic, fs, err, "weight_blur_time"       , "double");
   _check_optional <double                                          >(dic, fs, err, "singular_threshold"     , "double");
   if (err) goto _error;
   return true;

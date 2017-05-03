@@ -81,7 +81,7 @@ void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser,
  // non interacting Green function
  green_function_alpha = g0_keldysh_alpha_t{g0_adaptor_t{g0_lesser}, g0_adaptor_t{g0_greater}, params.alpha, t_max};
  green_function = g0_keldysh_t{g0_adaptor_t{g0_lesser}, g0_adaptor_t{g0_greater}};
- config = Configuration(green_function_alpha, tau_array(0, 0), taup, params.weight_offsets, params.weight_blur_time,
+ config = Configuration(green_function_alpha, tau_array(0, 0), taup,
                         params.max_perturbation_order, params.singular_threshold);
 
  // order zero values
@@ -213,6 +213,12 @@ int solver_core::run(const int max_time = -1, const int max_measures = -1) {
   std::cout << "Attempted config weight average:" << std::endl << weight_avg << std::endl;
   //std::cout << "Weight offsets:" << std::endl << config.weight_offsets << std::endl;
   std::cout << "cofact vs inverse : " << nb_cofact << " / " << nb_inverse << std::endl;
+  std::cout << "regen ratios : 0=" << config.matrices[0].get_regen_ratio() << ", 1=" << config.matrices[1].get_regen_ratio() << std::endl;
+  std::pair<double, double> regen_stats;
+  for (int a : {0, 1}) {
+   regen_stats = config.matrices[a].get_error_stats();
+   std::cout << "regen errors " << a << " : avg=" << regen_stats.first << ", var=" << regen_stats.second << std::endl;
+  }
   std::cout << std::endl;
  }
 
@@ -240,30 +246,18 @@ struct integrand_params {
  g0_keldysh_t green_function;
  keldysh_contour_pt tau;
  keldysh_contour_pt taup;
- double weight_offset;
- double weight_blur_time;
 
- integrand_params(g0_keldysh_t green_function, int state, int k_index, keldysh_contour_pt taup,
-                  double weight_offset, double weight_blur_time)
+ integrand_params(g0_keldysh_t green_function, int state, int k_index, keldysh_contour_pt taup)
     : green_function(green_function),
       tau{state, 0., k_index},
-      taup(taup),
-      weight_offset(weight_offset),
-      weight_blur_time(weight_blur_time){};
+      taup(taup){};
 };
 
 double abs_g0_keldysh_t_inputs(double t, void* _params) {
  auto params = static_cast<integrand_params*>(_params);
  keldysh_contour_pt tau = params->tau;
  tau.t = t;
- double value = std::abs(params->green_function(tau, params->taup));
-
- if (params->weight_offset < 0 or value < params->weight_offset) {
-  tau.t += params->weight_blur_time;
-  value += std::abs(params->green_function(tau, params->taup));
- }
-
- return value;
+ return std::abs(params->green_function(tau, params->taup));
 };
 
 std::tuple<double, array<dcomplex, 2>> solver_core::order_zero() {
@@ -284,7 +278,7 @@ std::tuple<double, array<dcomplex, 2>> solver_core::order_zero() {
   double value_error;
 
   for (int a : {0, 1}) {
-   integrand_params int_params(green_function, 0, a, taup, config.weight_offsets(0), config.weight_blur_time);
+   integrand_params int_params(green_function, 0, a, taup);
    F.params = &int_params;
    gsl_integration_cquad(&F,                        // function to integrate
                          -params.interaction_start, // lower boundary
