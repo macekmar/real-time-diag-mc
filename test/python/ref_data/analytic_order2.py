@@ -16,12 +16,12 @@ class GKeldysh :
 
         if u1 == u2 and a1 == a2:
             return self.g0_lesser(u1 - u2)[0, 0]
-        
+
         if a1 == a2:
             is_greater = (a1 != (u1 > u2))
         else:
             is_greater = a1
-            
+
         if is_greater:
             return self.g0_greater(u1 - u2)[0, 0]
         else:
@@ -30,10 +30,11 @@ class GKeldysh :
 
 class KeldyshSumDet2 :
 
-    def __init__(self, g0, tau, taup):
+    def __init__(self, g0, tau, taup, alpha=0.):
         self.g0 = g0
         self.tau = tau
         self.taup = taup
+        self.alpha = alpha
         self.matrix1 = np.empty((3, 3), dtype=complex)
         self.matrix2 = np.empty((2, 2), dtype=complex)
         self.cache = {}
@@ -48,6 +49,10 @@ class KeldyshSumDet2 :
                 self.matrix1[i, j] = g
                 if (i<2) and (j<2):
                     self.matrix2[i, j] = g
+                    if i == j:
+                        self.matrix2[i, j] -= 1j * self.alpha
+                        self.matrix1[i, j] -= 1j * self.alpha
+
         return linalg.det(self.matrix1) * linalg.det(self.matrix2)
 
     def __call__(self, u1, u2):
@@ -94,7 +99,7 @@ def my_dblquad(integrand, times_list):
     return complex(rv, iv), complex(re, ie)
 
 
-def analytic_order2(g0_lesser, g0_greater, interaction_start, times):
+def analytic_order2(g0_lesser, g0_greater, alpha, interaction_start, times):
     g0_keldysh = GKeldysh(g0_lesser, g0_greater)
     t2 = 0.0
     tmax = max(t2, np.max(times))
@@ -117,8 +122,8 @@ def analytic_order2(g0_lesser, g0_greater, interaction_start, times):
             if (i * world.size) % (1 + len(times) // 10) == 0:
                 print (i * world.size), '/', len(times)
 
-        integrand_lesser  = KeldyshSumDet2(g0_keldysh, (t, 0), (t2, 1))
-        integrand_greater = KeldyshSumDet2(g0_keldysh, (t, 1), (t2, 0))
+        integrand_lesser  = KeldyshSumDet2(g0_keldysh, (t, 0), (t2, 1), alpha)
+        integrand_greater = KeldyshSumDet2(g0_keldysh, (t, 1), (t2, 0), alpha)
 
         value, error = my_dblquad(integrand_lesser, [-interaction_start, t, tmax])
         # print "cache used:", integrand_lesser.cache_used
@@ -137,7 +142,7 @@ def analytic_order2(g0_lesser, g0_greater, interaction_start, times):
 
 
 if __name__ == '__main__':
-    from ctint_keldysh import make_g0_semi_circular
+    from ctint_keldysh import make_g0_semi_circular, make_g0_flat_band
     from pytriqs.archive import *
     import datetime
     world = MPI.COMM_WORLD
@@ -154,13 +159,59 @@ if __name__ == '__main__':
                                                   Nt_gf0=25000)
 
     interaction_start = 40.0
-    o2_less, o2_grea = analytic_order2(g0_lesser, g0_greater, interaction_start, times)
+    o2_less, o2_grea = analytic_order2(g0_lesser, g0_greater, 0.0, interaction_start, times)
 
     deltatime = datetime.datetime.now() - starttime
     if world.rank == 0:
         print 'Run time = ', deltatime
 
     with HDFArchive("order2_params1.ref.h5", 'w') as ar:
+        ar.create_group("less")
+        less = ar["less"]
+        less["times"] = times
+        less["interaction_start"] = interaction_start
+        less["o2"] = o2_less[0]
+        less["o2_error"] = o2_less[1]
+
+        ar.create_group("grea")
+        grea = ar["grea"]
+        grea["times"] = times
+        grea["interaction_start"] = interaction_start
+        grea["o2"] = o2_grea[0]
+        grea["o2_error"] = o2_grea[1]
+
+    #-----------------
+    starttime = datetime.datetime.now()
+    times = np.linspace(-100.0, 0.0, 50)
+    g0_lesser, g0_greater = make_g0_flat_band(beta=200.,
+                                              Gamma=0.2,
+                                              epsilon_d=0.,
+                                              muL=0.,
+                                              muR=0.,
+                                              tmax_gf0=250.,
+                                              Nt_gf0=10000)
+
+    g0_lesser_sym = g0_lesser.copy()
+    for i, t in enumerate(g0_lesser.mesh):
+        t = t.real
+        g0_lesser_sym.data[i] = 0.5 * (g0_lesser(t) - np.conjugate(g0_lesser(-t)))
+
+    g0_greater_sym = g0_greater.copy()
+    for i, t in enumerate(g0_greater.mesh):
+        t = t.real
+        g0_greater_sym.data[i] = 0.5 * (g0_greater(t) - np.conjugate(g0_greater(-t)))
+
+    g0_lesser_sym.data[10000-1][0, 0] = 0.5j
+    g0_greater_sym.data[10000-1][0, 0] = -0.5j
+
+    interaction_start = 150.0
+    o2_less, o2_grea = analytic_order2(g0_lesser, g0_greater, 0.5, interaction_start, times)
+
+    deltatime = datetime.datetime.now() - starttime
+    if world.rank == 0:
+        print 'Run time = ', deltatime
+
+    with HDFArchive("order2_params3.ref.h5", 'w') as ar:
         ar.create_group("less")
         less = ar["less"]
         less["times"] = times
