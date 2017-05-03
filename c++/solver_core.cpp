@@ -31,7 +31,7 @@ solver_core::solver_core(solve_parameters_t const& params)
 
  // kernel binning
  kernels_all = array<dcomplex, 3>(params.max_perturbation_order + 1, params.nb_bins, 2);
- kernels     = array<dcomplex, 3>(params.max_perturbation_order + 1, params.nb_bins, 2);
+ kernels = array<dcomplex, 3>(params.max_perturbation_order + 1, params.nb_bins, 2);
  kernels_binning =
      KernelBinning(-params.interaction_start, t_max, params.nb_bins, params.max_perturbation_order,
                    true); // TODO: it should be defined in measure
@@ -79,10 +79,11 @@ void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser,
  if (status > not_ready) TRIQS_RUNTIME_ERROR << "Green functions already set up. Cannot change.";
 
  // non interacting Green function
- green_function_alpha = g0_keldysh_alpha_t{g0_adaptor_t{g0_lesser}, g0_adaptor_t{g0_greater}, params.alpha, t_max};
+ green_function_alpha =
+     g0_keldysh_alpha_t{g0_adaptor_t{g0_lesser}, g0_adaptor_t{g0_greater}, params.alpha, t_max};
  green_function = g0_keldysh_t{g0_adaptor_t{g0_lesser}, g0_adaptor_t{g0_greater}};
- config = Configuration(green_function_alpha, tau_array(0, 0), taup,
-                        params.max_perturbation_order, params.singular_threshold);
+ config = Configuration(green_function_alpha, tau_array(0, 0), taup, params.max_perturbation_order,
+                        params.singular_thresholds);
 
  // order zero values
  auto gf_map = map([this](keldysh_contour_pt tau) { return green_function(tau, taup); });
@@ -116,8 +117,8 @@ void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser,
                                       &g0_array, green_function, params.interaction_start + t_max),
                   "Cofact measure");
  } else if (params.method == 5) {
-  qmc.add_measure(TwoDetKernelMeasure(&config, &kernels_binning, &pn, &pn_all, &sn, &sn_all, &kernels, &kernels_all,
-                                      &tau_array, &g0_array, green_function,
+  qmc.add_measure(TwoDetKernelMeasure(&config, &kernels_binning, &pn, &pn_all, &sn, &sn_all, &kernels,
+                                      &kernels_all, &tau_array, &g0_array, green_function,
                                       params.interaction_start + t_max),
                   "Kernel measure");
  } else {
@@ -130,7 +131,10 @@ void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser,
 // --------------------------------
 std::function<bool()> solver_core::make_callback(int time_in_seconds) {
  auto clock_callback = triqs::utility::clock_callback(time_in_seconds);
- return [clock_callback]() {MPI_Barrier(MPI_COMM_WORLD); return clock_callback();};
+ return [clock_callback]() {
+  MPI_Barrier(MPI_COMM_WORLD);
+  return clock_callback();
+ };
 };
 
 // --------------------------------
@@ -183,7 +187,8 @@ int solver_core::run(const int max_time = -1, const int max_measures = -1) {
  // print acceptance rates
  if (world.rank() == 0) {
   std::cout << "Duration: " << solve_duration << " seconds" << std::endl;
-  std::cout << "Progress: " << 100 * get_nb_measures_all() / (params.n_cycles * world.size()) << " %" << std::endl;
+  std::cout << "Progress: " << 100 * get_nb_measures_all() / (params.n_cycles * world.size()) << " %"
+            << std::endl;
   std::cout << "Acceptance rates of node 0:" << std::endl;
   double total_weight = 0;
   double total_rate = 0;
@@ -211,13 +216,15 @@ int solver_core::run(const int max_time = -1, const int max_measures = -1) {
   }
   std::cout << "> All moves: " << total_rate / total_weight << std::endl;
   std::cout << "Attempted config weight average:" << std::endl << weight_avg << std::endl;
-  //std::cout << "Weight offsets:" << std::endl << config.weight_offsets << std::endl;
+  // std::cout << "Weight offsets:" << std::endl << config.weight_offsets << std::endl;
   std::cout << "cofact vs inverse : " << nb_cofact << " / " << nb_inverse << std::endl;
-  std::cout << "regen ratios : 0=" << config.matrices[0].get_regen_ratio() << ", 1=" << config.matrices[1].get_regen_ratio() << std::endl;
+  std::cout << "regen ratios : 0=" << config.matrices[0].get_regen_ratio()
+            << ", 1=" << config.matrices[1].get_regen_ratio() << std::endl;
   std::pair<double, double> regen_stats;
   for (int a : {0, 1}) {
    regen_stats = config.matrices[a].get_error_stats();
-   std::cout << "regen errors " << a << " : avg=" << regen_stats.first << ", var=" << regen_stats.second << std::endl;
+   std::cout << "regen errors " << a << " : avg=" << regen_stats.first << ", var=" << regen_stats.second
+             << std::endl;
   }
   std::cout << std::endl;
  }
@@ -248,9 +255,7 @@ struct integrand_params {
  keldysh_contour_pt taup;
 
  integrand_params(g0_keldysh_t green_function, int state, int k_index, keldysh_contour_pt taup)
-    : green_function(green_function),
-      tau{state, 0., k_index},
-      taup(taup){};
+    : green_function(green_function), tau{state, 0., k_index}, taup(taup){};
 };
 
 double abs_g0_keldysh_t_inputs(double t, void* _params) {

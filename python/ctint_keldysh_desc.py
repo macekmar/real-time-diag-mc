@@ -14,6 +14,7 @@ module.add_include("solver_core.hpp")
 # Add here anything to add in the C++ code at the start, e.g. namespace using
 module.add_preamble("""
 #include <triqs/python_tools/converters/arrays.hpp>
+#include <triqs/python_tools/converters/pair.hpp>
 #include <triqs/python_tools/converters/vector.hpp>
 #include <triqs/python_tools/converters/tuple.hpp>
 using namespace triqs::gfs;
@@ -77,7 +78,7 @@ c.add_constructor("""(**solve_parameters_t)""",
 +-------------------------+--------------------------------------------------+------------------------------------------------+-------------------------------------------------------------------------+
 | nb_bins                 | int                                              | 10000                                          | nb of bins for the kernels                                              |
 +-------------------------+--------------------------------------------------+------------------------------------------------+-------------------------------------------------------------------------+
-| singular_threshold      | double                                           | 1e-3                                           |                                                                         |
+| singular_thresholds     | std::pair<double, double>                        |                                                |                                                                         |
 +-------------------------+--------------------------------------------------+------------------------------------------------+-------------------------------------------------------------------------+ """)
 
 c.add_method("""void set_g0 (gf_view<retime,matrix_valued> g0_lesser, gf_view<retime,matrix_valued> g0_greater)""",

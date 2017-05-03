@@ -89,6 +89,7 @@ struct solve_parameters_t {
  /// nb of bins for the kernels
  int nb_bins = 10000;
 
- double singular_threshold = 1e-3;
+ /// log10 conditioning thresholds for each det_manip objects
+ std::pair<double, double> singular_thresholds;
 
 };

@@ -7,7 +7,7 @@ using triqs::det_manip::det_manip;
 class Configuration {
 
  private:
- double singular_threshold; // for det_manip
+ std::pair<double, double> singular_thresholds; // for det_manip
  int max_order = 0;
  array<double, 1> weight_sum;
  array<long, 1> nb_values;
@@ -34,7 +34,7 @@ class Configuration {
 
  Configuration(){};
  Configuration(g0_keldysh_alpha_t green_function, const keldysh_contour_pt tau, const keldysh_contour_pt taup,
-               int max_order, double singular_threshold);
+               int max_order, std::pair<double, double> singular_thresholds);
 
  void insert(int k, keldysh_contour_pt pt);
  void insert2(int k1, int k2, keldysh_contour_pt pt1, keldysh_contour_pt pt2);

@@ -1,11 +1,9 @@
 #include "./configuration.hpp"
 
 Configuration::Configuration(g0_keldysh_alpha_t green_function, const keldysh_contour_pt tau,
-                             const keldysh_contour_pt taup,
-                             int max_order, double singular_threshold)
-   : singular_threshold(singular_threshold),
-     order(0),
-     max_order(max_order) {
+                             const keldysh_contour_pt taup, int max_order,
+                             std::pair<double, double> singular_thresholds)
+   : singular_thresholds(singular_thresholds), order(0), max_order(max_order) {
 
  current_kernels = array<dcomplex, 2>(max_order, 2);
  current_kernels() = 0;
@@ -24,7 +22,10 @@ Configuration::Configuration(g0_keldysh_alpha_t green_function, const keldysh_co
 
  // Initialize the M-matrices. 100 is the initial alocated space.
  for (auto spin : {up, down}) matrices.emplace_back(green_function, 100);
- for (auto spin : {up, down}) matrices[spin].set_singular_threshold(singular_threshold);
+ for (auto spin : {up, down}) matrices[spin].set_n_operations_before_check(100);
+
+ matrices[0].set_singular_threshold(singular_thresholds.first);
+ matrices[1].set_singular_threshold(singular_thresholds.second);
 
  matrices[0].insert_at_end(tau, taup); // first matrix is the big one
 
@@ -108,7 +109,7 @@ void Configuration::kernels_evaluate_inverse() {
   det1 = sign * matrices[1].determinant();
   det0 = matrices[0].determinant();
   if (not std::isnormal(std::abs(det0))) {
-  // matrix is singular, calculate cofactors
+   // matrix is singular, calculate cofactors
    nb_cofact(order - 1)++;
    int signs[2] = {1, -1};
    keldysh_contour_pt tau = get_left_input();
@@ -127,12 +128,11 @@ void Configuration::kernels_evaluate_inverse() {
    nb_inverse(order - 1)++;
    for (int p = 0; p < order; ++p) {
     inv_value = matrices[0].inverse_matrix(p, order);
-	current_kernels(p, ap[p]) += inv_value * det0 * det1;
+    current_kernels(p, ap[p]) += inv_value * det0 * det1;
    }
   }
   sign = -sign;
  }
-
 };
 
 // -----------------------
@@ -172,7 +172,6 @@ void Configuration::kernels_evaluate_cofact() {
  }
  matrices[0].change_col(order - 1, alpha_tmp);
  matrices[0].insert(order, order, tau, taup);
-
 };
 
 // -----------------------
@@ -180,7 +179,7 @@ double Configuration::weight_kernels() {
  if (order == 0) return 1.; // is this a good value ?
  kernels_evaluate_inverse();
 
- return sum(abs( current_kernels(range(0, order), range()) ));
+ return sum(abs(current_kernels(range(0, order), range())));
 };
 
 // -----------------------
