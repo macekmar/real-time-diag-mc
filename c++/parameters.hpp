@@ -61,14 +61,8 @@ struct solve_parameters_t {
  /// Minimal order in U
  int min_perturbation_order = 0;
 
- /// Number of QMC cycles
- int n_cycles;
-
  /// Length of a single QMC cycle
  int length_cycle = 50;
-
- /// Number of cycles for thermalization
- int n_warmup_cycles = 5000;
 
  /// Seed for random number generator
  int random_seed = 34788 + 928374 * triqs::mpi::communicator().rank();

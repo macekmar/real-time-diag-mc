@@ -138,7 +138,7 @@ std::function<bool()> solver_core::make_callback(int time_in_seconds) {
 };
 
 // --------------------------------
-int solver_core::run(const int max_time = -1, const int max_measures = -1) {
+int solver_core::run(const int nb_cycles, const bool do_measure, const int max_time = -1) {
  if (status < not_ready) TRIQS_RUNTIME_ERROR << "Run aborted";
  if (status < ready) TRIQS_RUNTIME_ERROR << "Unperturbed Green's functions have not been set !";
  // order zero case
@@ -154,18 +154,16 @@ int solver_core::run(const int max_time = -1, const int max_measures = -1) {
  if (status == ready) {
   status = running;
   solve_duration = 0;
-  if (world.rank() == 0) std::cout << "Warming up... " << std::flush;
-  run_status =
-      qmc.run(params.n_warmup_cycles, params.length_cycle, triqs::utility::clock_callback(-1), false);
+  //if (world.rank() == 0) std::cout << "Warming up... " << std::flush;
+  //run_status =
+      //qmc.run(params.n_warmup_cycles, params.length_cycle, triqs::utility::clock_callback(-1), false);
   if (run_status == 2) return finish(run_status); // Received a signal: abort
-  if (world.rank() == 0) std::cout << "done" << std::endl;
+  //if (world.rank() == 0) std::cout << "done" << std::endl;
  }
 
  // accumulate
- int measures_to_do = params.n_cycles - get_nb_measures();
- if (max_measures > 0) measures_to_do = std::min(measures_to_do, max_measures);
  if (world.rank() == 0) std::cout << "Accumulate..." << std::endl;
- run_status = qmc.run(measures_to_do, params.length_cycle, triqs::utility::clock_callback(max_time), true);
+ run_status = qmc.run(nb_cycles, params.length_cycle, triqs::utility::clock_callback(max_time), do_measure);
 
  // Collect results
  if (world.rank() == 0) std::cout << "Collecting results... " << std::flush;
@@ -187,8 +185,7 @@ int solver_core::run(const int max_time = -1, const int max_measures = -1) {
  // print acceptance rates
  if (world.rank() == 0) {
   std::cout << "Duration: " << solve_duration << " seconds" << std::endl;
-  std::cout << "Progress: " << 100 * get_nb_measures_all() / (params.n_cycles * world.size()) << " %"
-            << std::endl;
+  std::cout << "Nb of measures: " << get_nb_measures_all() << std::endl;
   std::cout << "Acceptance rates of node 0:" << std::endl;
   double total_weight = 0;
   double total_rate = 0;
@@ -223,7 +220,7 @@ int solver_core::run(const int max_time = -1, const int max_measures = -1) {
   std::pair<double, double> regen_stats;
   for (int a : {0, 1}) {
    regen_stats = config.matrices[a].get_error_stats();
-   std::cout << "regen errors " << a << " : avg=" << regen_stats.first << ", var=" << regen_stats.second
+   std::cout << "regen errors " << a << " : avg=" << regen_stats.first << ", std=" << std::sqrt(regen_stats.second)
              << std::endl;
   }
   std::cout << std::endl;

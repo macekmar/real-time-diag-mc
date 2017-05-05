@@ -6,6 +6,7 @@ import numpy as np
 import itertools
 from pytriqs.archive import HDFArchive
 from datetime import datetime
+from time import clock
 
 def variance_error(on, comm=MPI.COMM_WORLD):
     if comm.rank != 0:
@@ -66,10 +67,180 @@ def write_add(data, data_name, filename):
     with HDFArchive(filename, 'a') as ar:
         ar[data_name] = data
 
+class Results(dict):
+
+    def __init__(self):
+        super(Results, self).__init__()
+        self['pn'] = []
+        self['pn_all'] = []
+        self['sn'] = []
+        self['sn_all'] = []
+        self['kernels'] = []
+        self['kernels_all'] = []
+        self['durations'] = []
+        self['nb_measures'] = []
+
+    def append_empty_slot(self):
+        self['pn'].append(None)
+        self['pn_all'].append(None)
+        self['sn'].append(None)
+        self['sn_all'].append(None)
+        self['kernels'].append(None)
+        self['kernels_all'].append(None)
+        self['durations'].append(None)
+        self['nb_measures'].append(None)
+
+    def fill_last_slot(self, solver_core):
+        self['pn'][-1] = solver_core.pn
+        self['pn_all'][-1] = solver_core.pn_all
+        self['sn'][-1] = solver_core.sn
+        self['sn_all'][-1] = solver_core.sn_all
+        self['kernels'][-1] = solver_core.kernels
+        self['kernels_all'][-1] = solver_core.kernels_all
+        self['durations'][-1] = solver_core.solve_duration
+        self['nb_measures'][-1] = solver_core.nb_measures_all
+
+class SolverPython(object):
+
+    def __init__(self, g0_lesser, g0_greater, parameters, filename=None, kind_list=None, staircase=False):
+        self.g0_lesser = g0_lesser
+        self.g0_greater = g0_greater
+        self.parameters = parameters.copy()
+        self.res = Results()
+        self.qmc_duration = 0.
+        self.nb_measures_all = 0
+        self.nb_measures = 0
+        self.world = MPI.COMM_WORLD
+
+        self.filename = filename
+        self.kind_list = kind_list
+        self.staircase = staircase
+        self.U = []
+        if self.staircase:
+            self.parameters['U'] = self.parameters['U'][0]
+
+    def order_zero(self):
+        S = SolverCore(**self.parameters)
+        S.set_g0(self.g0_lesser, self.g0_greater)
+
+        c0, s0 = S.order_zero
+        self.res['c0'] = c0
+
+        self.res['pn'].append([1])
+        self.res['pn_all'].append([1])
+        self.res['sn'].append(s0[np.newaxis, :])
+        self.res['sn_all'].append(s0[np.newaxis, :])
+
+    def checkpoint(self, solver_core):
+        print datetime.now(), ": Order", self.parameters['max_perturbation_order']
+        print
+
+        self.res.fill_last_slot(solver_core)
+
+        if self.staircase:
+            # calculates results
+            on_all, cn_all = staircase_perturbation_series(self.res['c0'], self.res['pn_all'], self.res['sn_all'], self.U)
+
+            # Calculate error
+            # estimation using the variance of the On obtained on each process (assumes each process is equivalent)
+            on, cn = staircase_perturbation_series(self.res['c0'], self.res['pn'], self.res['sn'], self.U)
+            on_error = variance_error(on, self.world)
+
+        else:
+            # calculates results
+            on_all = perturbation_series(self.res['c0'], self.res['pn_all'][1], self.res['sn_all'][1], self.U[0])
+
+            # Calculate error
+            # estimation using the variance of the On obtained on each process (assumes each process is equivalent)
+            on = perturbation_series(self.res['c0'], self.res['pn'][1], self.res['sn'][1], self.U[0])
+            on_error = variance_error(on, self.world)
+
+        self.res['on'] = on
+        self.res['on_all'] = on_all
+        self.res['on_error'] = on_error
+
+        if self.world.rank == 0:
+            self.write(self.filename, self.kind_list)
+
+    def prerun_and_run(self, nb_warmup_cycles, nb_cycles, order=None, U=None, save_period=-1):
+        self.res.append_empty_slot()
+
+        if order is not None:
+            self.parameters['max_perturbation_order'] = order
+        if U is not None:
+            self.parameters['U'] = U
+        self.U.append(self.parameters['U'])
+        S = SolverCore(**self.parameters)
+        S.set_g0(self.g0_lesser, self.g0_greater)
+
+        # prerun (warmup)
+        start = clock()
+        print 'Warming up...'
+        S.run(nb_warmup_cycles, False)
+        prerun_duration = float(clock() - start)
+
+        # main run
+        if save_period > 0:
+            save_period = max(save_period, 60) # 1 minute mini
+            nb_cycles_per_subrun = int(float(nb_warmup_cycles * save_period) / prerun_duration + 0.5)
+        else:
+            nb_cycles_per_subrun = nb_cycles
+
+        if self.world.rank == 0:
+            print 'Nb cycles per subrun =', nb_cycles_per_subrun
+
+        while S.nb_measures < nb_cycles:
+            S.run(min(nb_cycles - S.nb_measures, nb_cycles_per_subrun), True)
+            self.checkpoint(S)
+
+        self.qmc_duration += S.solve_duration
+        self.nb_measures_all += S.nb_measures_all
+        self.nb_measures += S.nb_measures
+
+    def write(self, filename, kind_list):
+        # before using save, check kind_list has the good shape
+        if filename is not None:
+            with HDFArchive(filename, 'w') as ar:
+                ar['nb_proc'] = self.world.size
+                ar['interaction_start'] = self.parameters['interaction_start']
+                ar['run_time'] = self.qmc_duration + self.res['durations'][-1]
+                ar['nb_measures'] = self.nb_measures_all + self.res['nb_measures'][-1]
+
+                for i, kind in enumerate(kind_list):
+                    ar.create_group(kind)
+                    group = ar[kind]
+                    group['times'] = self.parameters['measure_times']
+                    group['on'] = np.squeeze(self.res['on_all'][:, :, i])
+                    group['on_error'] = np.squeeze(self.res['on_error'][:, :, i])
+
+                for key in ['pn_all', 'sn_all', 'kernels_all']:
+                    ar[key[-3:]] = self.res[key]
+
+                for key in ['durations', 'nb_measures']:
+                    ar[key] = np.array(self.res[key])
+
+            print 'Saved in', filename
+        else:
+            return
+
 
 ######################### Front End #######################
 
-def single_solve(g0_lesser, g0_greater, parameters, filename=None, kind_list=None, save_period=-1, histogram=False):
+def single_solve(g0_lesser, g0_greater, parameters_, filename=None, kind_list=None, save_period=-1, histogram=False):
+    if histogram:
+        raise NotImplementedError
+
+    parameters = parameters_.copy()
+    nb_warmup_cycles = parameters.pop('n_warmup_cycles')
+    nb_cycles = parameters.pop('n_cycles')
+
+    solver = SolverPython(g0_lesser, g0_greater, parameters, filename, kind_list)
+    solver.order_zero()
+    solver.prerun_and_run(nb_warmup_cycles, nb_cycles, save_period=save_period)
+
+    return np.squeeze(solver.res['on_all']), np.squeeze(solver.res['on_error'])
+
+def single_solve_old(g0_lesser, g0_greater, parameters, filename=None, kind_list=None, save_period=-1, histogram=False):
     save = filename is not None
 
     if save and len(parameters['measure_keldysh_indices']) != len(kind_list) :
@@ -112,8 +283,30 @@ def single_solve(g0_lesser, g0_greater, parameters, filename=None, kind_list=Non
 
     return output
 
+def staircase_solve(g0_lesser, g0_greater, parameters_, filename=None, kind_list=None, save_period=-1, only_even=False):
+    parameters = parameters_.copy()
+    nb_warmup_cycles = parameters.pop('n_warmup_cycles')
+    nb_cycles = parameters.pop('n_cycles')
+    parameters["min_perturbation_order"] = 0
+    max_order = parameters["max_perturbation_order"]
+    U_list = parameters['U']
 
-def staircase_solve(g0_lesser, g0_greater, _parameters, filename=None, kind_list=None, save_period=-1, only_even=False):
+    if not only_even:
+        orders = list(range(1, max_order + 1))
+    else:
+        orders = list(range(2, max_order + 1, 2))
+
+    solver = SolverPython(g0_lesser, g0_greater, parameters, filename, kind_list, staircase=True)
+    solver.order_zero()
+
+    for i, k in enumerate(orders):
+        if solver.world.rank == 0:
+            print "---------------- Order", k, "----------------"
+        solver.prerun_and_run(nb_warmup_cycles, nb_cycles, order=k, U=U_list[i], save_period=save_period)
+
+    return np.squeeze(solver.res['on_all']), np.squeeze(solver.res['on_error'])
+
+def staircase_solve_old(g0_lesser, g0_greater, _parameters, filename=None, kind_list=None, save_period=-1, only_even=False):
     save = filename is not None
 
     if save and len(_parameters['measure_keldysh_indices']) != len(kind_list) :

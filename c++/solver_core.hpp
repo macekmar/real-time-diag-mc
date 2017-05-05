@@ -52,9 +52,8 @@ class solver_core {
 
  std::tuple<double, array<dcomplex, 2>> order_zero();
 
- int run(const int max_time, const int max_measures);
- int run(const int max_time) { return run(max_time, -1); };
- int run() { return run(-1, -1); };
+ int run(const int nb_cycles, const bool do_measure, const int max_time);
+ int run(const int nb_cycles, const bool do_measure) { return run(nb_cycles, do_measure, -1); };
 
  // getters
  double get_solve_duration() const { return solve_duration; }
