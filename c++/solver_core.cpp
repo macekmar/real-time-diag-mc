@@ -9,10 +9,13 @@ namespace mpi = triqs::mpi;
 using triqs::utility::mindex;
 using triqs::arrays::range;
 
+
 // ------------ The main class of the solver ------------------------
 solver_core::solver_core(solve_parameters_t const& params)
    : qmc(params.random_name, params.random_seed, 1.0, params.verbosity, false), // first_sign is not used
      params(params) {
+
+ compilation_time_stamp(48);
 
 #ifdef REGISTER_CONFIG
  if (mpi::communicator().rank() == 0)

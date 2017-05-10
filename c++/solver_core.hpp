@@ -6,6 +6,18 @@
 
 #include <triqs/gfs.hpp>
 
+#define STRING2(x) #x
+#define STRING(x) STRING2(x)
+
+void compilation_time_stamp(int node_size) {
+ int rank;
+ MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+#ifdef COMPILATION_TIMESTAMP
+ if (rank % node_size == 0)
+  std::cout << "Rank " << rank << " : " <<  STRING(COMPILATION_TIMESTAMP) << std::endl;
+#endif
+};
+
 // using namespace triqs::gfs;
 using namespace triqs::arrays;
 
