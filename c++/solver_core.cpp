@@ -149,6 +149,7 @@ int solver_core::run(const int nb_cycles, const bool do_measure, const int max_t
   TRIQS_RUNTIME_ERROR << "Order zero cannot run, use order_zero method instead";
 
  mpi::communicator world;
+ std::cout << "reached start run barrier" << std::endl;
  MPI_Barrier(MPI_COMM_WORLD);
 
  int run_status;
@@ -165,13 +166,13 @@ int solver_core::run(const int nb_cycles, const bool do_measure, const int max_t
  }
 
  // accumulate
- if (world.rank() == 0) std::cout << "Accumulate..." << std::endl;
+ std::cout << "Accumulate..." << std::endl;
  run_status = qmc.run(nb_cycles, params.length_cycle, triqs::utility::clock_callback(max_time), do_measure);
 
  // Collect results
- if (world.rank() == 0) std::cout << "Collecting results... " << std::flush;
+ std::cout << "Collecting results... " << std::flush;
  qmc.collect_results(world);
- if (world.rank() == 0) std::cout << "done" << std::endl << std::endl;
+ std::cout << "done" << std::endl << std::endl;
 
  solve_duration = solve_duration + qmc.get_duration();
  solve_duration_all = mpi::mpi_all_reduce(solve_duration);
@@ -228,6 +229,7 @@ int solver_core::run(const int nb_cycles, const bool do_measure, const int max_t
   }
   std::cout << std::endl;
  }
+ std::cout << "End run " << std::flush;
 
  if (run_status != 1) return finish(run_status);
 

@@ -186,10 +186,11 @@ void TwoDetKernelMeasure::accumulate(dcomplex sign) {
 
 // ----------
 void TwoDetKernelMeasure::collect_results(mpi::communicator c) {
+ std::cout << "reached collect results barrier" << std::endl;
  MPI_Barrier(MPI_COMM_WORLD);
 
  // gather pn
- if (c.rank() == 0) std::cout << "Gathering pn..." << std::endl;
+ std::cout << "Gathering pn... 6" << std::endl;
  auto data_histogram_pn = histogram_pn.data();
 
  for (int k = 0; k < nb_orders; k++) {
@@ -201,7 +202,7 @@ void TwoDetKernelMeasure::collect_results(mpi::communicator c) {
  std::cout << "rank " << c.rank() << ": nb of measures: " << sum(pn) << std::endl;
 
  // gather kernels
- if (c.rank() == 0) std::cout << "Gathering kernels..." << std::endl;
+ std::cout << "Gathering kernels..." << std::endl;
  kernels = kernels_binning.get_values();
 
  dcomplex i_n[4] = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}}; // powers of i
