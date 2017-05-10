@@ -131,33 +131,39 @@ class SolverPython(object):
         self.res['sn'].append(s0[np.newaxis, :])
         self.res['sn_all'].append(s0[np.newaxis, :])
 
-    def checkpoint(self, solver_core):
-        print datetime.now(), ": Order", self.parameters['max_perturbation_order']
-        print
+    def checkpoint(self, solver_core, computes_on=False):
+        if self.world.rank == 0:
+            print datetime.now(), ": Order", self.parameters['max_perturbation_order']
+            print
 
         self.res.fill_last_slot(solver_core)
 
-        if self.staircase:
-            # calculates results
-            on_all, cn_all = staircase_perturbation_series(self.res['c0'], self.res['pn_all'], self.res['sn_all'], self.U)
+        if computes_on:
+            if self.staircase:
+                # calculates results
+                on_all, cn_all = staircase_perturbation_series(self.res['c0'], self.res['pn_all'], self.res['sn_all'], self.U)
 
-            # Calculate error
-            # estimation using the variance of the On obtained on each process (assumes each process is equivalent)
-            on, cn = staircase_perturbation_series(self.res['c0'], self.res['pn'], self.res['sn'], self.U)
-            on_error = variance_error(on, self.world)
+                # Calculate error
+                # estimation using the variance of the On obtained on each process (assumes each process is equivalent)
+                on, cn = staircase_perturbation_series(self.res['c0'], self.res['pn'], self.res['sn'], self.U)
+                on_error = variance_error(on, self.world)
 
-        else:
-            # calculates results
-            on_all = perturbation_series(self.res['c0'], self.res['pn_all'][1], self.res['sn_all'][1], self.U[0])
+            else:
+                # calculates results
+                on_all = perturbation_series(self.res['c0'], self.res['pn_all'][1], self.res['sn_all'][1], self.U[0])
 
-            # Calculate error
-            # estimation using the variance of the On obtained on each process (assumes each process is equivalent)
-            on = perturbation_series(self.res['c0'], self.res['pn'][1], self.res['sn'][1], self.U[0])
-            on_error = variance_error(on, self.world)
+                # Calculate error
+                # estimation using the variance of the On obtained on each process (assumes each process is equivalent)
+                on = perturbation_series(self.res['c0'], self.res['pn'][1], self.res['sn'][1], self.U[0])
+                on_error = variance_error(on, self.world)
 
-        self.res['on'] = on
-        self.res['on_all'] = on_all
-        self.res['on_error'] = on_error
+            self.res['on'] = on
+            self.res['on_all'] = on_all
+            self.res['on_error'] = on_error
+            if 'cn' in locals(): # if variable cn exists
+                self.res['cn'] = cn
+            if 'cn_all' in locals(): # if variable cn_all exists
+                self.res['cn_all'] = cn_all
 
         if self.world.rank == 0:
             self.write(self.filename, self.kind_list)
@@ -175,11 +181,13 @@ class SolverPython(object):
 
         # prerun (warmup)
         start = clock()
-        print 'Warming up...'
+        if self.world.rank == 0:
+            print 'Warming up...'
         S.run(nb_warmup_cycles, False)
         prerun_duration = float(clock() - start)
+        prerun_duration = self.world.allreduce(prerun_duration) / float(self.world.size) # take average
 
-        # main run
+        # time estimation
         if save_period > 0:
             save_period = max(save_period, 60) # 1 minute mini
             nb_cycles_per_subrun = int(float(nb_warmup_cycles * save_period) / prerun_duration + 0.5)
@@ -188,10 +196,18 @@ class SolverPython(object):
 
         if self.world.rank == 0:
             print 'Nb cycles per subrun =', nb_cycles_per_subrun
+            print 'Estimated run time =', prerun_duration * float(nb_cycles) / float(nb_warmup_cycles), 'seconds'
 
+        # main run
         while S.nb_measures < nb_cycles:
-            S.run(min(nb_cycles - S.nb_measures, nb_cycles_per_subrun), True)
-            self.checkpoint(S)
+            nb_cycles_remaining = nb_cycles - S.nb_measures
+            if nb_cycles_remaining > nb_cycles_per_subrun:
+                S.run(nb_cycles_per_subrun, True)
+                self.checkpoint(S)
+            else: # last run
+                S.run(nb_cycles_remaining, True)
+                S.compute_sn_from_kernels
+                self.checkpoint(S, computes_on=True)
 
         self.qmc_duration += S.solve_duration
         self.nb_measures_all += S.nb_measures_all
@@ -203,18 +219,21 @@ class SolverPython(object):
             with HDFArchive(filename, 'w') as ar:
                 ar['nb_proc'] = self.world.size
                 ar['interaction_start'] = self.parameters['interaction_start']
-                ar['run_time'] = self.qmc_duration + self.res['durations'][-1]
-                ar['nb_measures'] = self.nb_measures_all + self.res['nb_measures'][-1]
+                ar['times'] = self.parameters['measure_times']
 
-                for i, kind in enumerate(kind_list):
-                    ar.create_group(kind)
-                    group = ar[kind]
-                    group['times'] = self.parameters['measure_times']
-                    group['on'] = np.squeeze(self.res['on_all'][:, :, i])
-                    group['on_error'] = np.squeeze(self.res['on_error'][:, :, i])
+                if 'on_all' in self.res:
+                    for i, kind in enumerate(kind_list):
+                        ar.create_group(kind)
+                        group = ar[kind]
+                        group['times'] = self.parameters['measure_times'] # for backward compatibility
+                        group['on'] = np.squeeze(self.res['on_all'][:, :, i])
+                        group['on_error'] = np.squeeze(self.res['on_error'][:, :, i])
 
                 for key in ['pn_all', 'sn_all', 'kernels_all']:
-                    ar[key[-3:]] = self.res[key]
+                    ar[key[:-4]] = self.res[key]
+
+                if 'cn_all' in self.res:
+                    ar['cn'] = self.res['cn_all']
 
                 for key in ['durations', 'nb_measures']:
                     ar[key] = np.array(self.res[key])

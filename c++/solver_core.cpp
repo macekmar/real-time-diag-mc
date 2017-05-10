@@ -237,6 +237,23 @@ int solver_core::run(const int nb_cycles, const bool do_measure, const int max_t
 }
 
 // --------------------------------
+void solver_core::compute_sn_from_kernels() {
+ std::cout << "Computing sn from kernels..." << std::endl;
+ keldysh_contour_pt tau;
+ for (int order = 0; order < first_dim(sn); ++order) { // for each order
+  for (int i = 0; i < second_dim(sn); ++i) {       // for each tau (time)
+   for (int a = 0; a < third_dim(sn); ++a) {       // for each tau (keldysh index)
+    tau = tau_array(i, a);
+    auto gf_map = map([&](keldysh_contour_pt alpha) { return green_function(tau, alpha); });
+    auto gf_tau_alpha = gf_map(kernels_binning.coord_array());
+    sn(order, i, a) = sum(gf_tau_alpha * kernels(order, ellipsis()));
+    sn_all(order, i, a) = sum(gf_tau_alpha * kernels_all(order, ellipsis()));
+   }
+  }
+ }
+}
+
+// --------------------------------
 int solver_core::finish(const int run_status) {
  if (run_status == 1) TRIQS_RUNTIME_ERROR << "finish cannot be called when the run is not finished";
 

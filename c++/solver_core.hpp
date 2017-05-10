@@ -67,6 +67,8 @@ class solver_core {
  int run(const int nb_cycles, const bool do_measure, const int max_time);
  int run(const int nb_cycles, const bool do_measure) { return run(nb_cycles, do_measure, -1); };
 
+ void compute_sn_from_kernels();
+
  // getters
  double get_solve_duration() const { return solve_duration; }
  double get_solve_duration_all() const { return solve_duration_all; }

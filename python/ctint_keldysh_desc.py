@@ -90,6 +90,10 @@ c.add_property(name = "order_zero",
                getter = cfunction("std::tuple<double,array<dcomplex,2>> order_zero ()"),
                doc = """ """)
 
+c.add_property(name = "compute_sn_from_kernels",
+               getter = cfunction("void compute_sn_from_kernels ()"),
+               doc = """ """)
+
 c.add_property(name = "solve_duration",
                getter = cfunction("double get_solve_duration ()"),
                doc = """ """)
@@ -143,5 +147,7 @@ c.add_property(name = "nb_kernels",
                doc = """ """)
 
 module.add_class(c)
+
+module.add_function ("void compilation_time_stamp (int node_size)", doc = """""")
 
 module.generate_code()

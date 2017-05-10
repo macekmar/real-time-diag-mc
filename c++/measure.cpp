@@ -150,8 +150,8 @@ TwoDetKernelMeasure::TwoDetKernelMeasure(Configuration* config, KernelBinning* k
      kernels_binning(*kernels_binning),
      pn(*pn),
      pn_all(*pn_all),
-     sn(*sn),
-     sn_all(*sn_all),
+     sn(*sn), // to be removed
+     sn_all(*sn_all), // to be removed
      kernels(*kernels),
      kernels_all(*kernels_all),
      tau_array(*tau_array),
@@ -218,18 +218,4 @@ void TwoDetKernelMeasure::collect_results(mpi::communicator c) {
   if (pn_all(k) != 0) kernels_all(k, ellipsis()) /= pn_all(k);
  }
 
- // compute sn from kernels
- if (c.rank() == 0) std::cout << "Computing sn from kernels..." << std::endl;
- keldysh_contour_pt tau;
- for (int order = 0; order < nb_orders; ++order) { // for each order
-  for (int i = 0; i < second_dim(sn); ++i) {       // for each tau (time)
-   for (int a = 0; a < third_dim(sn); ++a) {       // for each tau (keldysh index)
-    tau = tau_array(i, a);
-    auto gf_map = map([&](keldysh_contour_pt alpha) { return green_function(tau, alpha); });
-    auto gf_tau_alpha = gf_map(kernels_binning.coord_array());
-    sn(order, i, a) = sum(gf_tau_alpha * kernels(order, ellipsis()));
-    sn_all(order, i, a) = sum(gf_tau_alpha * kernels_all(order, ellipsis()));
-   }
-  }
- }
 }
