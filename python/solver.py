@@ -1,21 +1,42 @@
 # from pytriqs.utility import mpi
 from mpi4py import MPI
 from ctint_keldysh import SolverCore
-from perturbation_series import perturbation_series, staircase_perturbation_series, staircase_perturbation_series_cum
+from perturbation_series import perturbation_series, staircase_perturbation_series, staircase_perturbation_series_cum, compute_cn, staircase_leading_elts
 import numpy as np
 import itertools
 from pytriqs.archive import HDFArchive
 from datetime import datetime
 from time import clock
 
-def variance_error(on, comm=MPI.COMM_WORLD):
+def reverse_axis(array):
+    """For first dimensions broadcasting"""
+    return np.transpose(array, tuple(np.arange(array.ndim)[::-1]))
+
+def variance_error(on, comm=MPI.COMM_WORLD, weight=None):
+    weighted = weight is not None
     if comm.rank != 0:
         comm.gather(on)
+        if weighted: comm.gather(weight)
         on_error = comm.bcast(None)
     else:
         on_all = np.array(comm.gather(on), dtype=complex)
+        if weighted:
+            weight_all = np.array(comm.gather(weight))
+            weight_sum = np.sum(weight_all, axis=0)
+            weight_all[:, weight_sum == 0] = 1 # do not consider weight which sums to 0
 
-        on_error = np.sqrt(np.var(on_all, axis=0) / comm.size)
+            # reshape
+            weights = np.zeros(on_all.shape[::-1])
+            weights[...] = reverse_axis(weight_all)
+            weights = reverse_axis(weights)
+
+        else:
+            weights = None
+
+        avg_on_all = np.average(on_all, weights=weights, axis=0)
+        var_on_all = np.average(np.abs(on_all - avg_on_all[np.newaxis, ...])**2, weights=weights, axis=0)
+
+        on_error = np.sqrt(var_on_all / comm.size)
         comm.bcast(on_error)
 
     return on_error
@@ -67,125 +88,132 @@ def write_add(data, data_name, filename):
     with HDFArchive(filename, 'a') as ar:
         ar[data_name] = data
 
+
+def calc_ideal_U(pn, U):
+    """calculates ideal U value"""
+    nonzero_ind = np.nonzero(pn)[0]
+    pn_nonzero = pn[nonzero_ind].astype(np.float32)
+    if len(pn_nonzero) >= 2:
+        power = float(nonzero_ind[-1] - nonzero_ind[-2])
+        U_proposed = U * pow(2. * pn_nonzero[-2] / pn_nonzero[-1], 1. / power)
+    else:
+        U_proposed = U
+    return U_proposed
+
 class Results(dict):
 
-    def __init__(self):
+    def __init__(self, world):
         super(Results, self).__init__()
+        self.nb_runs = 0
+        self.world = world
         self['pn'] = []
         self['pn_all'] = []
         self['sn'] = []
         self['sn_all'] = []
         self['kernels'] = []
         self['kernels_all'] = []
+        self['U'] = []
         self['durations'] = []
         self['nb_measures'] = []
 
+        self['bin_times'] = None
+
     def append_empty_slot(self):
+        self.nb_runs += 1
         self['pn'].append(None)
         self['pn_all'].append(None)
         self['sn'].append(None)
         self['sn_all'].append(None)
         self['kernels'].append(None)
         self['kernels_all'].append(None)
+        self['U'].append(None)
         self['durations'].append(None)
         self['nb_measures'].append(None)
 
     def fill_last_slot(self, solver_core):
+        assert(len(self['pn']) == 1 or len(solver_core.pn) >= len(self['pn'][-2]))
         self['pn'][-1] = solver_core.pn
         self['pn_all'][-1] = solver_core.pn_all
         self['sn'][-1] = solver_core.sn
         self['sn_all'][-1] = solver_core.sn_all
         self['kernels'][-1] = solver_core.kernels
         self['kernels_all'][-1] = solver_core.kernels_all
+        self['U'][-1] = solver_core.U
         self['durations'][-1] = solver_core.solve_duration
         self['nb_measures'][-1] = solver_core.nb_measures_all
 
+        self['bin_times'] = solver_core.bin_times
+
+    def compute_cn_on(self):
+        assert(self.nb_runs > 0)
+        assert('c0' in self)
+        self['cn'] = compute_cn(self['pn'], self['U'], self['c0'])
+        self['cn_all'] = compute_cn(self['pn_all'], self['U'], self['c0'])
+        self['cn_error'] = variance_error(self['cn'], self.world)
+        self['sn_error'] = []
+        for pn, sn in zip(self['pn'], self['sn']):
+            self['sn_error'].append(variance_error(sn, self.world, weight=pn))
+        n_dim_sn = self['sn'][0][0].ndim
+        slicing = (slice(None),) + n_dim_sn * (np.newaxis,) # for broadcasting cn array onto sn array
+        self['on'] = staircase_leading_elts(self['sn']) * self['cn'][slicing]
+        self['on_all'] = staircase_leading_elts(self['sn_all']) * self['cn_all'][slicing]
+        self['on_error'] = variance_error(self['on'], self.world) #TODO: weight with nb of measures
+
+
+
 class SolverPython(object):
 
-    def __init__(self, g0_lesser, g0_greater, parameters, filename=None, kind_list=None, staircase=False):
+    def __init__(self, g0_lesser, g0_greater, parameters, filename=None, kind_list=None):
         self.g0_lesser = g0_lesser
         self.g0_greater = g0_greater
         self.parameters = parameters.copy()
-        self.res = Results()
+        self.world = MPI.COMM_WORLD
+        self.res = Results(self.world)
         self.qmc_duration = 0.
         self.nb_measures_all = 0
         self.nb_measures = 0
-        self.world = MPI.COMM_WORLD
 
         self.filename = filename
         self.kind_list = kind_list
-        self.staircase = staircase
-        self.U = []
-        if self.staircase:
-            self.parameters['U'] = self.parameters['U'][0]
 
     def order_zero(self):
-        S = SolverCore(**self.parameters)
+        params = self.parameters.copy()
+        params['U'] = float('NaN')
+        S = SolverCore(**params)
         S.set_g0(self.g0_lesser, self.g0_greater)
 
         c0, s0 = S.order_zero
         self.res['c0'] = c0
 
-        self.res['pn'].append([1])
-        self.res['pn_all'].append([1])
-        self.res['sn'].append(s0[np.newaxis, :])
-        self.res['sn_all'].append(s0[np.newaxis, :])
-
     def checkpoint(self, solver_core, computes_on=False):
         if self.world.rank == 0:
-            print datetime.now(), ": Order", self.parameters['max_perturbation_order']
+            print datetime.now(), ": Order", solver_core.max_order
+            print 'pn:', solver_core.pn_all
             print
 
         self.res.fill_last_slot(solver_core)
-
-        if computes_on:
-            if self.staircase:
-                # calculates results
-                on_all, cn_all = staircase_perturbation_series(self.res['c0'], self.res['pn_all'], self.res['sn_all'], self.U)
-
-                # Calculate error
-                # estimation using the variance of the On obtained on each process (assumes each process is equivalent)
-                on, cn = staircase_perturbation_series(self.res['c0'], self.res['pn'], self.res['sn'], self.U)
-                on_error = variance_error(on, self.world)
-
-            else:
-                # calculates results
-                on_all = perturbation_series(self.res['c0'], self.res['pn_all'][1], self.res['sn_all'][1], self.U[0])
-
-                # Calculate error
-                # estimation using the variance of the On obtained on each process (assumes each process is equivalent)
-                on = perturbation_series(self.res['c0'], self.res['pn'][1], self.res['sn'][1], self.U[0])
-                on_error = variance_error(on, self.world)
-
-            self.res['on'] = on
-            self.res['on_all'] = on_all
-            self.res['on_error'] = on_error
-            if 'cn' in locals(): # if variable cn exists
-                self.res['cn'] = cn
-            if 'cn_all' in locals(): # if variable cn_all exists
-                self.res['cn_all'] = cn_all
+        self.res.compute_cn_on()
 
         if self.world.rank == 0:
             self.write(self.filename, self.kind_list)
 
-    def prerun_and_run(self, nb_warmup_cycles, nb_cycles, order=None, U=None, save_period=-1):
+    def prerun_and_run(self, nb_warmup_cycles, nb_cycles, order, U, save_period=-1):
         self.res.append_empty_slot()
+        params = self.parameters.copy()
 
-        if order is not None:
-            self.parameters['max_perturbation_order'] = order
-        if U is not None:
-            self.parameters['U'] = U
-        self.U.append(self.parameters['U'])
-        S = SolverCore(**self.parameters)
+        params['max_perturbation_order'] = order
+        params['U'] = U
+        S = SolverCore(**params)
         S.set_g0(self.g0_lesser, self.g0_greater)
 
-        # prerun (warmup)
+        # prerun
         start = clock()
         if self.world.rank == 0:
-            print 'Warming up...'
-        S.run(nb_warmup_cycles, False)
+            print 'Pre run'
+        S.run(nb_warmup_cycles, True)
         prerun_duration = float(clock() - start)
         prerun_duration = self.world.allreduce(prerun_duration) / float(self.world.size) # take average
+        new_U = calc_ideal_U(S.pn_all, U)
 
         # time estimation
         if save_period > 0:
@@ -196,9 +224,23 @@ class SolverPython(object):
 
         if self.world.rank == 0:
             print 'Nb cycles per subrun =', nb_cycles_per_subrun
-            print 'Estimated run time =', prerun_duration * float(nb_cycles) / float(nb_warmup_cycles), 'seconds'
+            print 'Estimated run time =', prerun_duration * float(nb_cycles + nb_warmup_cycles) / float(nb_warmup_cycles), 'seconds'
+
+        # prepare new solver taking prerun into account
+        if self.world.rank == 0:
+            print 'changing U:', U, '=>', new_U
+        params['U'] = new_U
+        S = SolverCore(**params)
+        S.set_g0(self.g0_lesser, self.g0_greater)
+
+        # warmup
+        if self.world.rank == 0:
+            print 'Warmup'
+        S.run(nb_warmup_cycles, False)
 
         # main run
+        if self.world.rank == 0:
+            print 'main runs'
         while S.nb_measures < nb_cycles:
             nb_cycles_remaining = nb_cycles - S.nb_measures
             if nb_cycles_remaining > nb_cycles_per_subrun:
@@ -220,6 +262,7 @@ class SolverPython(object):
                 ar['nb_proc'] = self.world.size
                 ar['interaction_start'] = self.parameters['interaction_start']
                 ar['times'] = self.parameters['measure_times']
+                ar['bin_times'] = np.array(self.res['bin_times'])
 
                 if 'on_all' in self.res:
                     for i, kind in enumerate(kind_list):
@@ -229,14 +272,15 @@ class SolverPython(object):
                         group['on'] = np.squeeze(self.res['on_all'][:, :, i])
                         group['on_error'] = np.squeeze(self.res['on_error'][:, :, i])
 
-                for key in ['pn_all', 'sn_all', 'kernels_all']:
+                for key in ['pn_all', 'cn_all', 'sn_all', 'kernels_all']:
                     ar[key[:-4]] = self.res[key]
 
-                if 'cn_all' in self.res:
-                    ar['cn'] = self.res['cn_all']
+                for key in ['cn_error', 'sn_error']:
+                    ar[key] = self.res[key]
 
                 for key in ['durations', 'nb_measures']:
                     ar[key] = np.array(self.res[key])
+                ar['run_time'] = np.sum(self.res['durations'])
 
             print 'Saved in', filename
         else:
@@ -255,7 +299,8 @@ def single_solve(g0_lesser, g0_greater, parameters_, filename=None, kind_list=No
 
     solver = SolverPython(g0_lesser, g0_greater, parameters, filename, kind_list)
     solver.order_zero()
-    solver.prerun_and_run(nb_warmup_cycles, nb_cycles, save_period=save_period)
+    solver.prerun_and_run(nb_warmup_cycles, nb_cycles, parameters['max_perturbation_order'],
+                          parameters['U'], save_period=save_period)
 
     return np.squeeze(solver.res['on_all']), np.squeeze(solver.res['on_error'])
 
@@ -315,13 +360,13 @@ def staircase_solve(g0_lesser, g0_greater, parameters_, filename=None, kind_list
     else:
         orders = list(range(2, max_order + 1, 2))
 
-    solver = SolverPython(g0_lesser, g0_greater, parameters, filename, kind_list, staircase=True)
+    solver = SolverPython(g0_lesser, g0_greater, parameters, filename, kind_list)
     solver.order_zero()
 
     for i, k in enumerate(orders):
         if solver.world.rank == 0:
             print "---------------- Order", k, "----------------"
-        solver.prerun_and_run(nb_warmup_cycles, nb_cycles, order=k, U=U_list[i], save_period=save_period)
+        solver.prerun_and_run(nb_warmup_cycles, nb_cycles, k, U_list[i], save_period=save_period)
 
     return np.squeeze(solver.res['on_all']), np.squeeze(solver.res['on_error'])
 
@@ -446,4 +491,60 @@ def staircase_solve_old(g0_lesser, g0_greater, _parameters, filename=None, kind_
     del S
 
     return np.squeeze(on_result), np.squeeze(on_error)
+
+if __name__ == '__main__':
+    world = MPI.COMM_WORLD
+
+    if world.size != 4:
+        raise RuntimeError('These tests must be run with MPI on 4 processes')
+
+    # test variance_error
+    if world.rank == 0:
+        array = np.array([12.3, 68., 0.52])
+    elif world.rank == 1:
+        array = np.array([4.5, -6.3, 9.4])
+    elif world.rank == 2:
+        array = np.array([-86.4, 40, 63.1])
+    elif world.rank == 3:
+        array = np.array([10, 20, 30])
+
+    error_ref = [20.688855695760459, 13.603693202582892, 12.033703451140882]
+    error = variance_error(array, world)
+    assert(error.shape == (3,))
+    assert(np.allclose(error, error_ref, atol=1e-5))
+
+    # test variance_error
+    if world.rank == 0:
+        array = np.array([[12.3, 0.], [68., 0.], [0.52, 1]])
+    elif world.rank == 1:
+        array = np.array([[4.5, 1.], [-6.3, 0], [9.4, 1]])
+    elif world.rank == 2:
+        array = np.array([[-86.4, 0.], [40, 0.], [63.1, 0]])
+    elif world.rank == 3:
+        array = np.array([[10, 0.], [20, 0], [30, 0]])
+
+    error_ref = [[20.688855695760459, 0.21650635094610965], [13.603693202582892, 0.], [12.033703451140882, 0.25]]
+    error = variance_error(array, world)
+    assert(error.shape == (3, 2))
+    assert(np.allclose(error, error_ref, atol=1e-5))
+
+    # test variance_error
+    if world.rank == 0:
+        array = np.array([[12.3 +0j, 0.], [68., 0.], [0.52, 1]])
+        weight = np.array([100, 100, 0])
+    elif world.rank == 1:
+        array = np.array([[4.5, 1.], [-6.3, 0], [9.4, 1]])
+        weight = np.array([75., 75., 0])
+    elif world.rank == 2:
+        array = np.array([[-86.4, 0.], [40, 0.], [63.1, 0]])
+        weight = np.array([0, 0, 0])
+    elif world.rank == 3:
+        array = np.array([[10, 0.], [20, 0], [30, 0]])
+        weight = np.array([60, 60, 0])
+
+    error_ref = [[1.6809385918497846, 0.2330734287256026], [16.251235980435649, 0.], [12.033703451140882, 0.25]]
+    error = variance_error(array, world, weight=weight)
+    # print error
+    assert(error.shape == (3, 2))
+    assert(np.allclose(error, error_ref, atol=1e-5))
 
