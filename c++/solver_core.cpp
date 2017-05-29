@@ -33,11 +33,11 @@ solver_core::solver_core(solve_parameters_t const& params)
  t_min = std::min(t_min, std::get<1>(params.right_input_points[0]));
 
  // kernel binning
- kernels_all = array<dcomplex, 3>(params.max_perturbation_order + 1, params.nb_bins, 2);
- kernels = array<dcomplex, 3>(params.max_perturbation_order + 1, params.nb_bins, 2);
+ kernels_all = array<dcomplex, 3>(params.max_perturbation_order, params.nb_bins, 2);
+ kernels = array<dcomplex, 3>(params.max_perturbation_order, params.nb_bins, 2);
  kernels_binning =
      KernelBinning(-params.interaction_start, t_max, params.nb_bins, params.max_perturbation_order,
-                   true); // TODO: it should be defined in measure
+                   false); // TODO: it should be defined in measure
 
  // rank of the Green's function to calculate. For now only 1 is supported.
  if (params.right_input_points.size() % 2 == 0)
@@ -238,19 +238,24 @@ int solver_core::run(const int nb_cycles, const bool do_measure, const int max_t
 
 // --------------------------------
 void solver_core::compute_sn_from_kernels() {
- std::cout << "Computing sn from kernels..." << std::endl;
+ if (params.method != 5)
+  TRIQS_RUNTIME_ERROR << "Cannot use kernels with this method";
+ std::cout << "Computing sn from kernels..." << std::flush;
  keldysh_contour_pt tau;
- for (int order = 0; order < first_dim(sn); ++order) { // for each order
-  for (int i = 0; i < second_dim(sn); ++i) {       // for each tau (time)
-   for (int a = 0; a < third_dim(sn); ++a) {       // for each tau (keldysh index)
-    tau = tau_array(i, a);
-    auto gf_map = map([&](keldysh_contour_pt alpha) { return green_function(tau, alpha); });
-    auto gf_tau_alpha = gf_map(kernels_binning.coord_array());
-    sn(order, i, a) = sum(gf_tau_alpha * kernels(order, ellipsis()));
-    sn_all(order, i, a) = sum(gf_tau_alpha * kernels_all(order, ellipsis()));
+ for (int i = 0; i < second_dim(sn); ++i) {       // for each tau (time)
+  for (int a = 0; a < third_dim(sn); ++a) {       // for each tau (keldysh index)
+   tau = tau_array(i, a);
+   auto gf_map = map([&](keldysh_contour_pt alpha) { return green_function(tau, alpha); });
+   auto gf_tau_alpha = gf_map(kernels_binning.coord_array());
+   sn(0, i, a) = green_function(tau, taup);
+   sn_all(0, i, a) = green_function(tau, taup);
+   for (int order = 1; order < first_dim(sn); ++order) { // for each order
+    sn(order, i, a) = sum(gf_tau_alpha * kernels(order - 1, ellipsis()));
+    sn_all(order, i, a) = sum(gf_tau_alpha * kernels_all(order - 1, ellipsis()));
    }
   }
  }
+ std::cout << "done" << std::endl;
 }
 
 // --------------------------------

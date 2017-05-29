@@ -80,7 +80,10 @@ class solver_core {
  array<long, 1> get_pn_all() const { return pn_all; }
  array<dcomplex, 3> get_sn() const { return sn; }
  array<dcomplex, 3> get_sn_all() const { return sn_all; }
- array<dcomplex, 3> get_kernels() const { return kernels; }
- array<dcomplex, 3> get_kernels_all() const { return kernels_all; }
+ array<dcomplex, 3> get_kernels() const { return kernels / kernels_binning.get_bin_length(); }
+ array<dcomplex, 3> get_kernels_all() const { return kernels_all / kernels_binning.get_bin_length(); }
  array<long, 3> get_nb_kernels() const { return kernels_binning.get_nb_values(); }
+ array<double, 1> get_bin_times() const { return kernels_binning.get_bin_times(); }
+ double get_U() const { return params.U; }
+ int get_max_order() const { return params.max_perturbation_order; }
 };

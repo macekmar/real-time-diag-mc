@@ -16,14 +16,15 @@ class KernelBinning {
  private:
  array<dcomplex, 3> values; // 3D: order, binning, keldysh index
  array<long, 3> nb_values;   // 3D: order, binning, keldysh index
+ array<double, 1> bin_times;
  double t_min, t_max, bin_length;
  int nb_bins;
 
  public:
  array<keldysh_contour_pt, 2> coord_array;
  KernelBinning(){};
- KernelBinning(double t_min, double t_max, int nb_bins, int max_order, bool match_boundaries = false)
-    : t_max(t_max), t_min(t_min), bin_length((t_max - t_min) / nb_bins), nb_bins(nb_bins) {
+ KernelBinning(double t_min_, double t_max_, int nb_bins_, int max_order, bool match_boundaries = false)
+    : t_max(t_max_), t_min(t_min_), bin_length((t_max_ - t_min_) / nb_bins_), nb_bins(nb_bins_) {
 
   if (match_boundaries) {
    double delta_t = t_max - t_min;
@@ -32,17 +33,16 @@ class KernelBinning {
    bin_length = (t_max - t_min) / nb_bins;
   }
 
-  values = array<dcomplex, 3>(max_order + 1, nb_bins, 2); // from order 0 to order max_order
+  values = array<dcomplex, 3>(max_order, nb_bins, 2); // from order 1 to order max_order
   values() = 0;
-  nb_values = array<long, 3>(max_order + 1, nb_bins, 2);
+  nb_values = array<long, 3>(max_order, nb_bins, 2);
   nb_values() = 0;
 
   coord_array = array<keldysh_contour_pt, 2>(nb_bins, 2);
+  bin_times = array<double, 1>(nb_bins);
   double time = t_min + 0.5 * bin_length; // middle of the bin
   for (int i = 0; i < nb_bins; ++i) {
-   if (std::abs(time) <
-       1e-6)  // temp fix to make sure a bin match exactly with t'=0 (if match_bundary is true)
-    time = 0; // FIXME: do something cleaner
+   bin_times(i) = time;
    for (int k_index : {0, 1}) {
     coord_array(i, k_index) = {0, time, k_index};
    }
@@ -51,15 +51,19 @@ class KernelBinning {
  };
 
  void add(int order, keldysh_contour_pt alpha, dcomplex value) {
-  assert(t_min <= alpha.t and alpha.t <= t_max);
-  int bin = int((alpha.t - t_min) / bin_length);
-  bin = std::min(bin, nb_bins - 1); // avoids leak of values for alpha.t == t_max
-  values(order, bin, alpha.k_index) += value;
-  nb_values(order, bin, alpha.k_index)++;
+  bool in_range = t_min <= alpha.t and alpha.t < t_max and 0 < order and order <= first_dim(values);
+  assert(in_range);
+  if (in_range) {
+   int bin = int((alpha.t - t_min) / bin_length);
+   values(order - 1, bin, alpha.k_index) += value;
+   nb_values(order - 1, bin, alpha.k_index)++;
+  }
  };
 
  array<dcomplex, 3> get_values() const { return values; };  // copy
  array<long, 3> get_nb_values() const { return nb_values; }; // copy
+ double get_bin_length() const { return bin_length; };
+ array<double, 1> get_bin_times() const { return bin_times; };
 
  // array_const_view<keldysh_contour_pt, 2> get_coord_array() const { return coord_array(); }; // view
  // doesnt work ??

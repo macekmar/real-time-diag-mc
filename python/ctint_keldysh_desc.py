@@ -146,6 +146,18 @@ c.add_property(name = "nb_kernels",
                getter = cfunction("array<long,3> get_nb_kernels ()"),
                doc = """ """)
 
+c.add_property(name = "bin_times",
+               getter = cfunction("array<double,1> get_bin_times ()"),
+               doc = """ """)
+
+c.add_property(name = "U",
+               getter = cfunction("double get_U ()"),
+               doc = """ """)
+
+c.add_property(name = "max_order",
+               getter = cfunction("int get_max_order ()"),
+               doc = """ """)
+
 module.add_class(c)
 
 module.add_function ("void compilation_time_stamp (int node_size)", doc = """""")

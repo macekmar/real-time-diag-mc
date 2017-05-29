@@ -169,7 +169,7 @@ void TwoDetKernelMeasure::accumulate(dcomplex sign) {
  histogram_pn << config.order;
 
  if (config.order == 0) {
-  kernels_binning.add(0, config.get_right_input(), 1 / std::abs(config.weight_value));
+  return;
 
  } else {
   keldysh_contour_pt alpha_p;
@@ -206,16 +206,16 @@ void TwoDetKernelMeasure::collect_results(mpi::communicator c) {
  kernels = kernels_binning.get_values();
 
  dcomplex i_n[4] = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}}; // powers of i
- for (int k = 0; k < nb_orders; k++) {
-  kernels(k, ellipsis()) *= i_n[k % 4];
-  //kernels(k, ellipsis()) *= i_n[k % 4] / (2 * delta_t);
+ for (int k = 1; k < nb_orders; k++) {
+  kernels(k - 1, ellipsis()) *= i_n[k % 4];
+  //kernels(k - 1, ellipsis()) *= i_n[k % 4] / (2 * delta_t);
  }
 
  kernels_all = mpi::mpi_all_reduce(kernels, c);
 
- for (int k = 0; k < nb_orders; ++k) {
-  if (pn(k) != 0) kernels(k, ellipsis()) /= pn(k);
-  if (pn_all(k) != 0) kernels_all(k, ellipsis()) /= pn_all(k);
+ for (int k = 1; k < nb_orders; ++k) {
+  if (pn(k) != 0) kernels(k - 1, ellipsis()) /= pn(k);
+  if (pn_all(k) != 0) kernels_all(k - 1, ellipsis()) /= pn_all(k);
  }
 
 }
