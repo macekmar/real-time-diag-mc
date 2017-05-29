@@ -16,6 +16,8 @@ module.add_preamble("""
 #include <triqs/python_tools/converters/pair.hpp>
 using namespace triqs::gfs;
 """)
+module.add_function ("gf_view<refreq> make_g0c_flat_band_freq (double beta, double Gamma, double tmax_gf0, int Nt_gf0, double epsilon_d, double muL, double muR)", doc = """""")
+
 module.add_function ("std::pair<gf_view<refreq>,gf_view<refreq>> make_g0_flat_band_freq (double beta, double Gamma, double tmax_gf0, int Nt_gf0, double epsilon_d, double muL, double muR)", doc = """""")
 
 module.add_function ("std::pair<gf_view<retime>,gf_view<retime>> make_g0_flat_band (double beta, double Gamma, double tmax_gf0, int Nt_gf0, double epsilon_d, double muL, double muR)", doc = """""")
