@@ -83,6 +83,7 @@ class solver_core {
  array<dcomplex, 3> get_kernels() const { return kernels / kernels_binning.get_bin_length(); }
  array<dcomplex, 3> get_kernels_all() const { return kernels_all / kernels_binning.get_bin_length(); }
  array<long, 3> get_nb_kernels() const { return kernels_binning.get_nb_values(); }
+ array<long, 3> get_nb_kernels_all() const { array<long, 3> nb_kernels = kernels_binning.get_nb_values(); return triqs::mpi::mpi_all_reduce(nb_kernels); }
  array<double, 1> get_bin_times() const { return kernels_binning.get_bin_times(); }
  double get_U() const { return params.U; }
  int get_max_order() const { return params.max_perturbation_order; }

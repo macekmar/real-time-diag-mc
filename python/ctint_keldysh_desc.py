@@ -146,6 +146,10 @@ c.add_property(name = "nb_kernels",
                getter = cfunction("array<long,3> get_nb_kernels ()"),
                doc = """ """)
 
+c.add_property(name = "nb_kernels_all",
+               getter = cfunction("array<long,3> get_nb_kernels_all ()"),
+               doc = """ """)
+
 c.add_property(name = "bin_times",
                getter = cfunction("array<double,1> get_bin_times ()"),
                doc = """ """)

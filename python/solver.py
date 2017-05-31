@@ -112,6 +112,8 @@ class Results(dict):
         self['sn_all'] = []
         self['kernels'] = []
         self['kernels_all'] = []
+        self['nb_kernels'] = []
+        self['nb_kernels_all'] = []
         self['U'] = []
         self['durations'] = []
         self['nb_measures'] = []
@@ -126,6 +128,8 @@ class Results(dict):
         self['sn_all'].append(None)
         self['kernels'].append(None)
         self['kernels_all'].append(None)
+        self['nb_kernels'].append(None)
+        self['nb_kernels_all'].append(None)
         self['U'].append(None)
         self['durations'].append(None)
         self['nb_measures'].append(None)
@@ -138,27 +142,52 @@ class Results(dict):
         self['sn_all'][-1] = solver_core.sn_all
         self['kernels'][-1] = solver_core.kernels
         self['kernels_all'][-1] = solver_core.kernels_all
+        self['nb_kernels'][-1] = solver_core.nb_kernels
+        self['nb_kernels_all'][-1] = solver_core.nb_kernels_all
         self['U'][-1] = solver_core.U
         self['durations'][-1] = solver_core.solve_duration
         self['nb_measures'][-1] = solver_core.nb_measures_all
 
-        self['bin_times'] = solver_core.bin_times
+        self['bin_times'] = np.array(solver_core.bin_times)
 
     def compute_cn_on(self):
         assert(self.nb_runs > 0)
+
+        # cn
         assert('c0' in self)
         self['cn'] = compute_cn(self['pn'], self['U'], self['c0'])
         self['cn_all'] = compute_cn(self['pn_all'], self['U'], self['c0'])
         self['cn_error'] = variance_error(self['cn'], self.world)
+
+        # sn
         self['sn_error'] = []
         for pn, sn in zip(self['pn'], self['sn']):
             self['sn_error'].append(variance_error(sn, self.world, weight=pn))
+
+        # on
         n_dim_sn = self['sn'][0][0].ndim
         slicing = (slice(None),) + n_dim_sn * (np.newaxis,) # for broadcasting cn array onto sn array
-        self['on'] = staircase_leading_elts(self['sn']) * self['cn'][slicing]
-        self['on_all'] = staircase_leading_elts(self['sn_all']) * self['cn_all'][slicing]
-        self['on_error'] = variance_error(self['on'], self.world) #TODO: weight with nb of measures
+        self['on'] = np.squeeze(staircase_leading_elts(self['sn']) * self['cn'][slicing])
+        self['on_all'] = np.squeeze(staircase_leading_elts(self['sn_all']) * self['cn_all'][slicing])
+        self['on_error'] = np.squeeze(variance_error(self['on'], self.world)) #TODO: weight with nb of measures
 
+
+    def save(self, filename, params, starttime):
+        with HDFArchive(filename, 'w') as ar:
+            ar['nb_proc'] = self.world.size
+            ar['interaction_start'] = params['interaction_start']
+            ar['times'] = params['measure_times']
+            ar['run_time'] = (datetime.now() - starttime).total_seconds()
+
+            for key in self:
+                if key[-4:] == '_all':
+                    ar[key[:-4]] = self[key]
+                elif key + '_all' in self:
+                    pass
+                else:
+                    ar[key] = self[key]
+
+        print 'Saved in', filename
 
 
 class SolverPython(object):
@@ -169,9 +198,7 @@ class SolverPython(object):
         self.parameters = parameters.copy()
         self.world = MPI.COMM_WORLD
         self.res = Results(self.world)
-        self.qmc_duration = 0.
-        self.nb_measures_all = 0
-        self.nb_measures = 0
+        self.starttime = datetime.now()
 
         self.filename = filename
         self.kind_list = kind_list
@@ -194,8 +221,8 @@ class SolverPython(object):
         self.res.fill_last_slot(solver_core)
         self.res.compute_cn_on()
 
-        if self.world.rank == 0:
-            self.write(self.filename, self.kind_list)
+        if self.world.rank == 0 and self.filename is not None:
+            self.res.save(self.filename, self.parameters, self.starttime)
 
     def prerun_and_run(self, nb_warmup_cycles, nb_cycles, order, U, save_period=-1):
         self.res.append_empty_slot()
@@ -228,7 +255,7 @@ class SolverPython(object):
 
         # prepare new solver taking prerun into account
         if self.world.rank == 0:
-            print 'changing U:', U, '=>', new_U
+            print 'Changing U:', U, '=>', new_U
         params['U'] = new_U
         S = SolverCore(**params)
         S.set_g0(self.g0_lesser, self.g0_greater)
@@ -240,7 +267,7 @@ class SolverPython(object):
 
         # main run
         if self.world.rank == 0:
-            print 'main runs'
+            print 'Main runs'
         while S.nb_measures < nb_cycles:
             nb_cycles_remaining = nb_cycles - S.nb_measures
             if nb_cycles_remaining > nb_cycles_per_subrun:
@@ -250,41 +277,6 @@ class SolverPython(object):
                 S.run(nb_cycles_remaining, True)
                 S.compute_sn_from_kernels
                 self.checkpoint(S, computes_on=True)
-
-        self.qmc_duration += S.solve_duration
-        self.nb_measures_all += S.nb_measures_all
-        self.nb_measures += S.nb_measures
-
-    def write(self, filename, kind_list):
-        # before using save, check kind_list has the good shape
-        if filename is not None:
-            with HDFArchive(filename, 'w') as ar:
-                ar['nb_proc'] = self.world.size
-                ar['interaction_start'] = self.parameters['interaction_start']
-                ar['times'] = self.parameters['measure_times']
-                ar['bin_times'] = np.array(self.res['bin_times'])
-
-                if 'on_all' in self.res:
-                    for i, kind in enumerate(kind_list):
-                        ar.create_group(kind)
-                        group = ar[kind]
-                        group['times'] = self.parameters['measure_times'] # for backward compatibility
-                        group['on'] = np.squeeze(self.res['on_all'][:, :, i])
-                        group['on_error'] = np.squeeze(self.res['on_error'][:, :, i])
-
-                for key in ['pn_all', 'cn_all', 'sn_all', 'kernels_all']:
-                    ar[key[:-4]] = self.res[key]
-
-                for key in ['cn_error', 'sn_error']:
-                    ar[key] = self.res[key]
-
-                for key in ['durations', 'nb_measures']:
-                    ar[key] = np.array(self.res[key])
-                ar['run_time'] = np.sum(self.res['durations'])
-
-            print 'Saved in', filename
-        else:
-            return
 
 
 ######################### Front End #######################
@@ -304,6 +296,7 @@ def single_solve(g0_lesser, g0_greater, parameters_, filename=None, kind_list=No
 
     return np.squeeze(solver.res['on_all']), np.squeeze(solver.res['on_error'])
 
+# deprecated
 def single_solve_old(g0_lesser, g0_greater, parameters, filename=None, kind_list=None, save_period=-1, histogram=False):
     save = filename is not None
 
@@ -370,6 +363,7 @@ def staircase_solve(g0_lesser, g0_greater, parameters_, filename=None, kind_list
 
     return np.squeeze(solver.res['on_all']), np.squeeze(solver.res['on_error'])
 
+# deprecated
 def staircase_solve_old(g0_lesser, g0_greater, _parameters, filename=None, kind_list=None, save_period=-1, only_even=False):
     save = filename is not None
 
