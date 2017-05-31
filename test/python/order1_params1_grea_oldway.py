@@ -26,12 +26,11 @@ p["U"] = 2.5 # U_qmc
 p["min_perturbation_order"] = 0
 p["max_perturbation_order"] = 1
 p["alpha"] = 0.0
-p["n_warmup_cycles"] = 1000
 p["length_cycle"] = 50
-p["n_cycles"] = 100000
 p["w_dbl"] = 0
 p["w_shift"] = 0
 p["method"] = 0
+p["singular_thresholds"] = [3.0, 3.3]
 
 on = np.empty((2, len(times)), dtype=complex)
 
@@ -41,7 +40,9 @@ for i, t in enumerate(times):
     S.set_g0(g0_lesser, g0_greater)
 
     c0, _ = S.order_zero
-    S.run(-1)
+
+    S.run(1000, False) # warmup
+    S.run(100000, True)
 
     on[:, i] = np.squeeze(perturbation_series(c0, S.pn, S.sn, p["U"]))
 
