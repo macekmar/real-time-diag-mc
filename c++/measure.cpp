@@ -19,7 +19,8 @@ WeightSignMeasure::WeightSignMeasure(Configuration* config, array<long, 1>* pn, 
 // ----------
 void WeightSignMeasure::accumulate(dcomplex sign) {
  histogram_pn << config.order;
- sn_accum(config.order, ellipsis()) += config.weight_value / std::abs(config.weight_value);
+ dcomplex weight = config.accepted_weight;
+ sn_accum(config.order, ellipsis()) += weight / std::abs(weight);
 }
 
 // ----------
@@ -104,7 +105,7 @@ void TwoDetCofactMeasure::accumulate(dcomplex sign) {
   }
  }
 
- sn_accum(config.order, ellipsis()) += value / std::abs(config.weight_value);
+ sn_accum(config.order, ellipsis()) += value / std::abs(config.accepted_weight);
 }
 
 // ----------
@@ -178,7 +179,7 @@ void TwoDetKernelMeasure::accumulate(dcomplex sign) {
    alpha_p = config.get_config(p);
    for (int k_index : {1, 0}) {
     alpha_p = flip_index(alpha_p);
-    kernels_binning.add(config.order, alpha_p, config.accepted_kernels(p, k_index) / std::abs(config.weight_value));
+    kernels_binning.add(config.order, alpha_p, config.accepted_kernels(p, k_index) / std::abs(config.accepted_weight));
    }
   }
  }

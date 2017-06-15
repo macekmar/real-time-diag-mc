@@ -19,15 +19,14 @@ dcomplex insert::attempt() {
  // insert the new line and col.
  auto pt = get_random_point();
  config.insert(k, pt);
- new_weight = config.weight_evaluate();
+ config.evaluate();
 
  // The Metropolis ratio;
- return delta_t_L_U / (k + 1) * new_weight / config.weight_value;
+ return delta_t_L_U / (k + 1) * config.current_weight / config.accepted_weight;
 }
 
 dcomplex insert::accept() {
- config.weight_value = new_weight;
- config.accepted_kernels() = config.current_kernels();
+ config.accept_config();
  return 1.0;
 }
 
@@ -52,15 +51,14 @@ dcomplex insert2::attempt() {
  auto pt2 = get_random_point();
  config.insert2(k, k + 1, pt1, pt2);
 
- new_weight = config.weight_evaluate();
+ config.evaluate();
 
  // The Metropolis ratio
- return delta_t_L_U * delta_t_L_U / ((k + 1) * (k + 2)) * new_weight / config.weight_value;
+ return delta_t_L_U * delta_t_L_U / ((k + 1) * (k + 2)) * config.current_weight / config.accepted_weight;
 }
 
 dcomplex insert2::accept() {
- config.weight_value = new_weight;
- config.accepted_kernels() = config.current_kernels();
+ config.accept_config();
  return 1.0;
 }
 
@@ -85,15 +83,14 @@ dcomplex remove::attempt() {
  p = rng(k);                            // Choose one of the operators for removal
  removed_pt = config.get_config(p);     // store the point to be remove for later reject
  config.remove(p);                      // remove the point for all matrices
- new_weight = config.weight_evaluate(); // recompute sum over keldysh indices
+ config.evaluate(); // recompute sum over keldysh indices
 
  // The Metropolis ratio
- return k / delta_t_L_U * new_weight / config.weight_value;
+ return k / delta_t_L_U * config.current_weight / config.accepted_weight;
 }
 
 dcomplex remove::accept() {
- config.weight_value = new_weight;
- config.accepted_kernels() = config.current_kernels();
+ config.accept_config();
  return 1.0;
 }
 
@@ -120,15 +117,14 @@ dcomplex remove2::attempt() {
  removed_pt1 = config.get_config(p1);
  removed_pt2 = config.get_config(p2);
  config.remove2(p1, p2);
- new_weight = config.weight_evaluate(); // recompute sum over keldysh indices
+ config.evaluate(); // recompute sum over keldysh indices
 
  // The Metropolis ratio
- return k * (k - 1) / pow(delta_t_L_U, 2) * new_weight / config.weight_value;
+ return k * (k - 1) / pow(delta_t_L_U, 2) * config.current_weight / config.accepted_weight;
 }
 
 dcomplex remove2::accept() {
- config.weight_value = new_weight;
- config.accepted_kernels() = config.current_kernels();
+ config.accept_config();
  return 1.0;
 }
 
@@ -153,15 +149,14 @@ dcomplex shift::attempt() {
 
  auto new_pt = get_random_point(); // new time
  config.change_config(p, new_pt);
- new_weight = config.weight_evaluate();
+ config.evaluate();
 
  // The Metropolis ratio
- return new_weight / config.weight_value;
+ return config.current_weight / config.accepted_weight;
 }
 
 dcomplex shift::accept() {
- config.weight_value = new_weight;
- config.accepted_kernels() = config.current_kernels();
+ config.accept_config();
  return 1.0;
 }
 
@@ -197,15 +192,14 @@ dcomplex weight_swap::attempt() {
  config.change_config(p, swap_pt);
  config.change_left_input(tau);
 
- new_weight = config.weight_evaluate();
+ config.evaluate();
 
  // The Metropolis ratio
- return new_weight / config.weight_value;
+ return config.current_weight / config.accepted_weight;
 }
 
 dcomplex weight_swap::accept() {
- config.weight_value = new_weight;
- config.accepted_kernels() = config.current_kernels();
+ config.accept_config();
  return 1.0;
 }
 
@@ -229,15 +223,14 @@ dcomplex weight_shift::attempt() {
  tau.k_index = rng(2);                             // random keldysh index
  config.change_left_input(tau);
 
- new_weight = config.weight_evaluate();
+ config.evaluate();
 
  // The Metropolis ratio
- return new_weight / config.weight_value;
+ return config.current_weight / config.accepted_weight;
 }
 
 dcomplex weight_shift::accept() {
- config.weight_value = new_weight;
- config.accepted_kernels() = config.current_kernels();
+ config.accept_config();
  return 1.0;
 }
 

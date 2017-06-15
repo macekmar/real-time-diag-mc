@@ -85,8 +85,11 @@ void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser,
  green_function_alpha =
      g0_keldysh_alpha_t{g0_adaptor_t{g0_lesser}, g0_adaptor_t{g0_greater}, params.alpha, t_max};
  green_function = g0_keldysh_t{g0_adaptor_t{g0_lesser}, g0_adaptor_t{g0_greater}};
+
+ // configuration
+ bool kernels_method = (params.method != 0);
  config = Configuration(green_function_alpha, tau_array(0, 0), taup, params.max_perturbation_order,
-                        params.singular_thresholds);
+                        params.singular_thresholds, kernels_method);
 
  // order zero values
  auto gf_map = map([this](keldysh_contour_pt tau) { return green_function(tau, taup); });

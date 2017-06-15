@@ -2,8 +2,11 @@
 
 Configuration::Configuration(g0_keldysh_alpha_t green_function, const keldysh_contour_pt tau,
                              const keldysh_contour_pt taup, int max_order,
-                             std::pair<double, double> singular_thresholds)
-   : singular_thresholds(singular_thresholds), order(0), max_order(max_order) {
+                             std::pair<double, double> singular_thresholds, bool kernels_comput = true)
+   : singular_thresholds(singular_thresholds),
+     order(0),
+     max_order(max_order),
+     kernels_comput(kernels_comput) {
 
  current_kernels = array<dcomplex, 2>(max_order, 2);
  current_kernels() = 0;
@@ -30,7 +33,8 @@ Configuration::Configuration(g0_keldysh_alpha_t green_function, const keldysh_co
  matrices[0].insert_at_end(tau, taup); // first matrix is the big one
 
  // Initialize weight value
- weight_value = weight_evaluate();
+ evaluate();
+ accept_config();
 }
 
 void Configuration::insert(int k, keldysh_contour_pt pt) {
@@ -74,10 +78,15 @@ keldysh_contour_pt Configuration::get_left_input() const { return matrices[0].ge
 keldysh_contour_pt Configuration::get_right_input() const { return matrices[0].get_y(order); };
 
 // -----------------------
-void Configuration::kernels_evaluate_inverse() {
+// TODO: write down the formula this implements
+double Configuration::kernels_evaluate() {
+ /* Evaluate the kernels for the current configuration. Fill `current_kernels` appropriately
+  * and return the corresponding weight (as a real positive value):
+  * W(\vec{u}) = \sum_{p=0}^n \sum_{a=0,1}| K_p^a(\vec{u}) |
+  * If order n=0, `current_kernels` is not changed and the arbitrary weight 1 is returned.
+  * */
+ if (order == 0) return 1.; // is this a good value ?
  if (order > 63) TRIQS_RUNTIME_ERROR << "order overflow";
-
- assert(order > 0); // no kernel for order zero
 
 #ifdef REGENERATE_MATRIX_BEFORE_EACH_GRAY_CODE
  matrices[0].regenerate();
@@ -133,61 +142,30 @@ void Configuration::kernels_evaluate_inverse() {
   }
   sign = -sign;
  }
-};
-
-// -----------------------
-// Deprecated
-// TODO: write down the formula this implements
-void Configuration::kernels_evaluate_cofact() {
- assert(order > 0); // no kernel for order zero
-
- auto tau = get_left_input();
- auto taup = get_right_input();
- int signs[2] = {1, -1};
- matrices[0].remove(order, order); // remove tau_w and taup
-
- keldysh_contour_pt alpha_p_right;
- keldysh_contour_pt alpha_tmp = taup;
- matrices[0].roll_matrix(det_manip<g0_keldysh_alpha_t>::RollDirection::Left);
-
- for (int p = 0; p < order; ++p) {
-  alpha_p_right = matrices[0].get_y((p - 1 + order) % order);
-  for (int k_index : {1, 0}) {
-   alpha_p_right = flip_index(alpha_p_right);
-   // matrices[0].change_one_row_and_one_col(p, (p - 1 + order) % order, flip_index(matrices[0].get_x(p)),
-   //                                     alpha_tmp);
-   // Change the p keldysh index on the left (row) and the p point on the right (col).
-   // The p point on the right is effectively changed only when k_index=1.
-   matrices[0].change_row(p, flip_index(matrices[0].get_x(p)));
-   matrices[0].change_col((p - 1 + order) % order, alpha_tmp);
-
-   // matrices[1].change_one_row_and_one_col(p, p, flip_index(matrices[1].get_x(p)),
-   // flip_index(matrices[1].get_y(p)));
-   matrices[1].change_row(p, flip_index(matrices[1].get_x(p)));
-   matrices[1].change_col(p, flip_index(matrices[1].get_y(p)));
-
-   current_kernels(p, k_index) = keldysh_sum_cofact(p) * signs[(order + p + k_index) % 2];
-  }
-  alpha_tmp = alpha_p_right;
- }
- matrices[0].change_col(order - 1, alpha_tmp);
- matrices[0].insert(order, order, tau, taup);
-};
-
-// -----------------------
-double Configuration::weight_kernels() {
- if (order == 0) return 1.; // is this a good value ?
- kernels_evaluate_inverse();
 
  return sum(abs(current_kernels(range(0, order), range())));
 };
 
 // -----------------------
-dcomplex Configuration::weight_evaluate() {
- double value = weight_kernels();
- weight_sum(order) += value;
+void Configuration::evaluate() {
+ /* Evaluate the kernels and weight of the current configuration.
+  * Store them into `current_kernels` and `current_weight`.
+  */
+ dcomplex value;
+ if (kernels_comput)
+  value = kernels_evaluate();
+ else
+  value = keldysh_sum();
+
+ weight_sum(order) += std::abs(value);
  nb_values(order)++;
- return value;
+ current_weight = value;
+}
+
+// -----------------------
+void Configuration::accept_config() {
+ accepted_weight = current_weight;
+ accepted_kernels() = current_kernels();
 }
 
 // -----------------------

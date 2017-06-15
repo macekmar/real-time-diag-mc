@@ -13,7 +13,6 @@ struct common {
  double delta_t_L_U;
  double delta_t;
  bool quick_exit = false;
- dcomplex new_weight = 0;
 
  common(Configuration* config, const solve_parameters_t *params, const double t_max,
         triqs::mc_tools::random_generator &rng)
