@@ -102,10 +102,11 @@ def calc_ideal_U(pn, U):
 
 class Results(dict):
 
-    def __init__(self, world):
+    def __init__(self, world, starttime):
         super(Results, self).__init__()
         self.nb_runs = 0
         self.world = world
+        self.starttime = starttime
         self['pn'] = []
         self['pn_all'] = []
         self['sn'] = []
@@ -119,6 +120,7 @@ class Results(dict):
         self['nb_measures'] = []
 
         self['bin_times'] = None
+        self['run_time'] = None
 
     def append_empty_slot(self):
         self.nb_runs += 1
@@ -149,15 +151,17 @@ class Results(dict):
         self['nb_measures'][-1] = solver_core.nb_measures_all
 
         self['bin_times'] = np.array(solver_core.bin_times)
+        self['run_time'] = (datetime.now() - self.starttime).total_seconds()
 
-    def compute_cn_on(self):
+    def compute_cn(self):
         assert(self.nb_runs > 0)
-
-        # cn
         assert('c0' in self)
         self['cn'] = compute_cn(self['pn'], self['U'], self['c0'])
         self['cn_all'] = compute_cn(self['pn_all'], self['U'], self['c0'])
         self['cn_error'] = variance_error(self['cn'], self.world)
+
+    def compute_on(self):
+        assert(self.nb_runs > 0)
 
         # sn
         self['sn_error'] = []
@@ -172,12 +176,11 @@ class Results(dict):
         self['on_error'] = np.squeeze(variance_error(self['on'], self.world)) #TODO: weight with nb of measures
 
 
-    def save(self, filename, params, starttime):
+    def save(self, filename, params):
         with HDFArchive(filename, 'w') as ar:
             ar['nb_proc'] = self.world.size
             ar['interaction_start'] = params['interaction_start']
             ar['times'] = params['measure_times']
-            ar['run_time'] = (datetime.now() - starttime).total_seconds()
 
             for key in self:
                 if key[-4:] == '_all':
@@ -197,8 +200,8 @@ class SolverPython(object):
         self.g0_greater = g0_greater
         self.parameters = parameters.copy()
         self.world = MPI.COMM_WORLD
-        self.res = Results(self.world)
         self.starttime = datetime.now()
+        self.res = Results(self.world, self.starttime)
 
         self.filename = filename
         self.kind_list = kind_list
@@ -212,17 +215,19 @@ class SolverPython(object):
         c0, s0 = S.order_zero
         self.res['c0'] = c0
 
-    def checkpoint(self, solver_core, computes_on=False):
+    def checkpoint(self, solver_core, compute_on=False):
         if self.world.rank == 0:
             print datetime.now(), ": Order", solver_core.max_order
             print 'pn:', solver_core.pn_all
             print
 
         self.res.fill_last_slot(solver_core)
-        self.res.compute_cn_on()
+        self.res.compute_cn()
+        if compute_on:
+            self.res.compute_on()
 
         if self.world.rank == 0 and self.filename is not None:
-            self.res.save(self.filename, self.parameters, self.starttime)
+            self.res.save(self.filename, self.parameters)
 
     def prerun_and_run(self, nb_warmup_cycles, nb_cycles, order, U, save_period=-1):
         self.res.append_empty_slot()
@@ -276,7 +281,7 @@ class SolverPython(object):
             else: # last run
                 S.run(nb_cycles_remaining, True)
                 S.compute_sn_from_kernels
-                self.checkpoint(S, computes_on=True)
+                self.checkpoint(S, compute_on=True)
 
 
 ######################### Front End #######################
@@ -352,6 +357,9 @@ def staircase_solve(g0_lesser, g0_greater, parameters_, filename=None, kind_list
         orders = list(range(1, max_order + 1))
     else:
         orders = list(range(2, max_order + 1, 2))
+
+    if len(U_list) != len(orders):
+        raise ValueError, "Size of list of U must match the number of orders to compute"
 
     solver = SolverPython(g0_lesser, g0_greater, parameters, filename, kind_list)
     solver.order_zero()
