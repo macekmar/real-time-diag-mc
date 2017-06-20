@@ -94,36 +94,6 @@ class WeightSignMeasure {
 
 // -----------------------
 
-class TwoDetCofactMeasure {
-
- private:
- Configuration& config;
- KernelBinning& kernels_binning;
- array<long, 1>& pn;
- array<long, 1>& pn_all;
- array<dcomplex, 3>& sn;
- array<dcomplex, 3>& sn_all;
- array<dcomplex, 3> sn_accum;
- int nb_orders;
- histogram histogram_pn;
- const array<keldysh_contour_pt, 2>& tau_array;
- const array<dcomplex, 2>& g0_array;
- g0_keldysh_t green_function;
- const double delta_t;
-
- public:
- TwoDetCofactMeasure(Configuration* config, KernelBinning* kernels_binning, array<long, 1>* pn,
-                     array<long, 1>* pn_all, array<dcomplex, 3>* sn, array<dcomplex, 3>* sn_all,
-                     const array<keldysh_contour_pt, 2>* tau_array, const array<dcomplex, 2>* g0_array,
-                     g0_keldysh_t green_function, const double delta_t);
-
- void accumulate(dcomplex sign);
-
- void collect_results(mpi::communicator c);
-};
-
-// -----------------------
-
 class TwoDetKernelMeasure {
 
  private:
@@ -131,22 +101,15 @@ class TwoDetKernelMeasure {
  KernelBinning& kernels_binning;
  array<long, 1>& pn;
  array<long, 1>& pn_all;
- array<dcomplex, 3>& sn;
- array<dcomplex, 3>& sn_all;
  array<dcomplex, 3>& kernels;
  array<dcomplex, 3>& kernels_all;
  int nb_orders;
  histogram histogram_pn;
- const array<keldysh_contour_pt, 2>& tau_array;
- const array<dcomplex, 2>& g0_array;
- g0_keldysh_t green_function;
- const double delta_t;
 
  public:
  TwoDetKernelMeasure(Configuration* config, KernelBinning* kernels_binning, array<long, 1>* pn,
-                     array<long, 1>* pn_all, array<dcomplex, 3>* sn, array<dcomplex, 3>* sn_all,
-                     array<dcomplex, 3>* kernels, array<dcomplex, 3>* kernels_all, const array<keldysh_contour_pt, 2>* tau_array,
-                     const array<dcomplex, 2>* g0_array, g0_keldysh_t green_function, const double delta_t);
+                     array<long, 1>* pn_all,
+                     array<dcomplex, 3>* kernels, array<dcomplex, 3>* kernels_all);
 
  void accumulate(dcomplex sign);
 

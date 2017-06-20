@@ -49,12 +49,6 @@ struct solve_parameters_t {
  /// weight of the shift move
  double w_shift = 0.0;
 
- /// weight of the weight_swap move
- double w_weight_swap = 0.01;
-
- /// weight of the weight_shift move
- double w_weight_shift = 0.01;
-
  /// Maximum order in U
  int max_perturbation_order = 3;
 

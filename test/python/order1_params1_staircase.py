@@ -31,7 +31,6 @@ p["n_cycles"] = 100000
 p["length_cycle"] = 50
 p["w_dbl"] = 0
 p["w_shift"] = 0
-p["w_weight_swap"] = 0.2
 p["method"] = 5
 p["singular_thresholds"] = [3.0, 3.3]
 

@@ -23,8 +23,6 @@ template <> struct py_converter<solve_parameters_t> {
   PyDict_SetItemString( d, "w_ins_rem"              , convert_to_python(x.w_ins_rem));
   PyDict_SetItemString( d, "w_dbl"                  , convert_to_python(x.w_dbl));
   PyDict_SetItemString( d, "w_shift"                , convert_to_python(x.w_shift));
-  PyDict_SetItemString( d, "w_weight_swap"          , convert_to_python(x.w_weight_swap));
-  PyDict_SetItemString( d, "w_weight_shift"         , convert_to_python(x.w_weight_shift));
   PyDict_SetItemString( d, "max_perturbation_order" , convert_to_python(x.max_perturbation_order));
   PyDict_SetItemString( d, "min_perturbation_order" , convert_to_python(x.min_perturbation_order));
   PyDict_SetItemString( d, "length_cycle"           , convert_to_python(x.length_cycle));
@@ -64,8 +62,6 @@ template <> struct py_converter<solve_parameters_t> {
   _get_optional(dic, "w_ins_rem"              , res.w_ins_rem                 ,1.0);
   _get_optional(dic, "w_dbl"                  , res.w_dbl                     ,0.5);
   _get_optional(dic, "w_shift"                , res.w_shift                   ,0.0);
-  _get_optional(dic, "w_weight_swap"          , res.w_weight_swap             ,0.01);
-  _get_optional(dic, "w_weight_shift"         , res.w_weight_shift            ,0.01);
   _get_optional(dic, "max_perturbation_order" , res.max_perturbation_order    ,3);
   _get_optional(dic, "min_perturbation_order" , res.min_perturbation_order    ,0);
   _get_optional(dic, "length_cycle"           , res.length_cycle              ,50);
@@ -106,7 +102,7 @@ template <> struct py_converter<solve_parameters_t> {
   std::stringstream fs, fs2; int err=0;
 
 #ifndef TRIQS_ALLOW_UNUSED_PARAMETERS
-  std::vector<std::string> ks, all_keys = {"right_input_points","interaction_start","measure_state","measure_times","measure_keldysh_indices","alpha","U","w_ins_rem","w_dbl","w_shift","w_weight_swap","w_weight_shift","max_perturbation_order","min_perturbation_order","length_cycle","random_seed","random_name","max_time","verbosity","method","nb_bins","singular_thresholds"};
+  std::vector<std::string> ks, all_keys = {"right_input_points","interaction_start","measure_state","measure_times","measure_keldysh_indices","alpha","U","w_ins_rem","w_dbl","w_shift","max_perturbation_order","min_perturbation_order","length_cycle","random_seed","random_name","max_time","verbosity","method","nb_bins","singular_thresholds"};
   pyref keys = PyDict_Keys(dic);
   if (!convertible_from_python<std::vector<std::string>>(keys, true)) {
    fs << "\nThe dict keys are not strings";
@@ -128,8 +124,6 @@ template <> struct py_converter<solve_parameters_t> {
   _check_optional <double                                          >(dic, fs, err, "w_ins_rem"              , "double");
   _check_optional <double                                          >(dic, fs, err, "w_dbl"                  , "double");
   _check_optional <double                                          >(dic, fs, err, "w_shift"                , "double");
-  _check_optional <double                                          >(dic, fs, err, "w_weight_swap"          , "double");
-  _check_optional <double                                          >(dic, fs, err, "w_weight_shift"         , "double");
   _check_optional <int                                             >(dic, fs, err, "max_perturbation_order" , "int");
   _check_optional <int                                             >(dic, fs, err, "min_perturbation_order" , "int");
   _check_optional <int                                             >(dic, fs, err, "length_cycle"           , "int");

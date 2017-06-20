@@ -53,8 +53,6 @@ class solver_core {
 
  int finish(const int run_status);
 
- std::function<bool()> make_callback(int time_in_seconds);
-
  public:
  // FIXME change type of arguments after olivier fixes wrapper
  TRIQS_WRAP_ARG_AS_DICT // Wrap the solver parameters as a ** call in python with the clang & c++2py tool

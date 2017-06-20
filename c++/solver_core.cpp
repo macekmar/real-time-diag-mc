@@ -107,40 +107,19 @@ void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser,
  if (params.w_shift > 0) {
   qmc.add_move(moves::shift{&config, &params, t_max, qmc.get_rng()}, "shift", params.w_shift);
  }
- if (params.method == 4) {
-  qmc.add_move(moves::weight_swap{&config, &params, t_max, qmc.get_rng()}, "weight swap",
-               params.w_weight_swap);
-  qmc.add_move(moves::weight_shift{&config, &params, t_max, qmc.get_rng()}, "weight shift",
-               params.w_weight_shift);
- }
 
  if (params.method == 0) {
   if (size(tau_array) > 1)
    TRIQS_RUNTIME_ERROR << "Trying to use a singlepoint measure with multiple input point";
   qmc.add_measure(WeightSignMeasure(&config, &pn, &pn_all, &sn, &sn_all), "Weight sign measure");
- } else if (params.method == 4) {
-  qmc.add_measure(TwoDetCofactMeasure(&config, &kernels_binning, &pn, &pn_all, &sn, &sn_all, &tau_array,
-                                      &g0_array, green_function, params.interaction_start + t_max),
-                  "Cofact measure");
  } else if (params.method == 5) {
-  qmc.add_measure(TwoDetKernelMeasure(&config, &kernels_binning, &pn, &pn_all, &sn, &sn_all, &kernels,
-                                      &kernels_all, &tau_array, &g0_array, green_function,
-                                      params.interaction_start + t_max),
+  qmc.add_measure(TwoDetKernelMeasure(&config, &kernels_binning, &pn, &pn_all, &kernels, &kernels_all),
                   "Kernel measure");
  } else {
   TRIQS_RUNTIME_ERROR << "Cannot recognise the method ID";
  }
 
  status = ready;
-};
-
-// --------------------------------
-std::function<bool()> solver_core::make_callback(int time_in_seconds) {
- auto clock_callback = triqs::utility::clock_callback(time_in_seconds);
- return [clock_callback]() {
-  MPI_Barrier(MPI_COMM_WORLD);
-  return clock_callback();
- };
 };
 
 // --------------------------------
@@ -152,28 +131,23 @@ int solver_core::run(const int nb_cycles, const bool do_measure, const int max_t
   TRIQS_RUNTIME_ERROR << "Order zero cannot run, use order_zero method instead";
 
  mpi::communicator world;
- std::cout << "reached start run barrier" << std::endl;
+ std::cout << "Waiting for other processes before run..." << std::endl;
  MPI_Barrier(MPI_COMM_WORLD);
 
  int run_status;
 
- // warmup if run has not started yet
  if (status == ready) {
   status = running;
   solve_duration = 0;
-  //if (world.rank() == 0) std::cout << "Warming up... " << std::flush;
-  //run_status =
-      //qmc.run(params.n_warmup_cycles, params.length_cycle, triqs::utility::clock_callback(-1), false);
-  if (run_status == 2) return finish(run_status); // Received a signal: abort
-  //if (world.rank() == 0) std::cout << "done" << std::endl;
  }
 
  // accumulate
  std::cout << "Accumulate..." << std::endl;
  run_status = qmc.run(nb_cycles, params.length_cycle, triqs::utility::clock_callback(max_time), do_measure);
+ std::cout << "done" << std::endl << std::endl;
 
  // Collect results
- std::cout << "Collecting results... " << std::flush;
+ std::cout << "Collecting results... " << std::endl;
  qmc.collect_results(world);
  std::cout << "done" << std::endl << std::endl;
 
@@ -205,10 +179,6 @@ int solver_core::run(const int nb_cycles, const bool do_measure, const int max_t
     move_weight = params.w_dbl;
    else if (x.first == "shift")
     move_weight = params.w_shift;
-   else if (x.first == "weight swap")
-    move_weight = params.w_weight_swap;
-   else if (x.first == "weight shift")
-    move_weight = params.w_weight_shift;
    else
     move_weight = 0;
    if (move_weight > 0) {
@@ -220,19 +190,17 @@ int solver_core::run(const int nb_cycles, const bool do_measure, const int max_t
   }
   std::cout << "> All moves: " << total_rate / total_weight << std::endl;
   std::cout << "Attempted config weight average:" << std::endl << weight_avg << std::endl;
-  // std::cout << "Weight offsets:" << std::endl << config.weight_offsets << std::endl;
   std::cout << "cofact vs inverse : " << nb_cofact << " / " << nb_inverse << std::endl;
   std::cout << "regen ratios : 0=" << config.matrices[0].get_regen_ratio()
             << ", 1=" << config.matrices[1].get_regen_ratio() << std::endl;
   std::pair<double, double> regen_stats;
   for (int a : {0, 1}) {
    regen_stats = config.matrices[a].get_error_stats();
-   std::cout << "regen errors " << a << " : avg=" << regen_stats.first << ", std=" << std::sqrt(regen_stats.second)
-             << std::endl;
+   std::cout << "regen errors " << a << " : avg=" << regen_stats.first
+             << ", std=" << std::sqrt(regen_stats.second) << std::endl;
   }
   std::cout << std::endl;
  }
- std::cout << "End run " << std::flush;
 
  if (run_status != 1) return finish(run_status);
 
@@ -241,12 +209,11 @@ int solver_core::run(const int nb_cycles, const bool do_measure, const int max_t
 
 // --------------------------------
 void solver_core::compute_sn_from_kernels() {
- if (params.method != 5)
-  TRIQS_RUNTIME_ERROR << "Cannot use kernels with this method";
+ if (params.method != 5) TRIQS_RUNTIME_ERROR << "Cannot use kernels with this method";
  std::cout << "Computing sn from kernels..." << std::flush;
  keldysh_contour_pt tau;
- for (int i = 0; i < second_dim(sn); ++i) {       // for each tau (time)
-  for (int a = 0; a < third_dim(sn); ++a) {       // for each tau (keldysh index)
+ for (int i = 0; i < second_dim(sn); ++i) { // for each tau (time)
+  for (int a = 0; a < third_dim(sn); ++a) { // for each tau (keldysh index)
    tau = tau_array(i, a);
    auto gf_map = map([&](keldysh_contour_pt alpha) { return green_function(tau, alpha); });
    auto gf_tau_alpha = gf_map(kernels_binning.coord_array());
@@ -276,65 +243,19 @@ int solver_core::finish(const int run_status) {
 }
 
 // --------------------------------
-struct integrand_params {
- g0_keldysh_t green_function;
- keldysh_contour_pt tau;
- keldysh_contour_pt taup;
-
- integrand_params(g0_keldysh_t green_function, int state, int k_index, keldysh_contour_pt taup)
-    : green_function(green_function), tau{state, 0., k_index}, taup(taup){};
-};
-
-double abs_g0_keldysh_t_inputs(double t, void* _params) {
- auto params = static_cast<integrand_params*>(_params);
- keldysh_contour_pt tau = params->tau;
- tau.t = t;
- return std::abs(params->green_function(tau, params->taup));
-};
-
 std::tuple<double, array<dcomplex, 2>> solver_core::order_zero() {
  if (status < not_ready) TRIQS_RUNTIME_ERROR << "Run aborted";
  if (status < ready) TRIQS_RUNTIME_ERROR << "Unperturbed Green's functions have not been set!";
- if (mpi::communicator().rank() == 0) std::cout << "Order zero calculation... " << std::flush;
  double c0 = 0;
- double c0_error = 0;
 
- if (params.method == 4) {
-  // Uses GSL integration
-  // (https://www.gnu.org/software/gsl/manual/html_node/Numerical-integration-examples.html)
-  gsl_function F;
-  F.function = &abs_g0_keldysh_t_inputs;
-  auto w = gsl_integration_cquad_workspace_alloc(10000);
-  size_t nb_evals;
-  double value;
-  double value_error;
-
-  for (int a : {0, 1}) {
-   integrand_params int_params(green_function, 0, a, taup);
-   F.params = &int_params;
-   gsl_integration_cquad(&F,                        // function to integrate
-                         -params.interaction_start, // lower boundary
-                         t_max,                     // upper boundary
-                         1e-6,                      // absolute error
-                         1e-6,                      // relative error
-                         w,                         // workspace
-                         &value,                    // result
-                         &value_error,              // output absolute error
-                         &nb_evals);                // number of function evaluation
-   c0 += value;
-   c0_error += value_error;
-  }
-
-  gsl_integration_cquad_workspace_free(w);
- } else if (params.method == 5) {
+ if (params.method == 5) {
   c0 = 1.;
  } else { // singlepoint methods only
   c0 = abs(g0_array(0, 0));
  }
  array<dcomplex, 2> s0 = g0_array / c0;
  if (mpi::communicator().rank() == 0) {
-  std::cout << "done" << std::endl;
-  std::cout << "c0 = " << c0 << " error = " << c0_error << std::endl << std::endl;
+  std::cout << "c0 = " << c0 << std::endl << std::endl;
  }
  return std::tuple<double, array<dcomplex, 2>>{c0, s0};
 }

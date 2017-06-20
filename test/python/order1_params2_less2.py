@@ -31,7 +31,6 @@ p["length_cycle"] = 50
 p["n_cycles"] = 100000
 p["w_dbl"] = 0
 p["w_shift"] = 0
-p["w_weight_swap"] = 0.2
 p["method"] = 4
 
 on, on_error = staircase_solve(g0_lesser, g0_greater, p)
