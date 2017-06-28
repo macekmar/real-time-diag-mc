@@ -52,7 +52,6 @@ class KernelBinning {
 
  void add(int order, keldysh_contour_pt alpha, dcomplex value) {
   bool in_range = t_min <= alpha.t and alpha.t < t_max and 0 < order and order <= first_dim(values);
-  assert(in_range);
   if (in_range) {
    int bin = int((alpha.t - t_min) / bin_length);
    values(order - 1, bin, alpha.k_index) += value;

@@ -18,7 +18,8 @@ g0_lesser, g0_greater = make_g0_semi_circular(**p)
 times = np.linspace(-40.0, 0.0, 101)
 times = times[::10] # divide by 10 the size because oldway takes more time
 p = {}
-p["right_input_points"] = [(0, 0.0, 1)] # lesser
+p["creation_ops"] = [(0, 0.0, 1)] # lesser
+p["annihilation_ops"] = []
 p["interaction_start"] = 40.0
 p["measure_state"] = 0
 p["measure_keldysh_indices"] = [0] # lesser
@@ -57,6 +58,18 @@ with HDFArchive('ref_data/order1_params1.ref.h5', 'r') as ar:
     if not np.array_equal(times, ar['less']['times'][::10]):
         raise RuntimeError, 'FAILED: times are different'
 
+    import matplotlib.pyplot as plt
+    plt.plot(times, on[1].real, 'bo')
+    plt.plot(times, on[1].imag, 'ro')
+    plt.show()
+
+    plt.plot(times, on[1].real, 'bo')
+    plt.plot(times, on[1].imag, 'ro')
+    plt.plot(ar['less']['times'], ar['less']['o1'].real, 'b--')
+    plt.plot(ar['less']['times'], ar['less']['o1'].imag, 'r--')
+    plt.show()
+
     if not np.allclose(on[1], ar['less']['o1'][::10], rtol=0.01, atol=0.005):
         raise RuntimeError, 'FAILED'
 
+print 'SUCCESS !'

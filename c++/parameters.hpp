@@ -17,8 +17,12 @@ using x_index_t = int;
 // All the arguments of the solve function
 struct solve_parameters_t {
 
- /// input contour points, except the first (left) one, must be of odd size
- std::vector<std::tuple<x_index_t, double, int>> right_input_points;
+ /// Keldysh contour points for the creation operators
+ std::vector<std::tuple<x_index_t, double, int>> creation_ops;
+
+ /// Keldysh contour points for the annihilation operators, except the first one.
+ // Its size must match `creation_ops` size - 1
+ std::vector<std::tuple<x_index_t, double, int>> annihilation_ops;
 
  /// time before 0 at which interaction started
  double interaction_start;

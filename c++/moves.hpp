@@ -85,27 +85,4 @@ struct shift : common {
  void reject();
 };
 
-//-----------QMC additional time swap move------------
-
-struct weight_swap : common {
- keldysh_contour_pt save_swap_pt;
- keldysh_contour_pt save_tau;
- int p;
-
- using common::common;
- dcomplex attempt();
- dcomplex accept();
- void reject();
-};
-
-//-----------QMC additional time shift move------------
-
-struct weight_shift : common {
- keldysh_contour_pt save_tau;
-
- using common::common;
- dcomplex attempt();
- dcomplex accept();
- void reject();
-};
 }

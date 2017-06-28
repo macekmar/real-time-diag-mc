@@ -1,17 +1,12 @@
 #include "./configuration.hpp"
 
-Configuration::Configuration(g0_keldysh_alpha_t green_function, const keldysh_contour_pt tau,
-                             const keldysh_contour_pt taup, int max_order,
+Configuration::Configuration(g0_keldysh_alpha_t green_function, std::vector<keldysh_contour_pt> annihila_pts,
+                             std::vector<keldysh_contour_pt> creation_pts, int max_order,
                              std::pair<double, double> singular_thresholds, bool kernels_comput = true)
    : singular_thresholds(singular_thresholds),
      order(0),
      max_order(max_order),
      kernels_comput(kernels_comput) {
-
- current_kernels = array<dcomplex, 2>(max_order, 2);
- current_kernels() = 0;
- accepted_kernels = array<dcomplex, 2>(max_order, 2);
- accepted_kernels() = 0;
 
 
  weight_sum = array<double, 1>(max_order + 1);
@@ -30,7 +25,21 @@ Configuration::Configuration(g0_keldysh_alpha_t green_function, const keldysh_co
  matrices[0].set_singular_threshold(singular_thresholds.first);
  matrices[1].set_singular_threshold(singular_thresholds.second);
 
- matrices[0].insert_at_end(tau, taup); // first matrix is the big one
+ // inserting first annihilation point
+ matrices[0].insert_at_end(annihila_pts[0],
+                           creation_pts[0]); // spin of creation_pts[0] is assumed same as annihila_pts[0]
+ crea_k_ind.push_back(creation_pts[0].k_index);
+ // inserting other points
+ for (size_t i = 1; i < creation_pts.size(); ++i) {
+  size_t mat_ind = annihila_pts[i].x == annihila_pts[0].x ? 0 : 1;
+  matrices[mat_ind].insert_at_end(annihila_pts[i], creation_pts[i]); // both points assumed to have same spin
+  if (mat_ind == 0) crea_k_ind.push_back(creation_pts[i].k_index);
+ }
+
+ current_kernels = array<dcomplex, 2>(max_order + matrices[0].size(), 2);
+ current_kernels() = 0;
+ accepted_kernels = array<dcomplex, 2>(max_order + matrices[0].size(), 2);
+ accepted_kernels() = 0;
 
  // Initialize weight value
  evaluate();
@@ -67,24 +76,42 @@ void Configuration::change_config(int k, keldysh_contour_pt pt) {
 
 void Configuration::change_left_input(keldysh_contour_pt tau) { matrices[0].change_row(order, tau); };
 
-void Configuration::change_right_input(keldysh_contour_pt taup) { matrices[0].change_col(order, taup); };
-
 keldysh_contour_pt Configuration::get_config(int p) const {
  return matrices[0].get_x(p);
 }; // assuming alpha is a single point
 
 keldysh_contour_pt Configuration::get_left_input() const { return matrices[0].get_x(order); };
 
-keldysh_contour_pt Configuration::get_right_input() const { return matrices[0].get_y(order); };
-
 // -----------------------
-// TODO: write down the formula this implements
+
+array<dcomplex, 1> cofactor_row(det_manip<g0_keldysh_alpha_t>& matrix, size_t i, size_t n) {
+ /* Computes the n-th first cofactors of the i-th row of `matrix`.
+  * This does NOT use the inverse matrix.
+  */
+ // TODO: tests
+ array<dcomplex, 1> cofactors(n);
+ int signs[2] = {1, -1};
+ auto x_i = matrix.get_x(i);
+ auto y_j = matrix.get_y(0);
+ auto y_tmp = y_j;
+ matrix.remove(i, 0);
+ for (int j = 0; j < n; ++j) {
+  cofactors(j) = signs[(j + i) % 2] * matrix.determinant();
+  y_tmp = matrix.get_y(j);
+  matrix.change_col(j, y_j);
+  y_j = y_tmp;
+ }
+ matrix.insert(i, n, x_i, y_j);
+ return cofactors;
+};
+
 double Configuration::kernels_evaluate() {
  /* Evaluate the kernels for the current configuration. Fill `current_kernels` appropriately
   * and return the corresponding weight (as a real positive value):
   * W(\vec{u}) = \sum_{p=0}^n \sum_{a=0,1}| K_p^a(\vec{u}) |
   * If order n=0, `current_kernels` is not changed and the arbitrary weight 1 is returned.
   * */
+ // TODO: write down the formula this implements
  if (order == 0) return 1.; // is this a good value ?
  if (order > 63) TRIQS_RUNTIME_ERROR << "order overflow";
 
@@ -95,7 +122,8 @@ double Configuration::kernels_evaluate() {
 
  current_kernels() = 0;
  dcomplex det1, det0, inv_value;
- int ap[64] = {0};
+ size_t ap[64] = {0};
+ size_t k_index = 0;
 
  keldysh_contour_pt pt;
  int sign = -1; // Starting with a flip, so -1 -> 1, which is needed in the first iteration
@@ -117,33 +145,27 @@ double Configuration::kernels_evaluate() {
 
   det1 = sign * matrices[1].determinant();
   det0 = matrices[0].determinant();
+
   if (not std::isnormal(std::abs(det0))) {
    // matrix is singular, calculate cofactors
    nb_cofact(order - 1)++;
-   int signs[2] = {1, -1};
-   keldysh_contour_pt tau = get_left_input();
-   keldysh_contour_pt alpha_tmp;
-   keldysh_contour_pt alpha = matrices[0].get_y(0);
-   matrices[0].remove(order, 0);
-   for (int p = 0; p < order; ++p) {
-    det0 = matrices[0].determinant();
-    current_kernels(p, ap[p]) += signs[(p + order) % 2] * matrices[0].determinant() * det1;
-    alpha_tmp = matrices[0].get_y(p);
-    matrices[0].change_col(p, alpha);
-    alpha = alpha_tmp;
+   auto cofactors = cofactor_row(matrices[0], order, matrices[0].size());
+   for (size_t p = 0; p < matrices[0].size(); ++p) {
+    k_index = p < order ? ap[p] : crea_k_ind[p - order];
+    current_kernels(p, k_index) += cofactors(p) * det1;
    }
-   matrices[0].insert(order, order, tau, alpha);
   } else {
    nb_inverse(order - 1)++;
-   for (int p = 0; p < order; ++p) {
+   for (size_t p = 0; p < matrices[0].size(); ++p) {
     inv_value = matrices[0].inverse_matrix(p, order);
-    current_kernels(p, ap[p]) += inv_value * det0 * det1;
+    k_index = p < order ? ap[p] : crea_k_ind[p - order];
+    current_kernels(p, k_index) += inv_value * det0 * det1;
    }
   }
   sign = -sign;
  }
 
- return sum(abs(current_kernels(range(0, order), range())));
+ return sum(abs(current_kernels()));
 };
 
 // -----------------------

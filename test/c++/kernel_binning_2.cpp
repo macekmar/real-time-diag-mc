@@ -19,12 +19,11 @@ int main() {
  binning.add(1, {0, 1., 0}, {0., 1.}); // go in bin 1
  binning.add(1, {0, 2., 0}, {1.5, 0.}); // go in bin 1
  binning.add(1, {0, 2.5, 0}, {0.7, -0.3}); // go in bin 1
- try {
-  // these must not be taken into account (can raise error or just ignored)
-  binning.add(1, {0, 7., 0}, {0., 1.1});
-  binning.add(1, {0, 7.1, 0}, {0.9, 1.});
-  binning.add(1, {0, -1.1, 0}, {0.2, 0.});
- } catch (...) {}
+
+ // out of range values : these must not be taken into account
+ binning.add(1, {0, 7., 0}, {0., 1.1});
+ binning.add(1, {0, 7.1, 0}, {0.9, 1.});
+ binning.add(1, {0, -1.1, 0}, {0.2, 0.});
 
  auto values = binning.get_values();
  bool values_ok = values(0, 0, 0) == dcomplex{1., 1.} and

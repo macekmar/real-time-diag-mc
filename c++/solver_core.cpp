@@ -26,29 +26,7 @@ solver_core::solver_core(solve_parameters_t const& params)
  if (params.max_perturbation_order - params.min_perturbation_order + 1 < 2)
   TRIQS_RUNTIME_ERROR << "The range of perturbation orders must cover at least 2 orders";
 
- // boundaries
- t_max = *std::max_element(params.measure_times.begin(), params.measure_times.end());
- t_max = std::max(t_max, std::get<1>(params.right_input_points[0]));
- t_min = *std::min_element(params.measure_times.begin(), params.measure_times.end());
- t_min = std::min(t_min, std::get<1>(params.right_input_points[0]));
-
- // kernel binning
- kernels_all = array<dcomplex, 3>(params.max_perturbation_order, params.nb_bins, 2);
- kernels = array<dcomplex, 3>(params.max_perturbation_order, params.nb_bins, 2);
- kernels_binning =
-     KernelBinning(-params.interaction_start, t_max, params.nb_bins, params.max_perturbation_order,
-                   false); // TODO: it should be defined in measure
-
- // rank of the Green's function to calculate. For now only 1 is supported.
- if (params.right_input_points.size() % 2 == 0)
-  TRIQS_RUNTIME_ERROR << "There must be an odd number of right input points";
- if (params.right_input_points.size() > 1)
-  TRIQS_RUNTIME_ERROR << "For now only rank 1 Green's functions are supported.";
- rank = params.right_input_points.size() / 2;
-
- taup = make_keldysh_contour_pt(params.right_input_points[0]);
-
- // make tau list from left input points lists
+ // make tau list from first annihilation op points lists
  tau_array = array<keldysh_contour_pt, 2>(params.measure_times.size(), params.measure_keldysh_indices.size());
  if (tau_array.is_empty()) TRIQS_RUNTIME_ERROR << "No left input point !";
 
@@ -59,6 +37,36 @@ solver_core::solver_core(solve_parameters_t const& params)
    tau_array(i, j) = tau;
   }
  }
+
+ // Check creation and annihilation operators
+ if (params.creation_ops.size() != params.annihilation_ops.size() + 1)
+  TRIQS_RUNTIME_ERROR << "Number of creation operators must match the number of annihilation operators + 1";
+ if (params.annihilation_ops.size() > 0 and params.alpha != 0.)
+  TRIQS_RUNTIME_ERROR << "Alpha parameter is supported with 1 particle GF only.";
+
+ for (auto const& pt : params.creation_ops) {
+  creation_pts.push_back(make_keldysh_contour_pt(pt));
+ }
+ annihila_pts.push_back(tau_array(0, 0));
+ for (auto const& pt : params.annihilation_ops) {
+  annihila_pts.push_back(make_keldysh_contour_pt(pt));
+ }
+
+ // boundaries
+ t_max = *std::max_element(params.measure_times.begin(), params.measure_times.end());
+ for (auto const& pt : creation_pts) {
+  if (pt.t > t_max) t_max = pt.t;
+ }
+ for (auto const& pt : annihila_pts) {
+  if (pt.t > t_max) t_max = pt.t;
+ }
+
+ // kernel binning
+ kernels_all = array<dcomplex, 3>(params.max_perturbation_order, params.nb_bins, 2);
+ kernels = array<dcomplex, 3>(params.max_perturbation_order, params.nb_bins, 2);
+ kernels_binning =
+     KernelBinning(-params.interaction_start, t_max, params.nb_bins, params.max_perturbation_order,
+                   false); // TODO: it should be defined in measure
 
  // results arrays
  pn = array<long, 1>(params.max_perturbation_order + 1);     // pn for this process
@@ -88,11 +96,12 @@ void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser,
 
  // configuration
  bool kernels_method = (params.method != 0);
- config = Configuration(green_function_alpha, tau_array(0, 0), taup, params.max_perturbation_order,
+ config = Configuration(green_function_alpha, annihila_pts, creation_pts, params.max_perturbation_order,
                         params.singular_thresholds, kernels_method);
 
  // order zero values
- auto gf_map = map([this](keldysh_contour_pt tau) { return green_function(tau, taup); });
+ //auto g0 = g0_npart(green_function, annihila_pts, creation_pts); // probably give wrong values
+ auto gf_map = map([&](keldysh_contour_pt tau) { return green_function(tau, creation_pts[0]); });
  g0_array = make_matrix(gf_map(tau_array));
 
  // Register moves and measurements
@@ -209,6 +218,9 @@ int solver_core::run(const int nb_cycles, const bool do_measure, const int max_t
 
 // --------------------------------
 void solver_core::compute_sn_from_kernels() {
+ //TODO: maybe a more advanced integration (trapeze ?)
+ // /!\ Maybe only for one particle GF ?
+ auto taup = creation_pts[0];
  if (params.method != 5) TRIQS_RUNTIME_ERROR << "Cannot use kernels with this method";
  std::cout << "Computing sn from kernels..." << std::flush;
  keldysh_contour_pt tau;

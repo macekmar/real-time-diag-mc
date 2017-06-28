@@ -13,7 +13,8 @@ namespace triqs { namespace py_tools {
 template <> struct py_converter<solve_parameters_t> {
  static PyObject *c2py(solve_parameters_t const & x) {
   PyObject * d = PyDict_New();
-  PyDict_SetItemString( d, "right_input_points"     , convert_to_python(x.right_input_points));
+  PyDict_SetItemString( d, "creation_ops"           , convert_to_python(x.creation_ops));
+  PyDict_SetItemString( d, "annihilation_ops"       , convert_to_python(x.annihilation_ops));
   PyDict_SetItemString( d, "interaction_start"      , convert_to_python(x.interaction_start));
   PyDict_SetItemString( d, "measure_state"          , convert_to_python(x.measure_state));
   PyDict_SetItemString( d, "measure_times"          , convert_to_python(x.measure_times));
@@ -52,7 +53,8 @@ template <> struct py_converter<solve_parameters_t> {
 
  static solve_parameters_t py2c(PyObject *dic) {
   solve_parameters_t res;
-  res.right_input_points = convert_from_python<std::vector<std::tuple<x_index_t, double, int> >>(PyDict_GetItemString(dic, "right_input_points"));
+  res.creation_ops = convert_from_python<std::vector<std::tuple<x_index_t, double, int> >>(PyDict_GetItemString(dic, "creation_ops"));
+  res.annihilation_ops = convert_from_python<std::vector<std::tuple<x_index_t, double, int> >>(PyDict_GetItemString(dic, "annihilation_ops"));
   res.interaction_start = convert_from_python<double>(PyDict_GetItemString(dic, "interaction_start"));
   _get_optional(dic, "measure_state"          , res.measure_state             ,0);
   res.measure_times = convert_from_python<std::vector<double>>(PyDict_GetItemString(dic, "measure_times"));
@@ -102,7 +104,7 @@ template <> struct py_converter<solve_parameters_t> {
   std::stringstream fs, fs2; int err=0;
 
 #ifndef TRIQS_ALLOW_UNUSED_PARAMETERS
-  std::vector<std::string> ks, all_keys = {"right_input_points","interaction_start","measure_state","measure_times","measure_keldysh_indices","alpha","U","w_ins_rem","w_dbl","w_shift","max_perturbation_order","min_perturbation_order","length_cycle","random_seed","random_name","max_time","verbosity","method","nb_bins","singular_thresholds"};
+  std::vector<std::string> ks, all_keys = {"creation_ops","annihilation_ops","interaction_start","measure_state","measure_times","measure_keldysh_indices","alpha","U","w_ins_rem","w_dbl","w_shift","max_perturbation_order","min_perturbation_order","length_cycle","random_seed","random_name","max_time","verbosity","method","nb_bins","singular_thresholds"};
   pyref keys = PyDict_Keys(dic);
   if (!convertible_from_python<std::vector<std::string>>(keys, true)) {
    fs << "\nThe dict keys are not strings";
@@ -114,7 +116,8 @@ template <> struct py_converter<solve_parameters_t> {
     fs << "\n"<< ++err << " The parameter '" << k << "' is not recognized.";
 #endif
 
-  _check_mandatory<std::vector<std::tuple<x_index_t, double, int> >>(dic, fs, err, "right_input_points"     , "std::vector<std::tuple<x_index_t, double, int> >");
+  _check_mandatory<std::vector<std::tuple<x_index_t, double, int> >>(dic, fs, err, "creation_ops"           , "std::vector<std::tuple<x_index_t, double, int> >");
+  _check_mandatory<std::vector<std::tuple<x_index_t, double, int> >>(dic, fs, err, "annihilation_ops"       , "std::vector<std::tuple<x_index_t, double, int> >");
   _check_mandatory<double                                          >(dic, fs, err, "interaction_start"      , "double");
   _check_optional <int                                             >(dic, fs, err, "measure_state"          , "int");
   _check_mandatory<std::vector<double>                             >(dic, fs, err, "measure_times"          , "std::vector<double>");

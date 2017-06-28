@@ -17,7 +17,8 @@ g0_lesser, g0_greater = make_g0_semi_circular(**p)
 
 times = np.linspace(-40.0, 0.0, 101)
 p = {}
-p["right_input_points"] = [(0, 0.0, 0)]
+p["creation_ops"] = [(0, 0.0, 0)]
+p["annihilation_ops"] = []
 p["interaction_start"] = 40.0
 p["measure_state"] = 0
 p["measure_keldysh_indices"] = [0, 1]
@@ -75,3 +76,4 @@ with HDFArchive('ref_data/order1_params1.ref.h5', 'r') as ref:
     if not np.allclose(on[1, :, 1], ref['grea']['o1'], rtol=rtol, atol=atol):
         raise RuntimeError, 'FAILED o1 grea'
 
+print 'SUCCESS !'

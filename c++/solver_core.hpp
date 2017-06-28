@@ -35,11 +35,11 @@ class solver_core {
  Configuration config;
  solve_parameters_t params;
  triqs::mc_tools::mc_generic<dcomplex> qmc;
- keldysh_contour_pt taup;
+ std::vector<keldysh_contour_pt> creation_pts;
+ std::vector<keldysh_contour_pt> annihila_pts;
  array<keldysh_contour_pt, 2> tau_array;
  array<dcomplex, 2> g0_array;
- double t_max, t_min;
- int rank;
+ double t_max;
  double solve_duration = 0;
  double solve_duration_all = 0;
  Status status = not_ready;

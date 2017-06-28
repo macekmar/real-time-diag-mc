@@ -17,7 +17,8 @@ g0_lesser, g0_greater = make_g0_semi_circular(**p)
 
 times = np.linspace(-40.0, 0.0, 101)
 p = {}
-p["right_input_points"] = [(0, 0.0, 1)] # lesser
+p["creation_ops"] = [(0, 0.0, 1)] # lesser
+p["annihilation_ops"] = []
 p["interaction_start"] = 40.0
 p["measure_state"] = 0
 p["measure_keldysh_indices"] = [0] # lesser
@@ -55,3 +56,4 @@ with HDFArchive('ref_data/order1_params2.ref.h5', 'r') as ar:
     if not np.allclose(on[1], ar['less']['o1'], rtol=0.1, atol=0.01):
         raise RuntimeError, 'FAILED order 1'
 
+print 'SUCCESS !'

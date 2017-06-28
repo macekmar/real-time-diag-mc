@@ -16,7 +16,8 @@ inline keldysh_contour_pt make_keldysh_contour_pt(std::tuple<x_index_t, double, 
  return {std::get<0>(t), std::get<1>(t), std::get<2>(t)};
 }
 
-/// Comparison (Float is ok in == since we are not doing any operations on them, just store them and compare them in this code).
+/// Comparison (Float is ok in == since we are not doing any operations on them, just store them and compare
+/// them in this code).
 inline bool operator==(keldysh_contour_pt const &x, keldysh_contour_pt const &y) {
  return (x.t == y.t) and (x.k_index == y.k_index); // and (x.x == y.x); //FIXME
 }
@@ -29,7 +30,8 @@ inline keldysh_contour_pt flip_index(keldysh_contour_pt const &t) { return {t.x,
 /**
  * Adapt G0_lesser and G0_greater into a function taking two points on the Keldysh contour
  * It is the function that appears in the calculation of the determinant (det_manip, cf below).
- * It is in fact a lambda, but I need its explicit type below to declare det_manip, so I write it explicitly here.
+ * It is in fact a lambda, but I need its explicit type below to declare det_manip, so I write it explicitly
+ * here.
  */
 struct g0_keldysh_alpha_t {
 
@@ -82,7 +84,33 @@ struct g0_keldysh_t {
  }
 };
 
+using triqs::det_manip::det_manip;
+
+struct g0_npart {
+ /* Implements the function t_1 -> g_0(t_1, ..., t_n | t'_1, ..., t'_n)
+  * Where g_0 is the n particles unperturbed Green's function
+  * And t_2, ..., t_n are the annihilation contour points, t'_1, ..., t'_n the creation contour points
+  */
+ // TODO: write tests
+
+ std::vector<keldysh_contour_pt> annihila_pts;
+ std::vector<keldysh_contour_pt> creation_pts;
+ det_manip<g0_keldysh_t> matrix;
+
+ g0_npart(g0_keldysh_t g0_1part, std::vector<keldysh_contour_pt> annihila_pts,
+          std::vector<keldysh_contour_pt> creation_pts)
+    : annihila_pts(annihila_pts), creation_pts(creation_pts), matrix{g0_1part, 20} {
+  for (size_t i = 1; i < creation_pts.size(); ++i) {
+   matrix.insert_at_end(annihila_pts[i], creation_pts[i]);
+  }
+ }
+
+ dcomplex operator()(keldysh_contour_pt const &tau) {
+  matrix.try_insert(0, 0, tau, creation_pts[0]);
+  return matrix.determinant();
+ }
+};
+
 // --------------   data   --------------------------------------
 
 enum spin { up, down };
-
