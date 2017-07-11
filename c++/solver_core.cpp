@@ -1,6 +1,5 @@
 #include "./solver_core.hpp"
 #include "./moves.hpp"
-#include <gsl/gsl_integration.h>
 #include <triqs/det_manip.hpp>
 
 using namespace triqs::arrays;
