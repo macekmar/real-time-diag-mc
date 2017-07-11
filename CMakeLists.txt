@@ -56,5 +56,9 @@ if (${TRIQS_WITH_PYTHON_SUPPORT})
 # endif(${BUILD_DOC})
 endif()
 
-# Test
+# demo example
+add_subdirectory(demo)
+
+# tests
 add_subdirectory(test)
+
