@@ -15,3 +15,13 @@ target_link_libraries(kernel_binning_2.x ${TRIQS_LIBRARY_ALL})
 triqs_set_rpath_for_target(kernel_binning_2.x)
 add_test(kernel_binning_2 kernel_binning_2.x)
 
+add_executable(cofactor_row_1.x cofactor_row_1.cpp)
+target_link_libraries(cofactor_row_1.x ${TRIQS_LIBRARY_ALL})
+triqs_set_rpath_for_target(cofactor_row_1.x)
+add_test(cofactor_row_1 cofactor_row_1.x)
+
+add_executable(cofactor_row_2.x cofactor_row_2.cpp)
+target_link_libraries(cofactor_row_2.x ${TRIQS_LIBRARY_ALL})
+triqs_set_rpath_for_target(cofactor_row_2.x)
+add_test(cofactor_row_2 cofactor_row_2.x)
+

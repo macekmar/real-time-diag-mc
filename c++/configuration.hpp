@@ -4,6 +4,30 @@
 
 using triqs::det_manip::det_manip;
 
+// -----------------------
+template <typename T>
+array<typename det_manip<T>::value_type, 1> cofactor_row(det_manip<T>& matrix, size_t i, size_t n) {
+ /* Computes the n-th first cofactors of the i-th row of `matrix`.
+  * This does NOT use the inverse matrix.
+  */
+ array<typename det_manip<T>::value_type, 1> cofactors(n);
+ int signs[2] = {1, -1};
+ auto x_i = matrix.get_x(i);
+ auto y_j = matrix.get_y(0);
+ auto y_tmp = y_j;
+ matrix.remove(i, 0);
+ cofactors(0) = signs[i % 2] * matrix.determinant();
+ for (int j = 1; j < n; ++j) {
+  y_tmp = matrix.get_y(j-1);
+  matrix.change_col(j-1, y_j);
+  y_j = y_tmp;
+  cofactors(j) = signs[(j + i) % 2] * matrix.determinant();
+ }
+ matrix.insert(i, n-1, x_i, y_j);
+ return cofactors;
+};
+
+// -----------------------
 class Configuration {
 
  private:
@@ -60,4 +84,5 @@ class Configuration {
  array<long, 1> get_nb_values() const { return nb_values; };
 };
 
+// -----------------------
 void nice_print(det_manip<g0_keldysh_alpha_t> det, int p);

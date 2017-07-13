@@ -83,28 +83,6 @@ keldysh_contour_pt Configuration::get_config(int p) const {
 keldysh_contour_pt Configuration::get_left_input() const { return matrices[0].get_x(order); };
 
 // -----------------------
-
-array<dcomplex, 1> cofactor_row(det_manip<g0_keldysh_alpha_t>& matrix, size_t i, size_t n) {
- /* Computes the n-th first cofactors of the i-th row of `matrix`.
-  * This does NOT use the inverse matrix.
-  */
- // TODO: tests
- array<dcomplex, 1> cofactors(n);
- int signs[2] = {1, -1};
- auto x_i = matrix.get_x(i);
- auto y_j = matrix.get_y(0);
- auto y_tmp = y_j;
- matrix.remove(i, 0);
- for (int j = 0; j < n; ++j) {
-  cofactors(j) = signs[(j + i) % 2] * matrix.determinant();
-  y_tmp = matrix.get_y(j);
-  matrix.change_col(j, y_j);
-  y_j = y_tmp;
- }
- matrix.insert(i, n, x_i, y_j);
- return cofactors;
-};
-
 double Configuration::kernels_evaluate() {
  /* Evaluate the kernels for the current configuration. Fill `current_kernels` appropriately
   * and return the corresponding weight (as a real positive value):
