@@ -1,12 +1,54 @@
 #pragma once
-#include <triqs/gfs.hpp>
 #include <triqs/arrays.hpp>
+#include <triqs/gfs.hpp>
 
 using namespace triqs::gfs;
 
 // Semi-circular band (Xavier)
-std::pair<gf_view<refreq>, gf_view<refreq>> make_g0_semi_circular_freq(double beta, double Gamma, double tmax_gf0, int Nt_gf0,
-                                                                  double epsilon_d, double muL, double muR) {
+gf_view<refreq> make_g0c_semi_circular_freq(double beta, double Gamma, double tmax_gf0, int Nt_gf0,
+                                            double epsilon_d, double muL, double muR) {
+
+ // Construction of the empty GF's, with the correct number of points
+ auto g0_keldysh_t = gf<retime>{{-tmax_gf0, tmax_gf0, 2 * Nt_gf0 - 1}, {2, 2}};
+ auto g0_keldysh_w = make_gf_from_fourier(g0_keldysh_t);
+
+ // Fermi function
+ auto nf = [&](double omega) {
+  return beta > 0 ? 1. / (1. + std::exp(beta * omega))
+                  : (beta < 0. ? ((omega < 0. ? 1. : (omega > 0. ? 0. : 0.5))) : 0.5);
+ };
+
+ // Retarded self energy with semi circular sigma dos (linear chain).
+ auto sigma_linear_chain = [](double omega) -> dcomplex {
+  omega = omega / 2.;
+  if (std::abs(omega) < 1) return dcomplex{omega, -std::sqrt(1 - omega * omega)};
+  if (omega > 1) return omega - std::sqrt(omega * omega - 1);
+  return omega + std::sqrt(omega * omega - 1);
+ };
+
+ // The non interacting dot GF's in frequency (2*2 matrix with Keldysh indices)
+ // From XW computation
+ auto G0_dd_w = [&](double omega) {
+  dcomplex gr = 1 / (omega - epsilon_d - 2 * Gamma * sigma_linear_chain(omega));
+  dcomplex fac = 2_j * gr * conj(gr);
+  dcomplex gam_gg = -1 * Gamma * imag(sigma_linear_chain(omega)) * fac;
+  dcomplex temp = (nf(omega - muL) + nf(omega - muR)) * gam_gg;
+  dcomplex temp2 = temp - 2 * gam_gg;
+  return array<dcomplex, 2>{{gr + temp, temp}, {temp2, -conj(gr) + temp}};
+ };
+
+ for (auto w : g0_keldysh_w.mesh()) {
+  auto g0_dd = G0_dd_w(w);
+  g0_keldysh_w[w]() = g0_dd;
+ }
+
+ return g0_keldysh_w;
+}
+
+std::pair<gf_view<refreq>, gf_view<refreq>> make_g0_semi_circular_freq(double beta, double Gamma,
+                                                                       double tmax_gf0, int Nt_gf0,
+                                                                       double epsilon_d, double muL,
+                                                                       double muR) {
 
  // Construction of the empty GF's, with the correct number of points
  auto g0_greater_t = gf<retime>{{-tmax_gf0, tmax_gf0, 2 * Nt_gf0 - 1}, {2, 2}};
@@ -16,7 +58,8 @@ std::pair<gf_view<refreq>, gf_view<refreq>> make_g0_semi_circular_freq(double be
 
  // Fermi function
  auto nf = [&](double omega) {
-  return beta > 0 ? 1. / (1. + std::exp(beta * omega)) : (beta < 0. ? ((omega < 0. ? 1. : (omega > 0. ? 0. : 0.5))) : 0.5);
+  return beta > 0 ? 1. / (1. + std::exp(beta * omega))
+                  : (beta < 0. ? ((omega < 0. ? 1. : (omega > 0. ? 0. : 0.5))) : 0.5);
  };
 
  // Retarded self energy with semi circular sigma dos (linear chain).
@@ -72,8 +115,9 @@ std::pair<gf_view<refreq>, gf_view<refreq>> make_g0_semi_circular_freq(double be
  return {g0_lesser_w, g0_greater_w};
 }
 
-std::pair<gf_view<retime>, gf_view<retime>> make_g0_semi_circular(double beta, double Gamma, double tmax_gf0, int Nt_gf0,
-                                                                  double epsilon_d, double muL, double muR) {
+std::pair<gf_view<retime>, gf_view<retime>> make_g0_semi_circular(double beta, double Gamma, double tmax_gf0,
+                                                                  int Nt_gf0, double epsilon_d, double muL,
+                                                                  double muR) {
 
  auto g0_w = make_g0_semi_circular_freq(beta, Gamma, tmax_gf0, Nt_gf0, epsilon_d, muL, muR);
 
