@@ -26,13 +26,19 @@ Configuration::Configuration(g0_keldysh_alpha_t green_function, std::vector<keld
  matrices[1].set_singular_threshold(singular_thresholds.second);
 
  // inserting first annihilation point
+ if (annihila_pts[0].x != 0 or creation_pts[0].x != 0) // spin of creation_pts[0] is assumed same as annihila_pts[0]
+  TRIQS_RUNTIME_ERROR << "First points must have spin 0";
  matrices[0].insert_at_end(annihila_pts[0],
-                           creation_pts[0]); // spin of creation_pts[0] is assumed same as annihila_pts[0]
+                           creation_pts[0]);
  crea_k_ind.push_back(creation_pts[0].k_index);
  // inserting other points
  for (size_t i = 1; i < creation_pts.size(); ++i) {
-  size_t mat_ind = annihila_pts[i].x == annihila_pts[0].x ? 0 : 1;
-  matrices[mat_ind].insert_at_end(annihila_pts[i], creation_pts[i]); // both points assumed to have same spin
+  if (annihila_pts[i].x != creation_pts[i].x) // both points assumed to have same spin
+   TRIQS_RUNTIME_ERROR << "Pairs of annihilation and creation points must have the same spin";
+  size_t mat_ind = annihila_pts[i].x == 0 ? 0 : 1;
+  annihila_pts[i].x = 0;
+  creation_pts[i].x = 0;
+  matrices[mat_ind].insert_at_end(annihila_pts[i], creation_pts[i]);
   if (mat_ind == 0) crea_k_ind.push_back(creation_pts[i].k_index);
  }
 
@@ -74,13 +80,9 @@ void Configuration::change_config(int k, keldysh_contour_pt pt) {
  };
 };
 
-void Configuration::change_left_input(keldysh_contour_pt tau) { matrices[0].change_row(order, tau); };
-
 keldysh_contour_pt Configuration::get_config(int p) const {
  return matrices[0].get_x(p);
 }; // assuming alpha is a single point
-
-keldysh_contour_pt Configuration::get_left_input() const { return matrices[0].get_x(order); };
 
 // -----------------------
 double Configuration::kernels_evaluate() {
@@ -180,7 +182,6 @@ void Configuration::register_config() {
  }
 
  std::vector<double> config;
- config.emplace_back(get_left_input().t);
  for (int i = 0; i < order; ++i) {
   config.emplace_back(get_config(i).t);
  }

@@ -85,7 +85,7 @@ void TwoDetKernelMeasure::accumulate(dcomplex sign) {
   keldysh_contour_pt alpha_p;
 
   for (int p = 0; p < config.matrices[0].size(); ++p) {
-   alpha_p = config.get_config(p);
+   alpha_p = config.matrices[0].get_y(p);
    for (int k_index : {1, 0}) {
     alpha_p = flip_index(alpha_p);
     kernels_binning.add(config.order, alpha_p,

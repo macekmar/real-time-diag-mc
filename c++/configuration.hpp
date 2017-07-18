@@ -71,9 +71,7 @@ class Configuration {
  void remove(int k);
  void remove2(int k1, int k2);
  void change_config(int k, keldysh_contour_pt pt);
- void change_left_input(keldysh_contour_pt tau);
  keldysh_contour_pt get_config(int p) const;
- keldysh_contour_pt get_left_input() const;
 
  void evaluate();
  void accept_config();

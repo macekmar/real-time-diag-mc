@@ -40,8 +40,8 @@ solver_core::solver_core(solve_parameters_t const& params)
  // Check creation and annihilation operators
  if (params.creation_ops.size() != params.annihilation_ops.size() + 1)
   TRIQS_RUNTIME_ERROR << "Number of creation operators must match the number of annihilation operators + 1";
- if (params.annihilation_ops.size() > 0 and params.alpha != 0.)
-  TRIQS_RUNTIME_ERROR << "Alpha parameter is supported with 1 particle GF only.";
+ //if (params.annihilation_ops.size() > 0 and params.alpha != 0.)
+ // TRIQS_RUNTIME_ERROR << "Alpha parameter is supported with 1 particle GF only.";
 
  for (auto const& pt : params.creation_ops) {
   creation_pts.push_back(make_keldysh_contour_pt(pt));
