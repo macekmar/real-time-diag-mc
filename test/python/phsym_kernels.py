@@ -10,25 +10,33 @@ Test the symmetry of the kernels in the particle-hole symmetric case (epsilon_d=
 
 """
 
-p = {}
-p["beta"] = 200.0
-p["Gamma"] = 0.2
-p["tmax_gf0"] = 100.0
-p["Nt_gf0"] = 25000
-p["epsilon_d"] = 0.0
-p["muL"] = 0.
-p["muR"] = 0.
+from pytriqs.gf.local import GfReTime
+from scipy import special
 
-g0_lesser, g0_greater = make_g0_semi_circular(**p)
+def g0_less_ana(Gamma, t):
+    """g0 lesser sans interaction pour le car particule trou symmetrique (epsilon_d=0.),
+    a l'equilibre et a temperature nulle."""
+    if t > 0.:
+        im = 0.5 * np.exp(-Gamma*np.abs(t))
+        re = np.exp(Gamma*t) * special.expi(-t*Gamma).real - np.exp(-Gamma*t) * special.expi(t*Gamma).real
+        re /= 2.*np.pi
+        return re + 1.j*im
+    elif t < 0.:
+        return -np.conjugate(g0_less_ana(Gamma, -t))
+    else:
+        return 0.5j
 
-# enforce the particle-hole symmetry
-# g0_greater.data[...] = np.conjugate(g0_lesser.data)
+g0_less_ana_v = np.vectorize(g0_less_ana)
 
-less_data = g0_lesser.data[:, 0, 0]
-g0_lesser.data[:, 0, 0]  = 0.5*(less_data - np.conjugate(less_data)[::-1])
+Nt_gf0 = 10000
+tmax_gf0 = 110.
+g0_less = GfReTime(indices=['d', 's'], window=(-tmax_gf0, tmax_gf0), n_points=2*Nt_gf0+1, name='lesser')
+g0_grea = GfReTime(indices=['d', 's'], window=(-tmax_gf0, tmax_gf0), n_points=2*Nt_gf0+1, name='greater')
 
-grea_data = g0_greater.data[:, 0, 0]
-g0_greater.data[:, 0, 0]  = 0.5*(grea_data - np.conjugate(grea_data)[::-1])
+Gamma = 0.2
+g0_less.data[:, 0, 0] = g0_less_ana_v(Gamma, np.linspace(-tmax_gf0, tmax_gf0, 2*Nt_gf0+1))
+g0_grea.data[:, 0, 0] = np.conjugate(g0_less.data[:, 0, 0])
+
 
 times = np.linspace(-40.0, 0.0, 101)
 p = {}
@@ -50,7 +58,7 @@ p["method"] = 5
 p["singular_thresholds"] = [3.0, 3.3]
 
 S = SolverCore(**p)
-S.set_g0(g0_lesser, g0_greater)
+S.set_g0(g0_less, g0_grea)
 
 S.run(1000, False) # warmup
 S.run(10000, True)
@@ -58,9 +66,10 @@ S.run(10000, True)
 kernels = S.kernels
 kernels_all = S.kernels_all
 
-for k in range(len(kernels)):
+for k in range(1, len(kernels), 2):
 
     # plt.plot(np.abs(kernels[k, :, 0] - np.conjugate(kernels[k, :, 1])))
+    # plt.semilogy()
     # plt.show()
     if not np.allclose(kernels[k, :, 0], np.conjugate(kernels[k, :, 1]), atol=1e-12):
         raise RuntimeError, 'FAILED kernels not symmetric for k={0}'.format(k)
