@@ -20,6 +20,7 @@ tmax = 3.
 p = {}
 p["creation_ops"] = [(0, 0.0, 1)]
 p["annihilation_ops"] = []
+p["extern_alphas"] = [0.]
 p["interaction_start"] = tmax
 p["measure_state"] = 0
 p["measure_keldysh_indices"] = [0]

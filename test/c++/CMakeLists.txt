@@ -25,3 +25,8 @@ target_link_libraries(cofactor_row_2.x ${TRIQS_LIBRARY_ALL})
 triqs_set_rpath_for_target(cofactor_row_2.x)
 add_test(cofactor_row_2 cofactor_row_2.x)
 
+add_executable(g0_keldysh_alpha.x g0_keldysh_alpha.cpp)
+target_link_libraries(g0_keldysh_alpha.x ${TRIQS_LIBRARY_ALL})
+triqs_set_rpath_for_target(g0_keldysh_alpha.x)
+add_test(g0_keldysh_alpha g0_keldysh_alpha.x)
+

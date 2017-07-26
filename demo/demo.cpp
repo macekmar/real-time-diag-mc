@@ -22,8 +22,12 @@ int main() {
  auto pt = std::tuple<x_index_t, double, int>(0, 0.0, 0);
  creation_ops.push_back(pt);
 
+ std::vector<dcomplex> extern_alphas;
+ extern_alphas.push_back(0.);
+
  params.creation_ops = creation_ops;
  params.annihilation_ops = annihilation_ops;
+ params.extern_alphas = extern_alphas;
  std::vector<double> measure_times = {-50., -40., -30.};
  params.measure_times = measure_times;
  std::vector<int> measure_keldysh_indices = {0, 1};

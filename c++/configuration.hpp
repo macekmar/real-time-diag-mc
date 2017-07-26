@@ -76,10 +76,12 @@ class Configuration {
  void evaluate();
  void accept_config();
 
- void register_config();
-
  array<double, 1> get_weight_sum() const { return weight_sum; };
  array<long, 1> get_nb_values() const { return nb_values; };
+
+ // utility and debug
+ void register_config();
+ void print();
 };
 
 // -----------------------

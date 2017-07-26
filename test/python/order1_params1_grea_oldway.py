@@ -20,6 +20,7 @@ times = times[::10] # divide by 10 the size because oldway takes more time
 p = {}
 p["creation_ops"] = [(0, 0.0, 0)] # greater
 p["annihilation_ops"] = []
+p["extern_alphas"] = [0.]
 p["interaction_start"] = 40.0
 p["measure_state"] = 0
 p["measure_keldysh_indices"] = [1] # greater

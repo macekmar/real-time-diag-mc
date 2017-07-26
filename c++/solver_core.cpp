@@ -40,15 +40,21 @@ solver_core::solver_core(solve_parameters_t const& params)
  // Check creation and annihilation operators
  if (params.creation_ops.size() != params.annihilation_ops.size() + 1)
   TRIQS_RUNTIME_ERROR << "Number of creation operators must match the number of annihilation operators + 1";
- //if (params.annihilation_ops.size() > 0 and params.alpha != 0.)
- // TRIQS_RUNTIME_ERROR << "Alpha parameter is supported with 1 particle GF only.";
+ if (params.extern_alphas.size() != params.creation_ops.size())
+  TRIQS_RUNTIME_ERROR << "Number of external alphas must match number of creation operators.";
 
+ int rank = 0;
  for (auto const& pt : params.creation_ops) {
-  creation_pts.push_back(make_keldysh_contour_pt(pt));
+  creation_pts.push_back(make_keldysh_contour_pt(pt, rank));
+  rank++;
  }
+
  annihila_pts.push_back(tau_array(0, 0));
+ annihila_pts[0].rank = 0;
+ rank = 1;
  for (auto const& pt : params.annihilation_ops) {
-  annihila_pts.push_back(make_keldysh_contour_pt(pt));
+  annihila_pts.push_back(make_keldysh_contour_pt(pt, rank));
+  rank++;
  }
 
  // boundaries
@@ -89,9 +95,8 @@ void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser,
  if (status > not_ready) TRIQS_RUNTIME_ERROR << "Green functions already set up. Cannot change.";
 
  // non interacting Green function
- green_function_alpha =
-     g0_keldysh_alpha_t{g0_adaptor_t{g0_lesser}, g0_adaptor_t{g0_greater}, params.alpha, t_max};
  green_function = g0_keldysh_t{g0_adaptor_t{g0_lesser}, g0_adaptor_t{g0_greater}};
+ green_function_alpha = g0_keldysh_alpha_t{green_function, params.alpha, params.extern_alphas};
 
  // configuration
  bool kernels_method = (params.method != 0);
@@ -99,7 +104,7 @@ void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser,
                         params.singular_thresholds, kernels_method);
 
  // order zero values
- //auto g0 = g0_npart(green_function, annihila_pts, creation_pts); // probably give wrong values
+ // auto g0 = g0_npart(green_function, annihila_pts, creation_pts); // probably give wrong values
  auto gf_map = map([&](keldysh_contour_pt tau) { return green_function(tau, creation_pts[0]); });
  g0_array = make_matrix(gf_map(tau_array));
 
@@ -217,7 +222,7 @@ int solver_core::run(const int nb_cycles, const bool do_measure, const int max_t
 
 // --------------------------------
 void solver_core::compute_sn_from_kernels() {
- //TODO: maybe a more advanced integration (trapeze ?)
+ // TODO: maybe a more advanced integration (trapeze ?)
  // /!\ Maybe only for one particle GF ?
  auto taup = creation_pts[0];
  if (params.method != 5) TRIQS_RUNTIME_ERROR << "Cannot use kernels with this method";

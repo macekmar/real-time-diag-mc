@@ -24,6 +24,9 @@ struct solve_parameters_t {
  // Its size must match `creation_ops` size - 1
  std::vector<std::tuple<x_index_t, double, int>> annihilation_ops;
 
+ /// alphas to be used in the extra lines/columns. Same length as `creation_ops`.
+ std::vector<dcomplex> extern_alphas;
+
  /// time before 0 at which interaction started
  double interaction_start;
 

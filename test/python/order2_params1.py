@@ -19,6 +19,7 @@ times = np.linspace(-40.0, 0.0, 50)
 p = {}
 p["creation_ops"] = [(0, 0.0, 0)]
 p["annihilation_ops"] = []
+p["extern_alphas"] = [0.]
 p["interaction_start"] = 40.0
 p["measure_state"] = 0
 p["measure_keldysh_indices"] = [0, 1]

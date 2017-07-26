@@ -1,5 +1,7 @@
 #include "./configuration.hpp"
 
+//#define REGENERATE_MATRIX_BEFORE_EACH_GRAY_CODE
+
 Configuration::Configuration(g0_keldysh_alpha_t green_function, std::vector<keldysh_contour_pt> annihila_pts,
                              std::vector<keldysh_contour_pt> creation_pts, int max_order,
                              std::pair<double, double> singular_thresholds, bool kernels_comput = true)
@@ -26,10 +28,10 @@ Configuration::Configuration(g0_keldysh_alpha_t green_function, std::vector<keld
  matrices[1].set_singular_threshold(singular_thresholds.second);
 
  // inserting first annihilation point
- if (annihila_pts[0].x != 0 or creation_pts[0].x != 0) // spin of creation_pts[0] is assumed same as annihila_pts[0]
+ if (annihila_pts[0].x != 0 or
+     creation_pts[0].x != 0) // spin of creation_pts[0] is assumed same as annihila_pts[0]
   TRIQS_RUNTIME_ERROR << "First points must have spin 0";
- matrices[0].insert_at_end(annihila_pts[0],
-                           creation_pts[0]);
+ matrices[0].insert_at_end(annihila_pts[0], creation_pts[0]);
  crea_k_ind.push_back(creation_pts[0].k_index);
  // inserting other points
  for (size_t i = 1; i < creation_pts.size(); ++i) {
@@ -197,5 +199,19 @@ void Configuration::register_config() {
  else {
   config_list.emplace_back(config);
   config_weight.emplace_back(1);
+ }
+};
+
+// -----------------------
+void Configuration::print() {
+ std::cout << std::endl;
+ int n;
+ for (auto& m : matrices) {
+  n = m.size();
+  for (int i = 0; i < n; ++i) std::cout << "(" << m.get_x(i).t << ", " << m.get_x(i).k_index << "), ";
+  std::cout << std::endl;
+  for (int i = 0; i < n; ++i) std::cout << "(" << m.get_y(i).t << ", " << m.get_y(i).k_index << "), ";
+  std::cout << std::endl;
+  std::cout << std::endl;
  }
 };
