@@ -44,10 +44,11 @@ int main() {
  params.max_perturbation_order = 6;
  params.min_perturbation_order = 0;
  params.method = 5;
+ params.verbosity = 1;
 
  solver_core S(params);
  S.set_g0(g0.first, g0.second);
- S.run(200000, true);
+ S.run(2000, true);
 
  std::cout << "pn: " << S.get_pn() << std::endl;
  std::cout << "sn: " << S.get_sn() << std::endl;

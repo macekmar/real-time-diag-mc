@@ -11,11 +11,10 @@ struct keldysh_contour_pt {
  qmc_time_t t;  // time, in [0, t_max].
  int k_index;   // Keldysh index : 0 (upper contour), or 1 (lower contour)
  int rank = -1; // -1 if internal point, else the rank in the correlator to calculate.
-};
 
-inline keldysh_contour_pt make_keldysh_contour_pt(std::tuple<x_index_t, double, int> const &t) {
- return {std::get<0>(t), std::get<1>(t), std::get<2>(t)};
-}
+ keldysh_contour_pt() = default;
+ keldysh_contour_pt(x_index_t x, qmc_time_t t, int k_index, int rank=-1) : x(x), t(t), k_index(k_index), rank(rank) {};
+};
 
 inline keldysh_contour_pt make_keldysh_contour_pt(std::tuple<x_index_t, double, int> const &t, int r) {
  return {std::get<0>(t), std::get<1>(t), std::get<2>(t), r};
@@ -28,7 +27,7 @@ inline bool operator==(keldysh_contour_pt const &x, keldysh_contour_pt const &y)
 }
 
 /// flip the Keldysh index
-inline keldysh_contour_pt flip_index(keldysh_contour_pt const &t) { return {t.x, t.t, 1 - t.k_index}; }
+inline keldysh_contour_pt flip_index(keldysh_contour_pt const &t) { return {t.x, t.t, 1 - t.k_index, t.rank}; }
 
 // --------------   G0 adaptor   --------------------------------------
 
