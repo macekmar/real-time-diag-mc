@@ -144,7 +144,7 @@ int solver_core::run(const int nb_cycles, const bool do_measure, const int max_t
   TRIQS_RUNTIME_ERROR << "Order zero cannot run, use order_zero method instead";
 
  mpi::communicator world;
- std::cout << "Waiting for other processes before run..." << std::endl;
+ if (world.rank() == 0) std::cout << "Waiting for other processes before run..." << std::endl;
  MPI_Barrier(MPI_COMM_WORLD);
 
  int run_status;
@@ -155,14 +155,14 @@ int solver_core::run(const int nb_cycles, const bool do_measure, const int max_t
  }
 
  // accumulate
- std::cout << "Accumulate..." << std::endl;
+ if (world.rank() == 0) std::cout << "Accumulate..." << std::endl;
  run_status = qmc.run(nb_cycles, params.length_cycle, triqs::utility::clock_callback(max_time), do_measure);
- std::cout << "done" << std::endl << std::endl;
+ if (world.rank() == 0) std::cout << "done" << std::endl << std::endl;
 
  // Collect results
- std::cout << "Collecting results... " << std::endl;
+ if (world.rank() == 0) std::cout << "Collecting results... " << std::endl;
  qmc.collect_results(world);
- std::cout << "done" << std::endl << std::endl;
+ if (world.rank() == 0) std::cout << "done" << std::endl << std::endl;
 
  solve_duration = solve_duration + qmc.get_duration();
  solve_duration_all = mpi::mpi_all_reduce(solve_duration);
@@ -226,7 +226,7 @@ void solver_core::compute_sn_from_kernels() {
  // /!\ Maybe only for one particle GF ?
  auto taup = creation_pts[0];
  if (params.method != 5) TRIQS_RUNTIME_ERROR << "Cannot use kernels with this method";
- std::cout << "Computing sn from kernels..." << std::flush;
+ if (mpi::communicator().rank() == 0) std::cout << "Computing sn from kernels..." << std::flush;
  keldysh_contour_pt tau;
  for (int i = 0; i < second_dim(sn); ++i) { // for each tau (time)
   for (int a = 0; a < third_dim(sn); ++a) { // for each tau (keldysh index)
@@ -241,7 +241,7 @@ void solver_core::compute_sn_from_kernels() {
    }
   }
  }
- std::cout << "done" << std::endl;
+ if (mpi::communicator().rank() == 0) std::cout << "done" << std::endl;
 }
 
 // --------------------------------

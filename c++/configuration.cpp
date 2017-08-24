@@ -6,6 +6,7 @@ Configuration::Configuration(g0_keldysh_alpha_t green_function, std::vector<keld
                              std::vector<keldysh_contour_pt> creation_pts, int max_order,
                              std::pair<double, double> singular_thresholds, bool kernels_comput = true)
    : singular_thresholds(singular_thresholds),
+     cofactor_threshold(5.),
      order(0),
      max_order(max_order),
      kernels_comput(kernels_comput) {
@@ -128,7 +129,7 @@ double Configuration::kernels_evaluate() {
   det1 = sign * matrices[1].determinant();
   det0 = matrices[0].determinant();
 
-  if (not std::isnormal(std::abs(det0))) {
+  if (matrices[0].get_cond_nb() > cofactor_threshold or (not std::isnormal(std::abs(det0))) ) {
    // matrix is singular, calculate cofactors
    nb_cofact(order - 1)++;
    auto cofactors = cofactor_row(matrices[0], order, matrices[0].size());

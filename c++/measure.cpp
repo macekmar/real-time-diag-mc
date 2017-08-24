@@ -25,9 +25,9 @@ void WeightSignMeasure::accumulate(dcomplex sign) {
 
 // ----------
 void WeightSignMeasure::collect_results(mpi::communicator c) {
- std::cout << "Waiting for other processes before gathering..." << std::endl;
+ if (c.rank() == 0) std::cout << "Waiting for other processes before gathering..." << std::endl;
  MPI_Barrier(MPI_COMM_WORLD);
- std::cout << "Gathering..." << std::endl;
+ if (c.rank() == 0) std::cout << "Gathering..." << std::endl;
 
  // gather pn
  auto data_histogram_pn = histogram_pn.data();
@@ -97,9 +97,9 @@ void TwoDetKernelMeasure::accumulate(dcomplex sign) {
 
 // ----------
 void TwoDetKernelMeasure::collect_results(mpi::communicator c) {
- std::cout << "Waiting for other processes before gathering..." << std::endl;
+ if (c.rank() == 0) std::cout << "Waiting for other processes before gathering..." << std::endl;
  MPI_Barrier(MPI_COMM_WORLD);
- std::cout << "Gathering..." << std::endl;
+ if (c.rank() == 0) std::cout << "Gathering..." << std::endl;
 
  // gather pn
  auto data_histogram_pn = histogram_pn.data();

@@ -67,27 +67,6 @@ def gather_histogram(solver, comm=MPI.COMM_WORLD):
 
     return list_histograms_all
 
-def write(duration, nb_measures, parameters, on, on_error, filename, kind_list, nb_proc):
-    # before using save, check kind_list has the good shape
-    with HDFArchive(filename, 'w') as ar:
-        ar['nb_proc'] = nb_proc
-        ar['interaction_start'] = parameters['interaction_start']
-        ar['run_time'] = duration
-        ar['nb_measures'] = nb_measures
-
-        for i, kind in enumerate(kind_list):
-            ar.create_group(kind)
-            group = ar[kind]
-            group['times'] = parameters['measure_times']
-            group['on'] = np.squeeze(on[:, :, i])
-            group['on_error'] = np.squeeze(on_error[:, :, i])
-
-    print 'Saved in', filename
-
-def write_add(data, data_name, filename):
-    with HDFArchive(filename, 'a') as ar:
-        ar[data_name] = data
-
 
 def calc_ideal_U(pn, U):
     """calculates ideal U value"""
@@ -301,49 +280,6 @@ def single_solve(g0_lesser, g0_greater, parameters_, filename=None, kind_list=No
 
     return np.squeeze(solver.res['on_all']), np.squeeze(solver.res['on_error'])
 
-# deprecated
-def single_solve_old(g0_lesser, g0_greater, parameters, filename=None, kind_list=None, save_period=-1, histogram=False):
-    save = filename is not None
-
-    if save and len(parameters['measure_keldysh_indices']) != len(kind_list) :
-        raise ValueError, 'kind_list has wrong shape'
-
-    world = MPI.COMM_WORLD
-
-    S = SolverCore(**parameters)
-    S.set_g0(g0_lesser, g0_greater)
-
-    c0, _ = S.order_zero
-
-    status = 1
-    while status == 1:
-        status = S.run(save_period) # status=0 if finished, 1 if timed up, 2 if aborted
-
-        on_result = perturbation_series(c0, S.pn_all, S.sn_all, parameters['U'])
-
-        # Calculate error
-        # estimation using the variance of the On obtained on each process (assumes each process is equivalent)
-        on = perturbation_series(c0, S.pn, S.sn, parameters['U'])
-        on_error = variance_error(on, world)
-
-        if save and world.rank == 0:
-            write(S.solve_duration, S.nb_measures_all, parameters, on, on_error, filename, kind_list, world.size)
-            write_add(S.kernels_all, 'kernels', filename)
-
-        output = (np.squeeze(on), np.squeeze(on_error))
-        if world.rank == 0:
-            print "Number of measures (all procs):", S.nb_measures_all
-            print
-
-        if histogram:
-            list_hist = gather_histogram(S, world)
-            output += (list_hist,)
-
-            if world.rank == 0:
-                with HDFArchive(filename, 'a') as ar:
-                    ar['histogram'] = list_hist
-
-    return output
 
 def staircase_solve(g0_lesser, g0_greater, parameters_, filename=None, kind_list=None, save_period=-1, only_even=False):
     parameters = parameters_.copy()
@@ -371,128 +307,6 @@ def staircase_solve(g0_lesser, g0_greater, parameters_, filename=None, kind_list
 
     return np.squeeze(solver.res['on_all']), np.squeeze(solver.res['on_error'])
 
-# deprecated
-def staircase_solve_old(g0_lesser, g0_greater, _parameters, filename=None, kind_list=None, save_period=-1, only_even=False):
-    save = filename is not None
-
-    if save and len(_parameters['measure_keldysh_indices']) != len(kind_list) :
-        raise ValueError, 'kind_list has wrong shape'
-
-    world = MPI.COMM_WORLD
-
-    if world.rank == 0:
-        print "\n----------- Save staircase solver -----------"
-
-    parameters = _parameters.copy()
-    parameters["min_perturbation_order"] = 0
-    max_order = parameters["max_perturbation_order"]
-    solve_duration = 0
-    nb_measures = 0
-
-    if not only_even:
-        orders = list(range(1, max_order + 1))
-    else:
-        orders = list(range(2, max_order + 1, 2))
-
-    U_list = parameters["U"]
-    if len(U_list) < len(orders):
-        raise RuntimeError, 'Number of U must match number of non zero orders'
-    parameters["U"] = U_list[0]
-
-    pn_all = (len(orders) + 1) * [None]
-    pn     = (len(orders) + 1) * [None]
-    sn_all = (len(orders) + 1) * [None]
-    sn     = (len(orders) + 1) * [None]
-    kernels = (max_order + 1) * [None]
-    nb_kernels = (max_order + 1) * [None]
-
-    # order zero
-    S = SolverCore(**parameters)
-    S.set_g0(g0_lesser, g0_greater)
-    c0, s0 = S.order_zero
-
-    pn_all[0] = [1]
-    pn[0] = [1]
-    sn_all[0] = s0[np.newaxis, :]
-    sn[0] = s0[np.newaxis, :]
-
-    k_catchup = 0
-    for i, k in enumerate(orders):
-        i += 1 # i=0 is reserved for order zero
-
-        if world.rank == 0:
-            print "---------------- Order", k, "----------------"
-
-        parameters["max_perturbation_order"] = k
-        parameters["U"] = U_list[i - 1]
-
-        S = SolverCore(**parameters)
-        S.set_g0(g0_lesser, g0_greater)
-
-        abort = False
-        end_subrun = False
-        while not (abort or end_subrun):
-            status = S.run(save_period)
-
-            status_all = world.allgather(status)
-            abort = 2 in status_all
-            end_subrun = 1 not in status_all # subrun ends when all proc are done with it
-
-            pn_all[i] = S.pn_all
-            pn[i] = S.pn
-            sn_all[i] = S.sn_all
-            sn[i] = S.sn
-            while k_catchup <= k:
-                kernels[k_catchup] = S.kernels_all[k_catchup, ...]
-                nb_kernels[k_catchup] = S.nb_kernels[k_catchup, ...]
-                k_catchup += 1
-
-            if world.rank == 0:
-                for i_print in range(i+1):
-                    print pn_all[i_print]
-                print
-
-            # calculates ideal U value
-            pn_nonzero = S.pn_all
-            nonzero_ind = np.nonzero(pn_nonzero)[0]
-            pn_nonzero = pn_nonzero[nonzero_ind].astype(np.float32)
-            if len(pn_nonzero) >= 2:
-                power = float(nonzero_ind[-1] - nonzero_ind[-2])
-                U_proposed = parameters['U'] * pow(2. * pn_nonzero[-2] / pn_nonzero[-1], 1. / power)
-            else:
-                U_proposed = None
-
-            # calculates results
-            on_result, cn_result = staircase_perturbation_series(c0, pn_all[:i+1], sn_all[:i+1], U_list)
-
-            # Calculate error
-            # estimation using the variance of the On obtained on each process (assumes each process is equivalent)
-            on, cn = staircase_perturbation_series(c0, pn[:i+1], sn[:i+1], U_list)
-            on_error = variance_error(on, world)
-
-            # print "Number of measures (procs", world.rank, ", this order):", S.nb_measures
-
-            if world.rank == 0:
-                print datetime.now(), ": Order", k
-                print "Duration (this order):", S.solve_duration
-                print "Duration (all orders):", solve_duration + S.solve_duration
-                print "Number of measures (all procs, this order):", S.nb_measures_all
-                print "Number of measures (all procs, all orders):", nb_measures + S.nb_measures_all
-                print "U proposed:", U_proposed, "(current is", parameters['U'], ")"
-                print
-                if save:
-                    write(solve_duration + S.solve_duration, nb_measures + S.nb_measures_all, parameters, on_result[:k+1], on_error[:k+1], filename, kind_list, world.size)
-                    write_add(np.array(kernels[:k+1], dtype=complex), 'kernels', filename)
-                    write_add(np.array(nb_kernels[:k+1], dtype=int), 'nb_kernels', filename)
-                    write_add(np.array(cn_result), 'cn', filename)
-
-        solve_duration += S.solve_duration
-        nb_measures += S.nb_measures_all
-        if abort: break # Received signal, terminate
-
-    del S
-
-    return np.squeeze(on_result), np.squeeze(on_error)
 
 if __name__ == '__main__':
     world = MPI.COMM_WORLD

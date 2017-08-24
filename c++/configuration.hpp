@@ -33,6 +33,7 @@ class Configuration {
  private:
  bool kernels_comput = true;
  std::pair<double, double> singular_thresholds; // for det_manip
+ double cofactor_threshold;
  int max_order = 0;
  array<double, 1> weight_sum;
  array<long, 1> nb_values;
