@@ -34,7 +34,7 @@ p["length_cycle"] = 50
 p["w_dbl"] = 0
 p["w_shift"] = 0
 p["method"] = 5
-p["singular_thresholds"] = [3.0, 3.3]
+p["singular_thresholds"] = [3.5, 3.3]
 
 on, on_error = staircase_solve(g0_lesser, g0_greater, p)
 
