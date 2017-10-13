@@ -68,16 +68,28 @@ def gather_histogram(solver, comm=MPI.COMM_WORLD):
     return list_histograms_all
 
 
+# def calc_ideal_U(pn, U):
+#     """calculates ideal U value"""
+#     nonzero_ind = np.nonzero(pn)[0]
+#     pn_nonzero = pn[nonzero_ind].astype(np.float32)
+#     if len(pn_nonzero) >= 2:
+#         power = float(nonzero_ind[-1] - nonzero_ind[-2])
+#         U_proposed = U * pow(2. * pn_nonzero[-2] / pn_nonzero[-1], 1. / power)
+#     else:
+#         U_proposed = U
+#     return U_proposed
+
+from scipy.stats import linregress
 def calc_ideal_U(pn, U):
     """calculates ideal U value"""
-    nonzero_ind = np.nonzero(pn)[0]
-    pn_nonzero = pn[nonzero_ind].astype(np.float32)
-    if len(pn_nonzero) >= 2:
-        power = float(nonzero_ind[-1] - nonzero_ind[-2])
-        U_proposed = U * pow(2. * pn_nonzero[-2] / pn_nonzero[-1], 1. / power)
-    else:
-        U_proposed = U
-    return U_proposed
+    if len(pn) < 2:
+        raise ValueError('pn must be at least of length 2')
+    an = [max(pn[0], pn[1])]
+    for k in range(1, len(pn)-1):
+        an.append(0.5*(max(pn[k-1], pn[k]) + max(pn[k], pn[k+1])))
+    an.append(max(pn[-2], pn[-1]))
+    slope, _, _, _, _ = linregress(np.arange(len(an)), np.log(an))
+    return 2. * U * np.exp(-slope)
 
 class Results(dict):
 
