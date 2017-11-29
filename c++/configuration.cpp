@@ -28,6 +28,9 @@ Configuration::Configuration(g0_keldysh_alpha_t green_function, std::vector<keld
  matrices[0].set_singular_threshold(singular_thresholds.first);
  matrices[1].set_singular_threshold(singular_thresholds.second);
 
+ if (annihila_pts.size() != creation_pts.size())
+  TRIQS_RUNTIME_ERROR << "`annihila_pts` and `creation_pts` have different sizes";
+
  // inserting first annihilation point
  if (annihila_pts[0].x != 0 or
      creation_pts[0].x != 0) // spin of creation_pts[0] is assumed same as annihila_pts[0]
@@ -91,7 +94,7 @@ keldysh_contour_pt Configuration::get_config(int p) const {
 double Configuration::kernels_evaluate() {
  /* Evaluate the kernels for the current configuration. Fill `current_kernels` appropriately
   * and return the corresponding weight (as a real positive value):
-  * W(\vec{u}) = \sum_{p=0}^n \sum_{a=0,1}| K_p^a(\vec{u}) |
+  * W(\vec{u}) = \sum_{p=1}^n \sum_{a=0,1}| K_p^a(\vec{u}) |
   * If order n=0, `current_kernels` is not changed and the arbitrary weight 1 is returned.
   * */
  // TODO: write down the formula this implements

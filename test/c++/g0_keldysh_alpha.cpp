@@ -8,6 +8,7 @@ int main() {
  auto g_less_f = make_gf_from_fourier(g_less);
  triqs::clef::placeholder<0> w_;
  g_less_f(w_) << -0.5_j / (w_ + 1_j);
+ g_less = make_gf_from_inverse_fourier(g_less_f);
  auto g_grea = conj(g_less);
 
  auto g0 = g0_keldysh_t{g_less, g_grea};
