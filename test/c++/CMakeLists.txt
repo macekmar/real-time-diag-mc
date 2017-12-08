@@ -35,3 +35,8 @@ target_link_libraries(configuration_1.x ctint_keldysh_c ${TRIQS_LIBRARY_ALL})
 triqs_set_rpath_for_target(configuration_1.x)
 add_test(configuration_1 configuration_1.x)
 
+add_executable(configuration_2.x configuration_2.cpp)
+target_link_libraries(configuration_2.x ctint_keldysh_c ${TRIQS_LIBRARY_ALL})
+triqs_set_rpath_for_target(configuration_2.x)
+add_test(configuration_2 configuration_2.x)
+
