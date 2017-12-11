@@ -6,7 +6,7 @@ Configuration::Configuration(g0_keldysh_alpha_t green_function, std::vector<keld
                              std::vector<keldysh_contour_pt> creation_pts, int max_order,
                              std::pair<double, double> singular_thresholds, bool kernels_comput = true)
    : singular_thresholds(singular_thresholds),
-     cofactor_threshold(5.),
+     cofactor_threshold(2. * singular_thresholds.first),
      order(0),
      max_order(max_order),
      kernels_comput(kernels_comput) {

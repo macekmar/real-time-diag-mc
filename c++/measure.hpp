@@ -11,7 +11,8 @@ namespace mpi = triqs::mpi;
 
 
 class KernelBinning {
- // each bin is [t_min + n*bin_length; t_min + (n+1)*bin_length[, for n from 0 to nb_bins-1
+ // each bin is ]t_min + n*bin_length; t_min + (n+1)*bin_length], for n from 0 to nb_bins-1
+ // t_max must be included, as it is probably a special time.
 
  private:
  array<dcomplex, 3> values; // 3D: order, binning, keldysh index
@@ -51,9 +52,9 @@ class KernelBinning {
  };
 
  void add(int order, keldysh_contour_pt alpha, dcomplex value) {
-  bool in_range = t_min <= alpha.t and alpha.t < t_max and 0 < order and order <= first_dim(values);
+  bool in_range = t_min < alpha.t and alpha.t <= t_max and 0 < order and order <= first_dim(values);
   if (in_range) {
-   int bin = int((alpha.t - t_min) / bin_length);
+   int bin = int(ceil((alpha.t - t_min) / bin_length)) - 1;
    values(order - 1, bin, alpha.k_index) += value;
    nb_values(order - 1, bin, alpha.k_index)++;
   }

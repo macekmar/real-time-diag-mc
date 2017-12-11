@@ -87,7 +87,7 @@ void TwoDetKernelMeasure::accumulate(dcomplex sign) {
   for (int p = 0; p < config.matrices[0].size(); ++p) {
    alpha_p = config.matrices[0].get_y(p);
    for (int k_index : {1, 0}) {
-    alpha_p = flip_index(alpha_p);
+    alpha_p.k_index = k_index;
     kernels_binning.add(config.order, alpha_p,
                         config.accepted_kernels(p, k_index) / std::abs(config.accepted_weight));
    }
