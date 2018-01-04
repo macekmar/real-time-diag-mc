@@ -32,7 +32,7 @@ int main() {
  params.measure_times = measure_times;
  std::vector<int> measure_keldysh_indices = {0, 1};
  params.measure_keldysh_indices = measure_keldysh_indices;
- std::pair<double, double> singular_thresholds = {3., 3.3};
+ std::pair<double, double> singular_thresholds = {4.5, 3.3};
  params.singular_thresholds = singular_thresholds;
 
  params.interaction_start = 150.;
@@ -48,8 +48,17 @@ int main() {
 
  solver_core S(params);
  S.set_g0(g0.first, g0.second);
- S.run(2000, true);
 
+ S.run(200, true);
+ std::cout << "pn: " << S.get_pn() << std::endl;
+
+ S.run(200, true);
+ S.compute_sn_from_kernels();
+ std::cout << "pn: " << S.get_pn() << std::endl;
+ std::cout << "sn: " << S.get_sn() << std::endl;
+
+ S.collect_results(2);
+ S.compute_sn_from_kernels();
  std::cout << "pn: " << S.get_pn() << std::endl;
  std::cout << "sn: " << S.get_sn() << std::endl;
 

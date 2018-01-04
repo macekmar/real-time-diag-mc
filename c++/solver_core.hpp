@@ -6,18 +6,6 @@
 
 #include <triqs/gfs.hpp>
 
-#define STRING2(x) #x
-#define STRING(x) STRING2(x)
-
-void compilation_time_stamp(int node_size) {
- int rank;
- MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-#ifdef COMPILATION_TIMESTAMP
- if (rank % node_size == 0)
-  std::cout << "Rank " << rank << " : " <<  STRING(COMPILATION_TIMESTAMP) << std::endl;
-#endif
-};
-
 // using namespace triqs::gfs;
 using namespace triqs::arrays;
 
@@ -45,11 +33,9 @@ class solver_core {
  Status status = not_ready;
  KernelBinning kernels_binning;
  array<dcomplex, 3> kernels;
- array<dcomplex, 3> kernels_all;
+ array<long, 3> nb_kernels;
  array<long, 1> pn;
- array<long, 1> pn_all;
  array<dcomplex, 3> sn;
- array<dcomplex, 3> sn_all;
 
  int finish(const int run_status);
 
@@ -66,22 +52,18 @@ class solver_core {
  int run(const int nb_cycles, const bool do_measure) { return run(nb_cycles, do_measure, -1); };
 
  void compute_sn_from_kernels();
+ void collect_results(int nb_partitions);
 
  // getters
  double get_solve_duration() const { return solve_duration; }
  double get_solve_duration_all() const { return solve_duration_all; }
  long get_nb_measures() const { return sum(pn); }
- long get_nb_measures_all() const { return sum(pn_all); }
  std::vector<std::vector<double>> get_config_list() const { return config.config_list; }
  std::vector<int> get_config_weight() const { return config.config_weight; }
  array<long, 1> get_pn() const { return pn; }
- array<long, 1> get_pn_all() const { return pn_all; }
  array<dcomplex, 3> get_sn() const { return sn; }
- array<dcomplex, 3> get_sn_all() const { return sn_all; }
  array<dcomplex, 3> get_kernels() const { return kernels / kernels_binning.get_bin_length(); }
- array<dcomplex, 3> get_kernels_all() const { return kernels_all / kernels_binning.get_bin_length(); }
- array<long, 3> get_nb_kernels() const { return kernels_binning.get_nb_values(); }
- array<long, 3> get_nb_kernels_all() const { array<long, 3> nb_kernels = kernels_binning.get_nb_values(); return triqs::mpi::mpi_all_reduce(nb_kernels); }
+ array<long, 3> get_nb_kernels() const { return nb_kernels; }
  array<double, 1> get_bin_times() const { return kernels_binning.get_bin_times(); }
  double get_U() const { return params.U; }
  int get_max_order() const { return params.max_perturbation_order; }

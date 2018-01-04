@@ -14,8 +14,6 @@ solver_core::solver_core(solve_parameters_t const& params)
    : qmc(params.random_name, params.random_seed, 1.0, params.verbosity, false), // first_sign is not used
      params(params) {
 
- compilation_time_stamp(48);
-
 #ifdef REGISTER_CONFIG
  if (mpi::communicator().rank() == 0)
   std::cout << "/!\ Configuration Registration ON" << std::endl << std::endl;
@@ -67,24 +65,18 @@ solver_core::solver_core(solve_parameters_t const& params)
  }
 
  // kernel binning
- kernels_all = array<dcomplex, 3>(params.max_perturbation_order, params.nb_bins, 2);
  kernels = array<dcomplex, 3>(params.max_perturbation_order, params.nb_bins, 2);
  kernels_binning =
      KernelBinning(-params.interaction_start, t_max, params.nb_bins, params.max_perturbation_order,
                    false); // TODO: it should be defined in measure
 
  // results arrays
- pn = array<long, 1>(params.max_perturbation_order + 1);     // pn for this process
- pn_all = array<long, 1>(params.max_perturbation_order + 1); // gather pn for all processes
+ pn = array<long, 1>(params.max_perturbation_order + 1);
  pn() = 0;
- pn_all() = 0;
 
  sn = array<dcomplex, 3>(params.max_perturbation_order + 1, params.measure_times.size(),
-                         params.measure_keldysh_indices.size()); // multidim array of sn for this process
- sn_all = array<dcomplex, 3>(params.max_perturbation_order + 1, params.measure_times.size(),
-                             params.measure_keldysh_indices.size()); // multidim array of sn for all processes
+                         params.measure_keldysh_indices.size());
  sn() = 0;
- sn_all() = 0;
 };
 
 // --------------------------------
@@ -104,7 +96,6 @@ void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser,
                         params.singular_thresholds, kernels_method);
 
  // order zero values
- // auto g0 = g0_npart(green_function, annihila_pts, creation_pts); // probably give wrong values
  auto gf_map = map([&](keldysh_contour_pt tau) { return green_function(tau, creation_pts[0]); });
  g0_array = make_matrix(gf_map(tau_array));
 
@@ -124,9 +115,9 @@ void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser,
  if (params.method == 0) {
   if (size(tau_array) > 1)
    TRIQS_RUNTIME_ERROR << "Trying to use a singlepoint measure with multiple input point";
-  qmc.add_measure(WeightSignMeasure(&config, &pn, &pn_all, &sn, &sn_all), "Weight sign measure");
+  qmc.add_measure(WeightSignMeasure(&config, &pn, &sn), "Weight sign measure");
  } else if (params.method == 5) {
-  qmc.add_measure(TwoDetKernelMeasure(&config, &kernels_binning, &pn, &pn_all, &kernels, &kernels_all),
+  qmc.add_measure(TwoDetKernelMeasure(&config, &kernels_binning, &pn, &kernels, &nb_kernels),
                   "Kernel measure");
  } else {
   TRIQS_RUNTIME_ERROR << "Cannot recognise the method ID";
@@ -136,6 +127,7 @@ void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser,
 };
 
 // --------------------------------
+// Run the Monte-Carlo, gather results of all world processes and print some info (cumulated over all world processes).
 int solver_core::run(const int nb_cycles, const bool do_measure, const int max_time = -1) {
  if (status < not_ready) TRIQS_RUNTIME_ERROR << "Run aborted";
  if (status < ready) TRIQS_RUNTIME_ERROR << "Unperturbed Green's functions have not been set !";
@@ -145,7 +137,7 @@ int solver_core::run(const int nb_cycles, const bool do_measure, const int max_t
 
  mpi::communicator world;
  if (world.rank() == 0) std::cout << "Waiting for other processes before run..." << std::endl;
- MPI_Barrier(MPI_COMM_WORLD);
+ world.barrier();
 
  int run_status;
 
@@ -179,7 +171,7 @@ int solver_core::run(const int nb_cycles, const bool do_measure, const int max_t
  // print acceptance rates
  if (world.rank() == 0) {
   std::cout << "Duration: " << solve_duration << " seconds" << std::endl;
-  std::cout << "Nb of measures: " << get_nb_measures_all() << std::endl;
+  std::cout << "Nb of measures: " << get_nb_measures() << std::endl;
   std::cout << "Acceptance rates of node 0:" << std::endl;
   double total_weight = 0;
   double total_rate = 0;
@@ -234,14 +226,25 @@ void solver_core::compute_sn_from_kernels() {
    auto gf_map = map([&](keldysh_contour_pt alpha) { return green_function(tau, alpha); });
    auto gf_tau_alpha = gf_map(kernels_binning.coord_array());
    sn(0, i, a) = green_function(tau, taup);
-   sn_all(0, i, a) = green_function(tau, taup);
    for (int order = 1; order < first_dim(sn); ++order) { // for each order
     sn(order, i, a) = sum(gf_tau_alpha * kernels(order - 1, ellipsis()));
-    sn_all(order, i, a) = sum(gf_tau_alpha * kernels_all(order - 1, ellipsis()));
    }
   }
  }
  if (mpi::communicator().rank() == 0) std::cout << "done" << std::endl;
+}
+
+// --------------------------------
+void solver_core::collect_results(int nb_partitions) {
+ mpi::communicator world;
+
+ // create partitions
+ int nb_part = std::min(nb_partitions, world.size());
+ int color = world.rank() / (world.size() / nb_part);
+ mpi::communicator part = world.split(color, world.rank());
+
+ // collect within these partitions
+ qmc.collect_results(part);
 }
 
 // --------------------------------

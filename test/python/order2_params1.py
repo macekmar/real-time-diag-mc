@@ -47,20 +47,13 @@ S.compute_sn_from_kernels
 on = perturbation_series(c0, S.pn, S.sn, p["U"])
 on = np.squeeze(on)
 
-on_all = perturbation_series(c0, S.pn_all, S.sn_all, p["U"])
-on_all = np.squeeze(on_all)
-
 if mpi.is_master_node():
     with HDFArchive('out_files/' + os.path.basename(__file__)[:-3] + '.out.h5', 'w') as ar:
         ar['on'] = on
-        ar['on_all'] = on_all
         ar['times'] = times
 
 if on.shape != (3, 50, 2):
     raise RuntimeError, 'FAILED: on shape is ' + str(on.shape) + ' but should be (3, 50, 2)'
-
-if on_all.shape != (3, 50, 2):
-    raise RuntimeError, 'FAILED: on_all shape is ' + str(on.shape) + ' but should be (3, 50, 2)'
 
 
 # order 0
@@ -74,12 +67,6 @@ if not np.allclose(on[0, :, 0], o0_less, rtol=rtol, atol=atol):
 
 if not np.allclose(on[0, :, 1], o0_grea, rtol=rtol, atol=atol):
     raise RuntimeError, 'FAILED o0 grea'
-
-if not np.allclose(on_all[0, :, 0], o0_less, rtol=rtol, atol=atol):
-    raise RuntimeError, 'FAILED o0_all less'
-
-if not np.allclose(on_all[0, :, 1], o0_grea, rtol=rtol, atol=atol):
-    raise RuntimeError, 'FAILED o0_all grea'
 
 # order 2
 rtol = 0.001
@@ -95,13 +82,5 @@ with HDFArchive('ref_data/order2_params1.ref.h5', 'r') as ref:
     if not np.allclose(on[2, :, 1], ref['grea']['o2'], rtol=rtol, atol=atol):
         print 'pn', S.pn
         raise RuntimeError, 'FAILED o2 grea'
-
-    if not np.allclose(on_all[2, :, 0], ref['less']['o2'], rtol=rtol, atol=atol):
-        print 'pn', S.pn_all
-        raise RuntimeError, 'FAILED o2_all less'
-
-    if not np.allclose(on_all[2, :, 1], ref['grea']['o2'], rtol=rtol, atol=atol):
-        print 'pn', S.pn_all
-        raise RuntimeError, 'FAILED o2_all grea'
 
 print 'SUCCESS !'

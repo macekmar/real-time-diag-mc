@@ -232,3 +232,20 @@ if __name__ == '__main__':
     assert(len(cn) == len(cn_ref))
     assert(np.allclose(cn, cn_ref))
 
+
+    # test staircase_leading_elts
+    stair = [np.array([0])]
+    assert np.array_equal(staircase_leading_elts(stair), np.array([0]))
+
+    stair = [np.array([0, 1, 2, 3])]
+    assert np.array_equal(staircase_leading_elts(stair), np.array([0, 1, 2, 3]))
+
+    stair = [np.array([0, 1]), np.array([2, 3, 4, 5])]
+    assert np.array_equal(staircase_leading_elts(stair), np.array([0, 1, 4, 5]))
+
+    stair = [np.array([0, 1]), np.array([2, 3, 4, 5]), np.array([6, 7, 8, 9, 10])]
+    assert np.array_equal(staircase_leading_elts(stair), np.array([0, 1, 4, 5, 10]))
+
+    stair = [np.array([0]), np.array([1, 2]), np.array([3, 4, 5])]
+    assert np.array_equal(staircase_leading_elts(stair), np.array([0, 2, 5]))
+

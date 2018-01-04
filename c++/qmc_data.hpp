@@ -84,31 +84,6 @@ struct g0_keldysh_alpha_t {
 
 using triqs::det_manip::det_manip;
 
-struct g0_npart {
- /* Implements the function t_1 -> g_0(t_1, ..., t_n | t'_1, ..., t'_n)
-  * Where g_0 is the n particles unperturbed Green's function
-  * And t_2, ..., t_n are the annihilation contour points, t'_1, ..., t'_n the creation contour points
-  */
- // TODO: write tests
-
- std::vector<keldysh_contour_pt> annihila_pts;
- std::vector<keldysh_contour_pt> creation_pts;
- det_manip<g0_keldysh_t> matrix;
-
- g0_npart(g0_keldysh_t g0_1part, std::vector<keldysh_contour_pt> annihila_pts,
-          std::vector<keldysh_contour_pt> creation_pts)
-    : annihila_pts(annihila_pts), creation_pts(creation_pts), matrix{g0_1part, 20} {
-  for (size_t i = 1; i < creation_pts.size(); ++i) {
-   matrix.insert_at_end(annihila_pts[i], creation_pts[i]);
-  }
- }
-
- dcomplex operator()(keldysh_contour_pt const &tau) {
-  matrix.try_insert(0, 0, tau, creation_pts[0]);
-  return matrix.determinant();
- }
-};
-
 // --------------   data   --------------------------------------
 
 enum spin { up, down };

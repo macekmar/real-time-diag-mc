@@ -27,6 +27,7 @@ template <> struct py_converter<solve_parameters_t> {
   PyDict_SetItemString( d, "w_shift"                , convert_to_python(x.w_shift));
   PyDict_SetItemString( d, "max_perturbation_order" , convert_to_python(x.max_perturbation_order));
   PyDict_SetItemString( d, "min_perturbation_order" , convert_to_python(x.min_perturbation_order));
+  PyDict_SetItemString( d, "forbid_parity_order"    , convert_to_python(x.forbid_parity_order));
   PyDict_SetItemString( d, "length_cycle"           , convert_to_python(x.length_cycle));
   PyDict_SetItemString( d, "random_seed"            , convert_to_python(x.random_seed));
   PyDict_SetItemString( d, "random_name"            , convert_to_python(x.random_name));
@@ -68,6 +69,7 @@ template <> struct py_converter<solve_parameters_t> {
   _get_optional(dic, "w_shift"                , res.w_shift                   ,0.0);
   _get_optional(dic, "max_perturbation_order" , res.max_perturbation_order    ,3);
   _get_optional(dic, "min_perturbation_order" , res.min_perturbation_order    ,0);
+  _get_optional(dic, "forbid_parity_order"    , res.forbid_parity_order       ,-1);
   _get_optional(dic, "length_cycle"           , res.length_cycle              ,50);
   _get_optional(dic, "random_seed"            , res.random_seed               ,34788+928374*triqs::mpi::communicator().rank());
   _get_optional(dic, "random_name"            , res.random_name               ,"");
@@ -106,7 +108,7 @@ template <> struct py_converter<solve_parameters_t> {
   std::stringstream fs, fs2; int err=0;
 
 #ifndef TRIQS_ALLOW_UNUSED_PARAMETERS
-  std::vector<std::string> ks, all_keys = {"creation_ops","annihilation_ops","extern_alphas","interaction_start","measure_state","measure_times","measure_keldysh_indices","alpha","U","w_ins_rem","w_dbl","w_shift","max_perturbation_order","min_perturbation_order","length_cycle","random_seed","random_name","max_time","verbosity","method","nb_bins","singular_thresholds"};
+  std::vector<std::string> ks, all_keys = {"creation_ops","annihilation_ops","extern_alphas","interaction_start","measure_state","measure_times","measure_keldysh_indices","alpha","U","w_ins_rem","w_dbl","w_shift","max_perturbation_order","min_perturbation_order","forbid_parity_order","length_cycle","random_seed","random_name","max_time","verbosity","method","nb_bins","singular_thresholds"};
   pyref keys = PyDict_Keys(dic);
   if (!convertible_from_python<std::vector<std::string>>(keys, true)) {
    fs << "\nThe dict keys are not strings";
@@ -132,6 +134,7 @@ template <> struct py_converter<solve_parameters_t> {
   _check_optional <double                                          >(dic, fs, err, "w_shift"                , "double");
   _check_optional <int                                             >(dic, fs, err, "max_perturbation_order" , "int");
   _check_optional <int                                             >(dic, fs, err, "min_perturbation_order" , "int");
+  _check_optional <int                                             >(dic, fs, err, "forbid_parity_order"    , "int");
   _check_optional <int                                             >(dic, fs, err, "length_cycle"           , "int");
   _check_optional <int                                             >(dic, fs, err, "random_seed"            , "int");
   _check_optional <std::string                                     >(dic, fs, err, "random_name"            , "std::string");

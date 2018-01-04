@@ -13,7 +13,7 @@ dcomplex insert::attempt() {
 #endif
 
  auto k = config.order; // order before adding a time
- quick_exit = (k >= params->max_perturbation_order);
+ quick_exit = is_quick_exit(k+1);
  if (quick_exit) return 0;
 
  // insert the new line and col.
@@ -43,7 +43,7 @@ dcomplex insert2::attempt() {
 #endif
 
  auto k = config.order; // order before adding two times
- quick_exit = (k + 1 >= params->max_perturbation_order);
+ quick_exit = is_quick_exit(k+2);
  if (quick_exit) return 0;
 
  // insert the new lines and cols.
@@ -76,7 +76,7 @@ dcomplex remove::attempt() {
 #endif
 
  auto k = config.order; // order before removal
- quick_exit = (k <= params->min_perturbation_order);
+ quick_exit = is_quick_exit(k-1);
  if (quick_exit) return 0;
 
  // remove the line/col
@@ -107,7 +107,7 @@ dcomplex remove2::attempt() {
 #endif
 
  auto k = config.order; // order before removal
- quick_exit = (k - 2 < params->min_perturbation_order);
+ quick_exit = is_quick_exit(k-2);
  if (quick_exit) return 0;
 
  // remove the lines/cols

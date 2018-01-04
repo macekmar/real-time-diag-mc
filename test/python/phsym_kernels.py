@@ -65,7 +65,6 @@ S.run(1000, False) # warmup
 S.run(10000, True)
 
 kernels = S.kernels
-kernels_all = S.kernels_all
 
 for k in range(1, len(kernels), 2):
 
@@ -74,8 +73,6 @@ for k in range(1, len(kernels), 2):
     # plt.show()
     if not np.allclose(kernels[k, :, 0], np.conjugate(kernels[k, :, 1]), atol=1e-12):
         raise RuntimeError, 'FAILED kernels not symmetric for k={0}'.format(k)
-    if not np.allclose(kernels_all[k, :, 0], np.conjugate(kernels_all[k, :, 1]), atol=1e-12):
-        raise RuntimeError, 'FAILED kernels_all not symmetric for k={0}'.format(k)
 
 
 print 'SUCCESS !'

@@ -16,11 +16,6 @@ option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 find_package(TRIQS REQUIRED)
 add_definitions(${TRIQS_CXX_DEFINITIONS})
 
-# compilation time stamp
-string(TIMESTAMP timestamp UTC)
-add_definitions(-DCOMPILATION_TIMESTAMP=${timestamp})
-message(STATUS ${timestamp})
-
 # Check that versions are compatible
 if(NOT CTINT_KELDYSH_VERSION EQUAL TRIQS_VERSION)
   message(FATAL_ERROR "The application version is not compatible with the TRIQS library (TRIQS library version: ${TRIQS_VERSION} while this application version: ${CTINT_KELDYSH_VERSION})")

@@ -6,7 +6,7 @@
 namespace moves {
 
 struct common {
- Configuration& config;
+ Configuration &config;
  const solve_parameters_t *params;
  triqs::mc_tools::random_generator &rng;
  random_x_generator rxg;
@@ -14,7 +14,7 @@ struct common {
  double delta_t;
  bool quick_exit = false;
 
- common(Configuration* config, const solve_parameters_t *params, const double t_max,
+ common(Configuration *config, const solve_parameters_t *params, const double t_max,
         triqs::mc_tools::random_generator &rng)
     : config(*config), params(params), rng(rng) {
   rxg = random_x_generator();
@@ -22,10 +22,16 @@ struct common {
   delta_t_L_U = delta_t * rxg.size() * params->U;
  }
 
+ /// Tell if `k` is an allowed order
+ bool is_quick_exit(int const &k) {
+  return k < params->min_perturbation_order or params->max_perturbation_order < k or
+         (params->forbid_parity_order != -1 and k % 2 == params->forbid_parity_order and
+          k != params->min_perturbation_order);
+ }
+
  /// Construct random point with space/orbital index, time and alpha
  keldysh_contour_pt get_random_point() {
-  return {rxg(rng),
-          qmc_time_t{rng(delta_t) - params->interaction_start}, 0};
+  return {rxg(rng), qmc_time_t{rng(delta_t) - params->interaction_start}, 0};
  }
 };
 
@@ -84,5 +90,4 @@ struct shift : common {
  dcomplex accept();
  void reject();
 };
-
 }
