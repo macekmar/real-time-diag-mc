@@ -131,17 +131,20 @@ class Results(dict):
         self['sn'] = []
         self['sn_each'] = []
         self['kernels'] = []
+        self['kernel_diracs'] = []
         self['nb_kernels'] = []
         self['U'] = []
         self['durations'] = []
         self['nb_measures'] = []
 
         self['bin_times'] = None
+        self['dirac_times'] = None
         self['run_time'] = None
 
         if self.world.rank == 0:
             self['pn_part_save'] = []
             self['kernels_part_save'] = []
+            self['kernel_diracs_part_save'] = []
 
     def append_empty_slot(self):
         self.nb_runs += 1
@@ -151,6 +154,7 @@ class Results(dict):
         self['sn'].append(None)
         self['sn_each'].append(None)
         self['kernels'].append(None)
+        self['kernel_diracs'].append(None)
         self['nb_kernels'].append(None)
         self['U'].append(None)
         self['durations'].append(None)
@@ -159,6 +163,7 @@ class Results(dict):
         if self.world.rank == 0:
             self['pn_part_save'].append(None)
             self['kernels_part_save'].append(None)
+            self['kernel_diracs_part_save'].append(None)
 
     def fill_last_slot(self, solver_core, compute_on=False):
         assert(len(self['pn']) == 1 or len(solver_core.pn) >= len(self['pn'][-2]))
@@ -167,12 +172,14 @@ class Results(dict):
         self['pn'][-1] = solver_core.pn
         self['sn'][-1] = solver_core.sn
         self['kernels'][-1] = solver_core.kernels
+        self['kernel_diracs'][-1] = solver_core.kernel_diracs
         self['nb_kernels'][-1] = solver_core.nb_kernels
         self['U'][-1] = solver_core.U
         self['durations'][-1] = solver_core.solve_duration
         self['nb_measures'][-1] = solver_core.nb_measures
 
         self['bin_times'] = np.array(solver_core.bin_times)
+        self['dirac_times'] = np.array(solver_core.dirac_times)
         self['run_time'] = (datetime.now() - self.starttime).total_seconds()
         self['cn'] = compute_cn(self['pn'], self['U'], self['c0'])
 
@@ -186,17 +193,20 @@ class Results(dict):
         kernels_part = solver_core.kernels
         kernels_part = reduce_binning(kernels_part, self.nb_bins_sum, axis=1) / float(self.nb_bins_sum)
         self['bin_times_part'] = reduce_binning(self['bin_times'], self.nb_bins_sum) / float(self.nb_bins_sum)
+        kernel_diracs_part = solver_core.kernel_diracs
 
         if self.is_part_master:
             pn_part = self.part_comm.gather(self['pn_part'][-1], 0)
             cn_part = self.part_comm.gather(cn_part, 0)
             kernels_part = self.part_comm.gather(kernels_part, 0)
+            kernel_diracs_part = self.part_comm.gather(kernel_diracs_part, 0)
 
         if self.world.rank == 0:
-            change_axis = lambda x: np.rollaxis(x, 0, x.ndim) # send forst axis to last position
+            change_axis = lambda x: np.rollaxis(x, 0, x.ndim) # send first axis to last position
             self['pn_part_save'][-1] = change_axis(np.array(pn_part, dtype=int))
             self['cn_part_save'] = change_axis(np.array(cn_part, dtype=float))
             self['kernels_part_save'][-1] = change_axis(np.array(kernels_part, dtype=complex))
+            self['kernel_diracs_part_save'][-1] = change_axis(np.array(kernel_diracs_part, dtype=complex))
 
         if compute_on:
             # values
@@ -234,6 +244,8 @@ class Results(dict):
             kernels['cn'] = self['cn']
             kernels['pn'] = staircase_leading_elts(self['pn'])
             kernels['bin_times'] = self['bin_times']
+            kernels['kernel_diracs'] = staircase_leading_elts(self['kernel_diracs'])
+            kernels['dirac_times'] = self['dirac_times']
 
             ar.create_group('kernels_part')
             kernels_part = ar['kernels_part']
@@ -243,6 +255,8 @@ class Results(dict):
             kernels_part['bin_times'] = self['bin_times_part']
             kernels_part['size_part'] = self.size_part
             kernels_part['nb_bins_sum'] = self.nb_bins_sum
+            kernels_part['kernel_diracs'] = staircase_leading_elts(self['kernel_diracs_part_save'])
+            kernels_part['dirac_times'] = self['dirac_times']
 
             if 'on' in self:
                 ar.create_group('green_function')

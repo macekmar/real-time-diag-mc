@@ -131,12 +131,20 @@ c.add_property(name = "kernels",
                getter = cfunction("array<dcomplex,3> get_kernels ()"),
                doc = """ """)
 
+c.add_property(name = "kernel_diracs",
+               getter = cfunction("array<dcomplex,3> get_kernel_diracs ()"),
+               doc = """ """)
+
 c.add_property(name = "nb_kernels",
                getter = cfunction("array<long,3> get_nb_kernels ()"),
                doc = """ """)
 
 c.add_property(name = "bin_times",
                getter = cfunction("array<double,1> get_bin_times ()"),
+               doc = """ """)
+
+c.add_property(name = "dirac_times",
+               getter = cfunction("array<double,1> get_dirac_times ()"),
                doc = """ """)
 
 c.add_property(name = "U",

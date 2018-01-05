@@ -52,11 +52,13 @@ void WeightSignMeasure::collect_results(mpi::communicator c) {
 
 // ----------
 TwoDetKernelMeasure::TwoDetKernelMeasure(Configuration* config, KernelBinning* kernels_binning,
-                                         array<long, 1>* pn, array<dcomplex, 3>* kernels, array<long, 3>* nb_kernels)
+                                         array<long, 1>* pn, array<dcomplex, 3>* kernels,
+                                         array<dcomplex, 3>* kernel_diracs, array<long, 3>* nb_kernels)
    : config(*config),
      kernels_binning(*kernels_binning),
      pn(*pn),
      kernels(*kernels),
+     kernel_diracs(*kernel_diracs),
      nb_kernels(*nb_kernels) {
 
  nb_orders = first_dim(*pn);
@@ -72,14 +74,23 @@ void TwoDetKernelMeasure::accumulate(dcomplex sign) {
   return;
 
  } else {
-  keldysh_contour_pt alpha_p;
+  keldysh_contour_pt alpha;
 
-  for (int p = 0; p < config.matrices[0].size(); ++p) {
-   alpha_p = config.matrices[0].get_y(p);
-   for (int k_index : {1, 0}) {
-    alpha_p.k_index = k_index;
-    kernels_binning.add(config.order, alpha_p,
+  for (int k_index : {1, 0}) {
+   int p = 0;
+   while (p < config.order) {
+    alpha = config.matrices[0].get_y(p);
+    alpha.k_index = k_index;
+    kernels_binning.add(config.order, alpha,
                         config.accepted_kernels(p, k_index) / std::abs(config.accepted_weight));
+    p++;
+   }
+   while (p < config.matrices[0].size()) {
+    alpha = config.matrices[0].get_y(p);
+    alpha.k_index = k_index;
+    kernels_binning.add_dirac(config.order, alpha,
+                              config.accepted_kernels(p, k_index) / std::abs(config.accepted_weight));
+    p++;
    }
   }
  }
@@ -99,18 +110,24 @@ void TwoDetKernelMeasure::collect_results(mpi::communicator c) {
 
  // gather kernels
  kernels = kernels_binning.get_values();
+ kernel_diracs = kernels_binning.get_dirac_values();
 
  dcomplex i_n[4] = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}}; // powers of i
  for (int k = 1; k < nb_orders; k++) {
   kernels(k - 1, ellipsis()) *= i_n[k % 4];
+  kernel_diracs(k - 1, ellipsis()) *= i_n[k % 4];
  }
  kernels = mpi::mpi_all_reduce(kernels, c);
+ kernel_diracs = mpi::mpi_all_reduce(kernel_diracs, c);
 
  for (int k = 1; k < nb_orders; ++k) {
-  if (pn(k) != 0) kernels(k - 1, ellipsis()) /= pn(k);
+  if (pn(k) != 0) {
+   kernels(k - 1, ellipsis()) /= pn(k);
+   kernel_diracs(k - 1, ellipsis()) /= pn(k);
+  }
  }
 
  // gather nb_kernels
- nb_kernels = kernels_binning.get_nb_values(); 
+ nb_kernels = kernels_binning.get_nb_values();
  nb_kernels = mpi::mpi_all_reduce(nb_kernels, c);
 }

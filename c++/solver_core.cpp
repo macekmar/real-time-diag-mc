@@ -65,7 +65,6 @@ solver_core::solver_core(solve_parameters_t const& params)
  }
 
  // kernel binning
- kernels = array<dcomplex, 3>(params.max_perturbation_order, params.nb_bins, 2);
  kernels_binning =
      KernelBinning(-params.interaction_start, t_max, params.nb_bins, params.max_perturbation_order,
                    false); // TODO: it should be defined in measure
@@ -117,7 +116,7 @@ void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser,
    TRIQS_RUNTIME_ERROR << "Trying to use a singlepoint measure with multiple input point";
   qmc.add_measure(WeightSignMeasure(&config, &pn, &sn), "Weight sign measure");
  } else if (params.method == 5) {
-  qmc.add_measure(TwoDetKernelMeasure(&config, &kernels_binning, &pn, &kernels, &nb_kernels),
+  qmc.add_measure(TwoDetKernelMeasure(&config, &kernels_binning, &pn, &kernels, &kernel_diracs, &nb_kernels),
                   "Kernel measure");
  } else {
   TRIQS_RUNTIME_ERROR << "Cannot recognise the method ID";
@@ -215,7 +214,7 @@ int solver_core::run(const int nb_cycles, const bool do_measure, const int max_t
 // --------------------------------
 void solver_core::compute_sn_from_kernels() {
  // TODO: maybe a more advanced integration (trapeze ?)
- // /!\ Maybe only for one particle GF ?
+ // TODO: include dirac deltas
  auto taup = creation_pts[0];
  if (params.method != 5) TRIQS_RUNTIME_ERROR << "Cannot use kernels with this method";
  if (mpi::communicator().rank() == 0) std::cout << "Computing sn from kernels..." << std::flush;

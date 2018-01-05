@@ -33,6 +33,7 @@ class solver_core {
  Status status = not_ready;
  KernelBinning kernels_binning;
  array<dcomplex, 3> kernels;
+ array<dcomplex, 3> kernel_diracs;
  array<long, 3> nb_kernels;
  array<long, 1> pn;
  array<dcomplex, 3> sn;
@@ -63,8 +64,10 @@ class solver_core {
  array<long, 1> get_pn() const { return pn; }
  array<dcomplex, 3> get_sn() const { return sn; }
  array<dcomplex, 3> get_kernels() const { return kernels / kernels_binning.get_bin_length(); }
+ array<dcomplex, 3> get_kernel_diracs() const { return kernel_diracs; }
  array<long, 3> get_nb_kernels() const { return nb_kernels; }
  array<double, 1> get_bin_times() const { return kernels_binning.get_bin_times(); }
+ array<double, 1> get_dirac_times() const { return kernels_binning.get_dirac_times(); }
  double get_U() const { return params.U; }
  int get_max_order() const { return params.max_perturbation_order; }
 };

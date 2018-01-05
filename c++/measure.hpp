@@ -16,8 +16,9 @@ class KernelBinning {
 
  private:
  array<dcomplex, 3> values; // 3D: order, binning, keldysh index
- array<long, 3> nb_values;   // 3D: order, binning, keldysh index
+ array<long, 3> nb_values;  // 3D: order, binning, keldysh index
  array<double, 1> bin_times;
+ std::map<double, array<dcomplex, 2>> diracs;
  double t_min, t_max, bin_length;
  int nb_bins;
 
@@ -60,10 +61,37 @@ class KernelBinning {
   }
  };
 
- array<dcomplex, 3> get_values() const { return values; };  // copy
+ void add_dirac(int order, keldysh_contour_pt alpha, dcomplex value) {
+  auto res = diracs.emplace(std::piecewise_construct, std::make_tuple(alpha.t),
+                            std::make_tuple(first_dim(values), 2)); // add the dirac if not already in the map
+  if (res.second) res.first->second() = 0;
+  res.first->second(order - 1, alpha.k_index) += value;
+ };
+
+ array<dcomplex, 3> get_values() const { return values; };   // copy
  array<long, 3> get_nb_values() const { return nb_values; }; // copy
  double get_bin_length() const { return bin_length; };
  array<double, 1> get_bin_times() const { return bin_times; };
+
+ array<dcomplex, 3> get_dirac_values() const {
+  auto output = array<dcomplex, 3>(first_dim(values), diracs.size(), 2);
+  size_t i = 0;
+  for (auto it = diracs.begin(); it != diracs.end(); it++) {
+   output(range(), i, range()) = it->second;
+   i++;
+  }
+  return output;
+ };
+
+ array<double, 1> get_dirac_times() const {
+  auto output = array<double, 1>(diracs.size());
+  size_t i = 0;
+  for (auto it = diracs.begin(); it != diracs.end(); it++) {
+   output(i) = it->first;
+   i++;
+  }
+  return output;
+ };
 
  // array_const_view<keldysh_contour_pt, 2> get_coord_array() const { return coord_array(); }; // view
  // doesnt work ??
@@ -98,12 +126,15 @@ class TwoDetKernelMeasure {
  KernelBinning& kernels_binning;
  array<long, 1>& pn;
  array<dcomplex, 3>& kernels;
+ array<dcomplex, 3>& kernel_diracs;
  array<long, 3>& nb_kernels;
  int nb_orders;
  histogram histogram_pn;
 
  public:
- TwoDetKernelMeasure(Configuration* config, KernelBinning* kernels_binning, array<long, 1>* pn, array<dcomplex, 3>* kernels, array<long, 3>* nb_kernels);
+ TwoDetKernelMeasure(Configuration* config, KernelBinning* kernels_binning, array<long, 1>* pn,
+                     array<dcomplex, 3>* kernels, array<dcomplex, 3>* kernel_diracs,
+                     array<long, 3>* nb_kernels);
 
  void accumulate(dcomplex sign);
 
