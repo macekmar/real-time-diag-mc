@@ -120,7 +120,7 @@ class Results(dict):
         self.is_part_master = (world.rank % (world.size // self.size_part) == 0) and (color < self.size_part)
         self.part_comm = world.Split(self.is_part_master, world.rank)
         if not self.is_part_master:
-            self.part_comm.free()
+            self.part_comm.Free()
         else:
             assert self.part_comm.size == self.size_part
 
