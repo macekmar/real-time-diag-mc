@@ -1,4 +1,4 @@
-#include "../c++/measure.hpp"
+#include "../c++/binning.hpp"
 
 int main() {
  /// Test KernelBinning with matching boundaries

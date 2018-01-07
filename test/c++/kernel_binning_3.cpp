@@ -1,4 +1,4 @@
-#include "../c++/measure.hpp"
+#include "../c++/binning.hpp"
 
 int main() {
  /// Test Dirac deltas in KernelBinning
