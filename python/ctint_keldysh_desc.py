@@ -99,12 +99,8 @@ c.add_property(name = "compute_sn_from_kernels",
                getter = cfunction("void compute_sn_from_kernels ()"),
                doc = """ """)
 
-c.add_property(name = "solve_duration",
-               getter = cfunction("double get_solve_duration ()"),
-               doc = """ """)
-
-c.add_property(name = "solve_duration_all",
-               getter = cfunction("double get_solve_duration_all ()"),
+c.add_property(name = "qmc_duration",
+               getter = cfunction("double get_qmc_duration ()"),
                doc = """ """)
 
 c.add_property(name = "nb_measures",

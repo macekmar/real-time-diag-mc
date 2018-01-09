@@ -135,28 +135,26 @@ int solver_core::run(const int nb_cycles, const bool do_measure, const int max_t
   TRIQS_RUNTIME_ERROR << "Order zero cannot run, use order_zero method instead";
 
  mpi::communicator world;
- if (world.rank() == 0) std::cout << "Waiting for other processes before run..." << std::endl;
  world.barrier();
 
  int run_status;
 
  if (status == ready) {
   status = running;
-  solve_duration = 0;
+  qmc_duration = 0;
  }
 
  // accumulate
- if (world.rank() == 0) std::cout << "Accumulate..." << std::endl;
+ if (world.rank() == 0) std::cout << "Accumulate..." << std::flush;
  run_status = qmc.run(nb_cycles, params.length_cycle, triqs::utility::clock_callback(max_time), do_measure);
- if (world.rank() == 0) std::cout << "done" << std::endl << std::endl;
+ qmc_duration = qmc_duration + qmc.get_duration();
+ if (world.rank() == 0) std::cout << "done" << std::endl;
 
  // Collect results
- if (world.rank() == 0) std::cout << "Collecting results... " << std::endl;
+ if (world.rank() == 0) std::cout << "Collecting results... " << std::flush;
  qmc.collect_results(world);
- if (world.rank() == 0) std::cout << "done" << std::endl << std::endl;
-
- solve_duration = solve_duration + qmc.get_duration();
- solve_duration_all = mpi::mpi_all_reduce(solve_duration);
+ cum_qmc_duration = mpi::mpi_all_reduce(qmc_duration);
+ if (world.rank() == 0) std::cout << "done" << std::endl;
 
  array<double, 1> weight_sum = config.get_weight_sum();
  weight_sum = mpi::mpi_all_reduce(weight_sum);
@@ -169,9 +167,9 @@ int solver_core::run(const int nb_cycles, const bool do_measure, const int max_t
 
  // print acceptance rates
  if (world.rank() == 0) {
-  std::cout << "Duration: " << solve_duration << " seconds" << std::endl;
-  std::cout << "Nb of measures: " << get_nb_measures() << std::endl;
-  std::cout << "Acceptance rates of node 0:" << std::endl;
+  std::cout << "Duration (all nodes): " << cum_qmc_duration << " seconds" << std::endl;
+  std::cout << "Nb of measures (all nodes): " << get_nb_measures() << std::endl;
+  std::cout << "Acceptance rates (node 0):" << std::endl;
   double total_weight = 0;
   double total_rate = 0;
   double move_weight;
@@ -193,17 +191,17 @@ int solver_core::run(const int nb_cycles, const bool do_measure, const int max_t
    std::cout << "> " << x.first << " (" << move_weight << "): " << x.second << std::endl;
   }
   std::cout << "> All moves: " << total_rate / total_weight << std::endl;
-  std::cout << "Attempted config weight average:" << std::endl << weight_avg << std::endl;
-  std::cout << "cofact vs inverse : " << nb_cofact << " / " << nb_inverse << std::endl;
-  std::cout << "regen ratios : 0=" << config.matrices[0].get_regen_ratio()
+  std::cout << "Attempted config weight average (all nodes):" << std::endl << weight_avg << std::endl;
+  std::cout << "cofact vs inverse (all nodes): " << nb_cofact << " / " << nb_inverse << std::endl;
+  std::cout << "regen ratios (node 0): 0=" << config.matrices[0].get_regen_ratio()
             << ", 1=" << config.matrices[1].get_regen_ratio() << std::endl;
   std::pair<double, double> regen_stats;
   for (int a : {0, 1}) {
    regen_stats = config.matrices[a].get_error_stats();
-   std::cout << "regen errors " << a << " : avg=" << regen_stats.first
-             << ", std=" << std::sqrt(regen_stats.second) << std::endl;
+   std::cout << "regen errors (node 0) " << a << " : avg=" << regen_stats.first
+             << ", +3std=" << regen_stats.first + 3 * std::sqrt(regen_stats.second)
+             << ", +5std=" << regen_stats.first + 5 * std::sqrt(regen_stats.second) << std::endl;
   }
-  std::cout << std::endl;
  }
 
  if (run_status != 1) return finish(run_status);
@@ -237,13 +235,19 @@ void solver_core::compute_sn_from_kernels() {
 void solver_core::collect_results(int nb_partitions) {
  mpi::communicator world;
 
- // create partitions
- int nb_part = std::min(nb_partitions, world.size());
- int color = world.rank() / (world.size() / nb_part);
- mpi::communicator part = world.split(color, world.rank());
+ if (nb_partitions <= 1) {
+  qmc.collect_results(world);
+  cum_qmc_duration = mpi::mpi_all_reduce(qmc_duration, world);
+ } else {
+  // create partitions
+  int nb_part = std::min(nb_partitions, world.size());
+  int color = world.rank() / (world.size() / nb_part);
+  mpi::communicator part = world.split(color, world.rank());
 
- // collect within these partitions
- qmc.collect_results(part);
+  // collect within these partitions
+  qmc.collect_results(part);
+  cum_qmc_duration = mpi::mpi_all_reduce(qmc_duration, part);
+ }
 }
 
 // --------------------------------
@@ -253,9 +257,9 @@ int solver_core::finish(const int run_status) {
  if (run_status == 2) status = aborted; // Received a signal: abort
 
  if (run_status == 0 and mpi::communicator().rank() == 0)
-  std::cout << "Run finished" << std::endl << std::endl;
+  std::cout << "Run finished" << std::endl;
  if (run_status == 2 and mpi::communicator().rank() == 0)
-  std::cout << "Run aborted" << std::endl << std::endl;
+  std::cout << "Run aborted" << std::endl;
 
  return run_status;
 }

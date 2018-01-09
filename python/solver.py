@@ -175,7 +175,7 @@ class Results(dict):
         self['kernel_diracs'][-1] = solver_core.kernel_diracs
         self['nb_kernels'][-1] = solver_core.nb_kernels
         self['U'][-1] = solver_core.U
-        self['durations'][-1] = solver_core.solve_duration
+        self['durations'][-1] = solver_core.qmc_duration
         self['nb_measures'][-1] = solver_core.nb_measures
 
         self['bin_times'] = np.array(solver_core.bin_times)
@@ -224,6 +224,8 @@ class Results(dict):
             self['sn_error'] = np.array(self['sn_error'])
             on_each = np.squeeze(sn_each * cn_each[slicing])
             self['on_error'] = np.squeeze(variance_error(on_each, self.world)) #TODO: weight with nb of measures
+
+        solver_core.collect_results(1) # go back to collecting over world
 
     def save(self, filename, params):
         assert self.world.rank == 0
@@ -300,14 +302,14 @@ class SolverPython(object):
 
     def checkpoint(self, solver_core, compute=False):
         if self.world.rank == 0:
-            print datetime.now(), ": Order", solver_core.max_order
+            print 'Checkpoint order {0} ({1})'.format(solver_core.max_order, datetime.now())
             print 'pn:', solver_core.pn
-            print
 
         self.res.fill_last_slot(solver_core, compute)
 
         if self.world.rank == 0 and self.filename is not None:
             self.res.save(self.filename, self.parameters)
+            print
 
     def prerun_and_run(self, nb_warmup_cycles, nb_cycles, order, U, save_period=-1):
         self.res.append_empty_slot()
@@ -321,10 +323,12 @@ class SolverPython(object):
         # prerun
         start = clock()
         if self.world.rank == 0:
-            print 'Pre run'
+            print '\n* Pre run'
         S.run(nb_warmup_cycles, True)
         prerun_duration = float(clock() - start)
         prerun_duration = self.world.allreduce(prerun_duration) / float(self.world.size) # take average
+        if self.world.rank == 0:
+            print 'pn:', S.pn
         new_U = calc_ideal_U(S.pn, U)
 
         # time estimation
@@ -348,12 +352,12 @@ class SolverPython(object):
 
         # warmup
         if self.world.rank == 0:
-            print 'Warmup'
+            print '\n* Warmup'
         S.run(nb_warmup_cycles, False)
 
         # main run
         if self.world.rank == 0:
-            print 'Main runs'
+            print '\n* Main runs'
         while S.nb_measures < nb_cycles:
             nb_cycles_remaining = nb_cycles - S.nb_measures
             if nb_cycles_remaining > nb_cycles_per_subrun:
@@ -389,14 +393,11 @@ def staircase_solve(g0_lesser, g0_greater, parameters_, filename=None, save_peri
     nb_cycles = parameters.pop('n_cycles')
     parameters["min_perturbation_order"] = 0
     max_order = parameters["max_perturbation_order"]
-    U_list = parameters['U']
+    U = parameters['U']
 
     orders = list(range(1, max_order + 1))
     if 'forbid_parity_order' in parameters and parameters['forbid_parity_order'] != -1:
         orders = orders[parameters['forbid_parity_order']::2]
-
-    if len(U_list) != len(orders):
-        raise ValueError, "Size of list of U must match the number of orders to compute ({0})".format(len(orders))
 
     solver = SolverPython(g0_lesser, g0_greater, parameters, filename)
     solver.order_zero()
@@ -404,7 +405,8 @@ def staircase_solve(g0_lesser, g0_greater, parameters_, filename=None, save_peri
     for i, k in enumerate(orders):
         if solver.world.rank == 0:
             print "---------------- Order", k, "----------------"
-        solver.prerun_and_run(nb_warmup_cycles, nb_cycles, k, U_list[i], save_period=save_period)
+        solver.prerun_and_run(nb_warmup_cycles, nb_cycles, k, U, save_period=save_period)
+        U = solver.res['U'][-1]
 
     return np.squeeze(solver.res['on']), np.squeeze(solver.res['on_error'])
 

@@ -28,8 +28,8 @@ class solver_core {
  array<keldysh_contour_pt, 2> tau_array;
  array<dcomplex, 2> g0_array;
  double t_max;
- double solve_duration = 0;
- double solve_duration_all = 0;
+ double qmc_duration = 0;
+ double cum_qmc_duration = 0;
  Status status = not_ready;
  KernelBinning kernels_binning;
  array<dcomplex, 3> kernels;
@@ -56,8 +56,7 @@ class solver_core {
  void collect_results(int nb_partitions);
 
  // getters
- double get_solve_duration() const { return solve_duration; }
- double get_solve_duration_all() const { return solve_duration_all; }
+ double get_qmc_duration() const { return cum_qmc_duration; }
  long get_nb_measures() const { return sum(pn); }
  std::vector<std::vector<double>> get_config_list() const { return config.config_list; }
  std::vector<int> get_config_weight() const { return config.config_weight; }

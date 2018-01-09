@@ -23,7 +23,7 @@ Configuration::Configuration(g0_keldysh_alpha_t green_function, std::vector<keld
 
  // Initialize the M-matrices. 100 is the initial alocated space.
  for (auto spin : {up, down}) matrices.emplace_back(green_function, 100);
- for (auto spin : {up, down}) matrices[spin].set_n_operations_before_check(100);
+ for (auto spin : {up, down}) matrices[spin].set_n_operations_before_check(1000);
 
  matrices[0].set_singular_threshold(singular_thresholds.first);
  matrices[1].set_singular_threshold(singular_thresholds.second);
@@ -172,8 +172,15 @@ void Configuration::evaluate() {
 
 // -----------------------
 void Configuration::accept_config() {
+ if (cycles_trapped > 100) std::cout << "Trapped " << cycles_trapped << " cycles" << std::endl;
+ cycles_trapped = 0;
  accepted_weight = current_weight;
  accepted_kernels() = current_kernels();
+}
+
+// -----------------------
+void Configuration::incr_cycles_trapped() {
+ cycles_trapped++;
 }
 
 // -----------------------

@@ -68,6 +68,7 @@ TwoDetKernelMeasure::TwoDetKernelMeasure(Configuration* config, KernelBinning* k
 // ----------
 void TwoDetKernelMeasure::accumulate(dcomplex sign) {
 
+ config.incr_cycles_trapped();
  histogram_pn << config.order;
 
  if (config.order == 0) {

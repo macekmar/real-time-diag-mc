@@ -38,6 +38,7 @@ class Configuration {
  array<double, 1> weight_sum;
  array<long, 1> nb_values;
  std::vector<size_t> crea_k_ind;
+ int cycles_trapped = 0;
 
  // Configuration(const Configuration&) = delete;  // non construction-copyable
  // void operator=(const Configuration&) = delete; // non copyable
@@ -76,6 +77,7 @@ class Configuration {
 
  void evaluate();
  void accept_config();
+ void incr_cycles_trapped();
 
  array<double, 1> get_weight_sum() const { return weight_sum; };
  array<long, 1> get_nb_values() const { return nb_values; };
