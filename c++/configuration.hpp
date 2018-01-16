@@ -18,12 +18,12 @@ array<typename det_manip<T>::value_type, 1> cofactor_row(det_manip<T>& matrix, s
  matrix.remove(i, 0);
  cofactors(0) = signs[i % 2] * matrix.determinant();
  for (int j = 1; j < n; ++j) {
-  y_tmp = matrix.get_y(j-1);
-  matrix.change_col(j-1, y_j);
+  y_tmp = matrix.get_y(j - 1);
+  matrix.change_col(j - 1, y_j);
   y_j = y_tmp;
   cofactors(j) = signs[(j + i) % 2] * matrix.determinant();
  }
- matrix.insert(i, n-1, x_i, y_j);
+ matrix.insert(i, n - 1, x_i, y_j);
  return cofactors;
 };
 
@@ -39,6 +39,7 @@ class Configuration {
  array<long, 1> nb_values;
  std::vector<size_t> crea_k_ind;
  int cycles_trapped = 0;
+ int cycles_trapped_thresh = 100;
 
  // Configuration(const Configuration&) = delete;  // non construction-copyable
  // void operator=(const Configuration&) = delete; // non copyable
@@ -66,7 +67,7 @@ class Configuration {
  Configuration(){};
  Configuration(g0_keldysh_alpha_t green_function, std::vector<keldysh_contour_pt> annihila_pts,
                std::vector<keldysh_contour_pt> creation_pts, int max_order,
-               std::pair<double, double> singular_thresholds, bool kernels_comput);
+               std::pair<double, double> singular_thresholds, bool kernels_comput, int cycles_trapped_thresh);
 
  void insert(int k, keldysh_contour_pt pt);
  void insert2(int k1, int k2, keldysh_contour_pt pt1, keldysh_contour_pt pt2);

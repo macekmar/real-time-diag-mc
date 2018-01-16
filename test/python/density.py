@@ -59,6 +59,9 @@ if mpi.is_master_node():
 if on.shape != (8,):
     raise RuntimeError, 'FAILED: on shape is ' + str(on.shape) + ' but should be (8,)'
 
+nb_measures = S.nb_measures
+if nb_measures != 5000:
+    raise RuntimeError, 'FAILED: Solver reported having completed {0} measures instead of 5000'.format(nb_measures)
 
 with HDFArchive('ref_data/density.ref.h5', 'r') as ar:
     on_ref = perturbation_series(abs(g0_lesser(0.)[0, 0]), ar['pn_values'], ar['sn_values'], 2.5)

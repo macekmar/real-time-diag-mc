@@ -4,6 +4,7 @@
 
 
 /// Integrated test. Test no error occurs for a typical simple use.
+// Also test number of measures reported.
 int main() {
 
  MPI::Init();
@@ -53,15 +54,21 @@ int main() {
  S.run(20, true);
  std::cout << "pn: " << S.get_pn() << std::endl;
 
+ if (S.get_nb_measures() != 20) return 1;
+
  S.run(20, true);
  S.compute_sn_from_kernels();
  std::cout << "pn: " << S.get_pn() << std::endl;
  std::cout << "sn: " << S.get_sn() << std::endl;
 
+ if (S.get_nb_measures() != 40) return 2;
+
  S.collect_results(2);
  S.compute_sn_from_kernels();
  std::cout << "pn: " << S.get_pn() << std::endl;
  std::cout << "sn: " << S.get_sn() << std::endl;
+
+ if (S.get_nb_measures() != 40) return 3;
 
  MPI::Finalize();
 

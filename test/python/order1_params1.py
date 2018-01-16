@@ -55,6 +55,10 @@ if mpi.is_master_node():
 if on.shape != (2, 101, 2):
     raise RuntimeError, 'FAILED: on shape is ' + str(on.shape) + ' but should be (2, 101, 2)'
 
+nb_measures = S.nb_measures
+if nb_measures != 100000:
+    raise RuntimeError, 'FAILED: Solver reported having completed {0} measures instead of 100000'.format(nb_measures)
+
 
 # order 0
 rtol = 0.001

@@ -225,8 +225,6 @@ class Results(dict):
             on_each = np.squeeze(sn_each * cn_each[slicing])
             self['on_error'] = np.squeeze(variance_error(on_each, self.world)) #TODO: weight with nb of measures
 
-        solver_core.collect_results(1) # go back to collecting over world
-
     def save(self, filename, params):
         assert self.world.rank == 0
         with HDFArchive(filename, 'w') as ar:
@@ -358,15 +356,16 @@ class SolverPython(object):
         # main run
         if self.world.rank == 0:
             print '\n* Main runs'
-        while S.nb_measures < nb_cycles:
-            nb_cycles_remaining = nb_cycles - S.nb_measures
-            if nb_cycles_remaining > nb_cycles_per_subrun:
-                S.run(nb_cycles_per_subrun, True)
-                self.checkpoint(S)
-            else: # last run
-                S.run(nb_cycles_remaining, True)
-                S.compute_sn_from_kernels
-                self.checkpoint(S, compute=True)
+
+        for _ in range(nb_cycles // nb_cycles_per_subrun):
+            S.run(nb_cycles_per_subrun, True)
+            self.checkpoint(S)
+        if (nb_cycles % nb_cycles_per_subrun) != 0:
+            S.run(nb_cycles % nb_cycles_per_subrun, True)
+        else:
+            S.collect_results(1) # make sure we collect over world
+        S.compute_sn_from_kernels
+        self.checkpoint(S, compute=True)
 
 
 ######################### Front End #######################

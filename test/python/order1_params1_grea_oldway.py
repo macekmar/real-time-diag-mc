@@ -47,6 +47,10 @@ for i, t in enumerate(times):
     S.run(100000, True)
 
     on[:, i] = np.squeeze(perturbation_series(c0, S.pn, S.sn, p["U"]))
+    nb_measures = S.nb_measures
+    if nb_measures != 100000:
+        raise RuntimeError, 'FAILED: Solver reported having completed {0} measures instead of 100000'.format(nb_measures)
+
 
 if mpi.is_master_node():
     with HDFArchive('out_files/' + os.path.basename(__file__)[:-3] + '.out.h5', 'w') as ar:  # A file to store the results

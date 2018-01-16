@@ -92,7 +92,7 @@ void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser,
  // configuration
  bool kernels_method = (params.method != 0);
  config = Configuration(green_function_alpha, annihila_pts, creation_pts, params.max_perturbation_order,
-                        params.singular_thresholds, kernels_method);
+                        params.singular_thresholds, kernels_method, params.cycles_trapped_thresh);
 
  // order zero values
  auto gf_map = map([&](keldysh_contour_pt tau) { return green_function(tau, creation_pts[0]); });

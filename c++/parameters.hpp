@@ -91,4 +91,7 @@ struct solve_parameters_t {
  /// log10 conditioning thresholds for each det_manip objects
  std::pair<double, double> singular_thresholds;
 
+ /// Number of cycles after which a trapped configuration is reevaluated
+ int cycles_trapped_thresh = 100;
+
 };

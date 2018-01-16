@@ -63,7 +63,7 @@ int main() {
  auto sing_th = std::pair<double, double>{3.5, 3.5};
  // auto sing_th = std::pair<double, double>{-10000, -10000};
 
- Configuration config(g0_alpha, an_pts, cr_pts, 4, sing_th, true);
+ Configuration config(g0_alpha, an_pts, cr_pts, 4, sing_th, true, 100);
  dcomplex ref_weight = 1;
  auto ref_kernels = array<dcomplex, 2>(5, 2);
 

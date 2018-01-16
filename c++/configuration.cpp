@@ -4,12 +4,14 @@
 
 Configuration::Configuration(g0_keldysh_alpha_t green_function, std::vector<keldysh_contour_pt> annihila_pts,
                              std::vector<keldysh_contour_pt> creation_pts, int max_order,
-                             std::pair<double, double> singular_thresholds, bool kernels_comput = true)
+                             std::pair<double, double> singular_thresholds, bool kernels_comput,
+                             int cycles_trapped_thresh)
    : singular_thresholds(singular_thresholds),
      cofactor_threshold(2. * singular_thresholds.first),
      order(0),
      max_order(max_order),
-     kernels_comput(kernels_comput) {
+     kernels_comput(kernels_comput),
+     cycles_trapped_thresh(cycles_trapped_thresh) {
 
 
  weight_sum = array<double, 1>(max_order + 1);
@@ -132,7 +134,7 @@ double Configuration::kernels_evaluate() {
   det1 = sign * matrices[1].determinant();
   det0 = matrices[0].determinant();
 
-  if (matrices[0].get_cond_nb() > cofactor_threshold or (not std::isnormal(std::abs(det0))) ) {
+  if (matrices[0].get_cond_nb() > cofactor_threshold or (not std::isnormal(std::abs(det0)))) {
    // matrix is singular, calculate cofactors
    nb_cofact(order - 1)++;
    auto cofactors = cofactor_row(matrices[0], order, matrices[0].size());
@@ -181,6 +183,12 @@ void Configuration::accept_config() {
 // -----------------------
 void Configuration::incr_cycles_trapped() {
  cycles_trapped++;
+ if (cycles_trapped % cycles_trapped_thresh == 0) {
+  evaluate();
+  accepted_weight = current_weight;
+  accepted_kernels() = current_kernels();
+  // do not reset cycles_trapped to 0
+ }
 }
 
 // -----------------------

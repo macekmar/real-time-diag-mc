@@ -36,14 +36,8 @@ p["w_shift"] = 0
 p["method"] = 5
 p["singular_thresholds"] = [3.5, 3.3]
 
-on, on_error = staircase_solve(g0_lesser, g0_greater, p)
-
-
-if mpi.is_master_node():
-    with HDFArchive('out_files/' + os.path.basename(__file__)[:-3] + '.out.h5', 'w') as ar:
-        ar['on'] = on
-        ar['on_error'] = on_error
-        ar['times'] = times
+filename = 'out_files/' + os.path.basename(__file__)[:-3] + '.out.h5'
+on, on_error = staircase_solve(g0_lesser, g0_greater, p, filename, save_period=60)
 
 if on.shape != (3, 101, 2):
     raise RuntimeError, 'FAILED: on shape is ' + str(on.shape) + ' but should be (3, 101, 2)'
@@ -51,30 +45,38 @@ if on.shape != (3, 101, 2):
 if on_error.shape != (3, 101, 2):
     raise RuntimeError, 'FAILED: on_error shape is ' + str(on.shape) + ' but should be (3, 101, 2)'
 
+if mpi.world.rank == 0:
+    # order 0
+    rtol = 0.001
+    atol = 0.0001
+    o0_less = np.array([g0_lesser(t)[0, 0] for t in times], dtype=complex)
+    o0_grea = np.array([g0_greater(t)[0, 0] for t in times], dtype=complex)
 
-# order 0
-rtol = 0.001
-atol = 0.0001
-o0_less = np.array([g0_lesser(t)[0, 0] for t in times], dtype=complex)
-o0_grea = np.array([g0_greater(t)[0, 0] for t in times], dtype=complex)
+    if not np.allclose(on[0, :, 0], o0_less, rtol=rtol, atol=atol):
+        raise RuntimeError, 'FAILED o0 less'
 
-if not np.allclose(on[0, :, 0], o0_less, rtol=rtol, atol=atol):
-    raise RuntimeError, 'FAILED o0 less'
+    if not np.allclose(on[0, :, 1], o0_grea, rtol=rtol, atol=atol):
+        raise RuntimeError, 'FAILED o0 grea'
 
-if not np.allclose(on[0, :, 1], o0_grea, rtol=rtol, atol=atol):
-    raise RuntimeError, 'FAILED o0 grea'
+    # order 1
+    rtol = 0.001
+    atol = 0.01
+    with HDFArchive('ref_data/order1_params1.ref.h5', 'r') as ref:
+        if not np.array_equal(times, ref['less']['times']):
+            raise RuntimeError, 'FAILED: times are different'
 
-# order 1
-rtol = 0.001
-atol = 0.01
-with HDFArchive('ref_data/order1_params1.ref.h5', 'r') as ref:
-    if not np.array_equal(times, ref['less']['times']):
-        raise RuntimeError, 'FAILED: times are different'
+        if not np.allclose(on[1, :, 0], ref['less']['o1'], rtol=rtol, atol=atol):
+            raise RuntimeError, 'FAILED o1 less'
 
-    if not np.allclose(on[1, :, 0], ref['less']['o1'], rtol=rtol, atol=atol):
-        raise RuntimeError, 'FAILED o1 less'
+        if not np.allclose(on[1, :, 1], ref['grea']['o1'], rtol=rtol, atol=atol):
+            raise RuntimeError, 'FAILED o1 grea'
 
-    if not np.allclose(on[1, :, 1], ref['grea']['o1'], rtol=rtol, atol=atol):
-        raise RuntimeError, 'FAILED o1 grea'
+    # test archive contents
+    with HDFArchive(filename, 'r') as ar:
+        nb_measures = ar['metadata']['nb_measures']
+        if nb_measures[0] != 100000 or nb_measures[1] != 100000:
+            print nb_measures
+            raise RuntimeError, 'FAILED: Solver reported number of measures != 100000'
 
-print 'SUCCESS !'
+
+    print 'SUCCESS !'

@@ -66,6 +66,11 @@ S.run(10000, True)
 
 kernels = S.kernels
 
+nb_measures = S.nb_measures
+if nb_measures != 10000:
+    raise RuntimeError, 'FAILED: Solver reported having completed {0} measures instead of 10000'.format(nb_measures)
+
+
 for k in range(1, len(kernels), 2):
 
     # plt.plot(np.abs(kernels[k, :, 0] - np.conjugate(kernels[k, :, 1])))

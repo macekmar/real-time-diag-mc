@@ -38,7 +38,7 @@ int main() {
  auto sing_th = std::pair<double, double>{3.5, 3.5};
  //auto sing_th = std::pair<double, double>{-10000, -10000};
 
- Configuration config(g0_alpha, an_pts, cr_pts, 4, sing_th, true);
+ Configuration config(g0_alpha, an_pts, cr_pts, 4, sing_th, true, 100);
 
  if (config.matrices[0].size() != 1) return 10;
  if (not are_equal_pts(config.matrices[0].get_x(0), a_up)) return 11;
