@@ -1,16 +1,12 @@
 #include "./moves.hpp"
 #include <triqs/det_manip.hpp>
 
-//#define REGISTER_CONFIG
-
 namespace moves {
 
 // ------------ QMC insertion move --------------------------------------
 
 dcomplex insert::attempt() {
-#ifdef REGISTER_CONFIG
- config.register_config();
-#endif
+ if (params->store_configurations == 1) config.register_accepted_config();
 
  auto k = config.order; // order before adding a time
  quick_exit = is_quick_exit(k+1);
@@ -20,6 +16,8 @@ dcomplex insert::attempt() {
  auto pt = get_random_point();
  config.insert(k, pt);
  config.evaluate();
+
+ if (params->store_configurations == 2) config.register_attempted_config();
 
  // The Metropolis ratio;
  return delta_t_L_U / (k + 1) * config.current_weight / config.accepted_weight;
@@ -38,9 +36,7 @@ void insert::reject() {
 // ------------ QMC double-insertion move --------------------------------------
 
 dcomplex insert2::attempt() {
-#ifdef REGISTER_CONFIG
- config.register_config();
-#endif
+ if (params->store_configurations == 1) config.register_accepted_config();
 
  auto k = config.order; // order before adding two times
  quick_exit = is_quick_exit(k+2);
@@ -52,6 +48,8 @@ dcomplex insert2::attempt() {
  config.insert2(k, k + 1, pt1, pt2);
 
  config.evaluate();
+
+ if (params->store_configurations == 2) config.register_attempted_config();
 
  // The Metropolis ratio
  return delta_t_L_U * delta_t_L_U / ((k + 1) * (k + 2)) * config.current_weight / config.accepted_weight;
@@ -71,9 +69,7 @@ void insert2::reject() {
 //// ------------ QMC removal move --------------------------------------
 
 dcomplex remove::attempt() {
-#ifdef REGISTER_CONFIG
- config.register_config();
-#endif
+ if (params->store_configurations == 1) config.register_accepted_config();
 
  auto k = config.order; // order before removal
  quick_exit = is_quick_exit(k-1);
@@ -84,6 +80,8 @@ dcomplex remove::attempt() {
  removed_pt = config.get_config(p);     // store the point to be remove for later reject
  config.remove(p);                      // remove the point for all matrices
  config.evaluate(); // recompute sum over keldysh indices
+
+ if (params->store_configurations == 2) config.register_attempted_config();
 
  // The Metropolis ratio
  return k / delta_t_L_U * config.current_weight / config.accepted_weight;
@@ -102,9 +100,7 @@ void remove::reject() {
 // ------------ QMC double-removal move --------------------------------------
 
 dcomplex remove2::attempt() {
-#ifdef REGISTER_CONFIG
- config.register_config();
-#endif
+ if (params->store_configurations == 1) config.register_accepted_config();
 
  auto k = config.order; // order before removal
  quick_exit = is_quick_exit(k-2);
@@ -118,6 +114,8 @@ dcomplex remove2::attempt() {
  removed_pt2 = config.get_config(p2);
  config.remove2(p1, p2);
  config.evaluate(); // recompute sum over keldysh indices
+
+ if (params->store_configurations == 2) config.register_attempted_config();
 
  // The Metropolis ratio
  return k * (k - 1) / pow(delta_t_L_U, 2) * config.current_weight / config.accepted_weight;
@@ -136,9 +134,7 @@ void remove2::reject() {
 // ------------ QMC vertex shift move --------------------------------------
 
 dcomplex shift::attempt() {
-#ifdef REGISTER_CONFIG
- config.register_config();
-#endif
+ if (params->store_configurations == 1) config.register_accepted_config();
 
  auto k = config.order; // order
 
@@ -150,6 +146,8 @@ dcomplex shift::attempt() {
  auto new_pt = get_random_point(); // new time
  config.change_config(p, new_pt);
  config.evaluate();
+
+ if (params->store_configurations == 2) config.register_attempted_config();
 
  // The Metropolis ratio
  return config.current_weight / config.accepted_weight;

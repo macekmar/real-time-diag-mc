@@ -94,4 +94,9 @@ struct solve_parameters_t {
  /// Number of cycles after which a trapped configuration is reevaluated
  int cycles_trapped_thresh = 100;
 
+ /// Store the list of all configurations accepted (if 1) or attempted (if 2) in the Markov chain.
+ //  Disable the feature if 0.
+ //  /!\ will use huge amount of memory, use with small number of cycles only !
+ int store_configurations = 0;
+
 };

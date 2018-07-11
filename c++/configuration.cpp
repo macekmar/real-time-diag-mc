@@ -192,33 +192,37 @@ void Configuration::incr_cycles_trapped() {
 }
 
 // -----------------------
-void Configuration::register_config() {
- if (stop_register) return;
-
- int threshold = 1e7 / triqs::mpi::communicator().size();
- if (config_list.size() > threshold) {
-  if (triqs::mpi::communicator().rank() == 0)
-   std::cout << std::endl << "Max nb of config reached" << std::endl;
-  stop_register = true;
- }
-
- std::vector<double> config;
+// build configuration signature
+std::vector<double> Configuration::signature() {
+ std::vector<double> signa;
  for (int i = 0; i < order; ++i) {
-  config.emplace_back(get_config(i).t);
+  signa.emplace_back(get_config(i).t);
  }
+ return signa;
+};
 
- if (config_list.size() == 0) {
-  config_list.emplace_back(config);
-  config_weight.emplace_back(1);
-  return;
- }
+// -----------------------
+// Register the configuration as if it has been accepted (accepted weight is stored).
+// Increment multiplicity if it didn't change since last registration.
+void Configuration::register_accepted_config() {
+ auto config = signature();
 
- if (config == config_list[config_list.size() - 1])
-  config_weight[config_weight.size() - 1]++;
+ if (config_list.size() > 0 && config == config_list[config_list.size() - 1]) // short-circuit eval
+  config_mult[config_mult.size() - 1]++;
  else {
   config_list.emplace_back(config);
-  config_weight.emplace_back(1);
+  config_mult.emplace_back(1);
+  config_weight.emplace_back(accepted_weight);
  }
+};
+
+// -----------------------
+// Register the configuration as if it has been attempted only (current weight is stored).
+void Configuration::register_attempted_config() {
+ auto config = signature();
+
+ config_list.emplace_back(config);
+ config_weight.emplace_back(current_weight);
 };
 
 // -----------------------

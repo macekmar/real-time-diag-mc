@@ -59,7 +59,8 @@ class solver_core {
  double get_qmc_duration() const { return cum_qmc_duration; }
  long get_nb_measures() const { return sum(pn); }
  std::vector<std::vector<double>> get_config_list() const { return config.config_list; }
- std::vector<int> get_config_weight() const { return config.config_weight; }
+ std::vector<int> get_config_mult() const { return config.config_mult; }
+ std::vector<dcomplex> get_config_weight() const { return config.config_weight; }
  array<long, 1> get_pn() const { return pn; }
  array<dcomplex, 3> get_sn() const { return sn; }
  array<dcomplex, 3> get_kernels() const { return kernels / kernels_binning.get_bin_length(); }

@@ -7,6 +7,7 @@ import itertools
 from pytriqs.archive import HDFArchive
 from datetime import datetime, timedelta
 from time import clock
+import cPickle
 
 def reverse_axis(array):
     """For first dimensions broadcasting"""
@@ -51,31 +52,22 @@ def variance_error(on, comm=MPI.COMM_WORLD, weight=None):
 
     return on_error
 
-def gather_histogram(solver, comm=MPI.COMM_WORLD):
-    list_config = solver.config_list
-    weight_config = solver.config_weight
-    list_config = map(lambda x, y : [x] + list(y), weight_config, list_config)
+def save_configuration_list(solver, filename, comm=MPI.COMM_WORLD):
+    """
+    Pickle stored configuration data from cpp solver as a dictionnary.
+    File is named filename_config_rank.pkl
+    """
+    filename = filename + '_config_' + str(comm.rank).zfill(len(str(comm.size-1))) + '.pkl'
 
-    # Sort out the configurations
-    list_config.sort(key=len)
-    list_histograms = []
-    for k, g in itertools.groupby(list_config, len):
-        list_histograms.append(np.array(list(g)).T)
+    config_list = solver.config_list
+    config_weight = solver.config_weight
+    config_mult = solver.config_mult
 
-    list_histograms_all = []
+    config_dict = {'configurations': config_list, 'weights': config_weight, 'multiplicities': config_mult}
 
-    for histogram in list_histograms:
-        if comm.rank != 0:
-            comm.gather(histogram)
-        else:
-            list_histograms_all.append(np.concatenate(comm.gather(histogram), axis=1))
+    with open(filename, 'wb') as f:
+        cPickle.dump(config_dict, f)
 
-    if comm.rank != 0:
-        list_histograms_all = comm.bcast(None)
-    else:
-        comm.bcast(list_histograms_all)
-
-    return list_histograms_all
 
 
 # def calc_ideal_U(pn, U):
@@ -367,12 +359,12 @@ class SolverPython(object):
         S.compute_sn_from_kernels
         self.checkpoint(S, compute=True)
 
+        return S
+
 
 ######################### Front End #######################
 
-def single_solve(g0_lesser, g0_greater, parameters_, filename=None, save_period=-1, histogram=False):
-    if histogram:
-        raise NotImplementedError
+def single_solve(g0_lesser, g0_greater, parameters_, filename=None, save_period=-1):
 
     parameters = parameters_.copy()
     nb_warmup_cycles = parameters.pop('n_warmup_cycles')
@@ -380,14 +372,21 @@ def single_solve(g0_lesser, g0_greater, parameters_, filename=None, save_period=
 
     solver = SolverPython(g0_lesser, g0_greater, parameters, filename)
     solver.order_zero()
-    solver.prerun_and_run(nb_warmup_cycles, nb_cycles, parameters['max_perturbation_order'],
-                          parameters['U'], save_period=save_period)
+    S = solver.prerun_and_run(nb_warmup_cycles, nb_cycles, parameters['max_perturbation_order'],
+                              parameters['U'], save_period=save_period)
+
+    if 'store_configurations' in parameters and parameters['store_configurations'] > 0:
+        save_configuration_list(S, filename)
 
     return np.squeeze(solver.res['on']), np.squeeze(solver.res['on_error'])
 
 
 def staircase_solve(g0_lesser, g0_greater, parameters_, filename=None, save_period=-1):
     parameters = parameters_.copy()
+
+    if 'store_configurations' in parameters and parameters['store_configurations'] > 0:
+        raise NotImplementedError
+
     nb_warmup_cycles = parameters.pop('n_warmup_cycles')
     nb_cycles = parameters.pop('n_cycles')
     parameters["min_perturbation_order"] = 0

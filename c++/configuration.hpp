@@ -60,8 +60,8 @@ class Configuration {
 
  // registered configurations
  std::vector<std::vector<double>> config_list;
- std::vector<int> config_weight;
- bool stop_register = false;
+ std::vector<int> config_mult;
+ std::vector<dcomplex> config_weight;
 
  // methods
  Configuration(){};
@@ -84,7 +84,9 @@ class Configuration {
  array<long, 1> get_nb_values() const { return nb_values; };
 
  // utility and debug
- void register_config();
+ std::vector<double> signature();
+ void register_accepted_config();
+ void register_attempted_config();
  void print();
 };
 
