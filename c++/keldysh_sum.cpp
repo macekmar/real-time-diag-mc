@@ -24,6 +24,7 @@ void nice_print(det_manip<g0_keldysh_t> det, int p) {
 // ---------------- Cofact * det ------------------
 /// Gray code cofactor rotation.
 // TODO: write down the formula this implements
+// FIXME: not used ??
 dcomplex Configuration::keldysh_sum_cofact(int p) {
 
  if (order > 63) TRIQS_RUNTIME_ERROR << "order overflow";
@@ -110,8 +111,6 @@ dcomplex Configuration::keldysh_sum() {
 
   for (auto spin : {up, down}) {
    pt = flip_index(matrices[spin].get_x(nlc));
-   // matrices[spin].change_one_row_and_one_col(nlc, nlc, pt, pt);
-   // matrices[spin].change_one_row_and_one_col(nlc, nlc, pt, pt);
    matrices[spin].change_row(nlc, pt);
    matrices[spin].change_col(nlc, pt);
   }

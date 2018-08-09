@@ -6,7 +6,7 @@ namespace mpi = triqs::mpi;
 
 
 // ----------
-WeightSignMeasure::WeightSignMeasure(Configuration* config, array<long, 1>* pn, array<dcomplex, 3>* sn)
+WeightSignMeasure::WeightSignMeasure(Configuration* config, array<long, 1>* pn, array<dcomplex, 1>* sn)
    : config(*config), pn(*pn), sn(*sn) {
 
  nb_orders = first_dim(*pn);
@@ -19,7 +19,7 @@ WeightSignMeasure::WeightSignMeasure(Configuration* config, array<long, 1>* pn, 
 void WeightSignMeasure::accumulate(dcomplex sign) {
  histogram_pn << config.order;
  dcomplex weight = config.accepted_weight;
- sn_accum(config.order, ellipsis()) += weight / std::abs(weight);
+ sn_accum(config.order) += weight / std::abs(weight);
 }
 
 // ----------
@@ -40,11 +40,11 @@ void WeightSignMeasure::collect_results(mpi::communicator c) {
 
  for (int k = 0; k < nb_orders; k++) {
   if (pn(k) != 0)
-   sn(k, ellipsis()) = sn(k, ellipsis()) / pn(k);
+   sn(k) = sn(k) / pn(k);
   else
-   sn(k, ellipsis()) = 0;
+   sn(k) = 0;
 
-  sn(k, ellipsis()) *= i_n[k % 4];
+  sn(k) *= i_n[k % 4];
  }
 }
 
@@ -52,8 +52,8 @@ void WeightSignMeasure::collect_results(mpi::communicator c) {
 
 // ----------
 TwoDetKernelMeasure::TwoDetKernelMeasure(Configuration* config, KernelBinning* kernels_binning,
-                                         array<long, 1>* pn, array<dcomplex, 3>* kernels,
-                                         array<dcomplex, 3>* kernel_diracs, array<long, 3>* nb_kernels)
+                                         array<long, 1>* pn, array<dcomplex, 4>* kernels,
+                                         array<dcomplex, 4>* kernel_diracs, array<long, 4>* nb_kernels)
    : config(*config),
      kernels_binning(*kernels_binning),
      pn(*pn),

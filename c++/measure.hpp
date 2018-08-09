@@ -14,13 +14,13 @@ class WeightSignMeasure {
  private:
  Configuration& config;
  array<long, 1>& pn;
- array<dcomplex, 3>& sn;
- array<dcomplex, 3> sn_accum;
+ array<dcomplex, 1>& sn;
+ array<dcomplex, 1> sn_accum;
  int nb_orders;
  histogram histogram_pn;
 
  public:
- WeightSignMeasure(Configuration* config, array<long, 1>* pn, array<dcomplex, 3>* sn);
+ WeightSignMeasure(Configuration* config, array<long, 1>* pn, array<dcomplex, 1>* sn);
 
  void accumulate(dcomplex sign);
 
@@ -35,16 +35,16 @@ class TwoDetKernelMeasure {
  Configuration& config;
  KernelBinning& kernels_binning;
  array<long, 1>& pn;
- array<dcomplex, 3>& kernels;
- array<dcomplex, 3>& kernel_diracs;
- array<long, 3>& nb_kernels;
+ array<dcomplex, 4>& kernels;
+ array<dcomplex, 4>& kernel_diracs;
+ array<long, 4>& nb_kernels;
  int nb_orders;
  histogram histogram_pn;
 
  public:
  TwoDetKernelMeasure(Configuration* config, KernelBinning* kernels_binning, array<long, 1>* pn,
-                     array<dcomplex, 3>* kernels, array<dcomplex, 3>* kernel_diracs,
-                     array<long, 3>* nb_kernels);
+                     array<dcomplex, 4>* kernels, array<dcomplex, 4>* kernel_diracs,
+                     array<long, 4>* nb_kernels);
 
  void accumulate(dcomplex sign);
 

@@ -17,34 +17,25 @@ int main() {
                              0.0);  // muR
 
  solve_parameters_t params;
- std::vector<std::tuple<x_index_t, double, int>> creation_ops, annihilation_ops;
- annihilation_ops = std::vector<std::tuple<x_index_t, double, int>>();
- auto pt = std::tuple<x_index_t, double, int>(0, 0.0, 0);
- creation_ops.push_back(pt);
 
- std::vector<dcomplex> extern_alphas;
- extern_alphas.push_back(0.);
-
- params.creation_ops = creation_ops;
- params.annihilation_ops = annihilation_ops;
- params.extern_alphas = extern_alphas;
- std::vector<double> measure_times = {-50., -40., -30.};
- params.measure_times = measure_times;
- std::vector<int> measure_keldysh_indices = {0, 1};
- params.measure_keldysh_indices = measure_keldysh_indices;
- std::pair<double, double> singular_thresholds = {4.5, 3.3};
- params.singular_thresholds = singular_thresholds;
-
+ params.creation_ops.push_back(std::tuple<orbital_t, spin_t, timec_t, int>(0, up, 0.0, 0));
+ params.annihilation_ops.push_back(std::tuple<orbital_t, spin_t, timec_t, int>(0, up, 0.0, 0));
+ params.extern_alphas.push_back(0.);
+ params.nonfixed_op = false;
  params.interaction_start = 150.;
  params.alpha = 0.5;
+ params.nb_orbitals = 1;
+
  params.U = 0.5;
  params.w_ins_rem = 1.0;
  params.w_dbl = 0.5;
  params.w_shift = 0.0;
  params.max_perturbation_order = 6;
  params.min_perturbation_order = 0;
- params.method = 5;
  params.verbosity = 1;
+ params.method = 5;
+ params.nb_bins = 100;
+ params.singular_thresholds = std::pair<double, double>{4.5, 3.3};
 
  solver_core S(params);
  S.set_g0(g0.first, g0.second);
@@ -53,14 +44,12 @@ int main() {
  std::cout << "pn: " << S.get_pn() << std::endl;
 
  S.run(200, true);
- S.compute_sn_from_kernels();
  std::cout << "pn: " << S.get_pn() << std::endl;
- std::cout << "sn: " << S.get_sn() << std::endl;
+ std::cout << "kernels:" << std::endl << S.get_kernels() << std::endl;
 
  S.collect_results(2);
- S.compute_sn_from_kernels();
  std::cout << "pn: " << S.get_pn() << std::endl;
- std::cout << "sn: " << S.get_sn() << std::endl;
+ std::cout << "kernels:" << std::endl << S.get_kernels() << std::endl;
 
  MPI::Finalize();
 

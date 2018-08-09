@@ -9,6 +9,10 @@ template <typename T>
 array<typename det_manip<T>::value_type, 1> cofactor_row(det_manip<T>& matrix, size_t i, size_t n) {
  /* Computes the n-th first cofactors of the i-th row of `matrix`.
   * This does NOT use the inverse matrix.
+  *
+  * In det_manip, vaues of the x-list are constant along rows, while values of
+  * the y-list are constant along columns. That is at least the convention I
+  * use to name rows and columns.
   */
  array<typename det_manip<T>::value_type, 1> cofactors(n);
  int signs[2] = {1, -1};
@@ -27,17 +31,44 @@ array<typename det_manip<T>::value_type, 1> cofactor_row(det_manip<T>& matrix, s
  return cofactors;
 };
 
+template <typename T>
+array<typename det_manip<T>::value_type, 1> cofactor_col(det_manip<T>& matrix, size_t j, size_t n) {
+ /* Computes the n-th first cofactors of the j-th column of `matrix`.
+  * This does NOT use the inverse matrix.
+  *
+  * In det_manip, vaues of the x-list are constant along rows, while values of
+  * the y-list are constant along columns. That is at least the convention I
+  * use to name rows and columns.
+  */
+ array<typename det_manip<T>::value_type, 1> cofactors(n);
+ int signs[2] = {1, -1};
+ auto y_j = matrix.get_y(j);
+ auto x_i = matrix.get_x(0);
+ auto x_tmp = x_i;
+ matrix.remove(0, j);
+ cofactors(0) = signs[j % 2] * matrix.determinant();
+ for (int i = 1; i < n; ++i) {
+  x_tmp = matrix.get_x(i - 1);
+  matrix.change_row(i - 1, x_i);
+  x_i = x_tmp;
+  cofactors(i) = signs[(j + i) % 2] * matrix.determinant();
+ }
+ matrix.insert(n - 1, j, x_i, y_j);
+ return cofactors;
+};
+
 // -----------------------
 class Configuration {
 
  private:
  bool kernels_comput = true;
+ bool nonfixed_op;
+ spin_t spin_dvpt; // tells which matrix is to be developped
  std::pair<double, double> singular_thresholds; // for det_manip
  double cofactor_threshold;
  int max_order = 0;
  array<double, 1> weight_sum;
  array<long, 1> nb_values;
- std::vector<size_t> crea_k_ind;
  int cycles_trapped = 0;
  int cycles_trapped_thresh = 100;
 
@@ -45,7 +76,7 @@ class Configuration {
  // void operator=(const Configuration&) = delete; // non copyable
  double kernels_evaluate();
  dcomplex keldysh_sum();
- dcomplex keldysh_sum_cofact(int p);
+ dcomplex keldysh_sum_cofact(int p); // not used ??
 
  public:
  std::vector<det_manip<g0_keldysh_alpha_t>>
@@ -67,14 +98,15 @@ class Configuration {
  Configuration(){};
  Configuration(g0_keldysh_alpha_t green_function, std::vector<keldysh_contour_pt> annihila_pts,
                std::vector<keldysh_contour_pt> creation_pts, int max_order,
-               std::pair<double, double> singular_thresholds, bool kernels_comput, int cycles_trapped_thresh);
+               std::pair<double, double> singular_thresholds, bool kernels_comput,
+               bool nonfixed_op, int cycles_trapped_thresh);
 
- void insert(int k, keldysh_contour_pt pt);
- void insert2(int k1, int k2, keldysh_contour_pt pt1, keldysh_contour_pt pt2);
+ void insert(int k, vertex_t vtx);
+ void insert2(int k1, int k2, vertex_t vtx1, vertex_t vtx2);
  void remove(int k);
  void remove2(int k1, int k2);
- void change_config(int k, keldysh_contour_pt pt);
- keldysh_contour_pt get_config(int p) const;
+ void change_vertex(int k, vertex_t vtx);
+ vertex_t get_vertex(int p) const;
 
  void evaluate();
  void accept_config();

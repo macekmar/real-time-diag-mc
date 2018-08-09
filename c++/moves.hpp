@@ -8,18 +8,18 @@ namespace moves {
 struct common {
  Configuration &config;
  const solve_parameters_t *params;
+ vertex_rand_gen vrg;
  triqs::mc_tools::random_generator &rng;
- random_x_generator rxg;
- double delta_t_L_U;
- double delta_t;
+ double normalization;
  bool quick_exit = false;
 
  common(Configuration *config, const solve_parameters_t *params, const double t_max,
         triqs::mc_tools::random_generator &rng)
-    : config(*config), params(params), rng(rng) {
-  rxg = random_x_generator();
-  delta_t = params->interaction_start + t_max;
-  delta_t_L_U = delta_t * rxg.size() * params->U;
+    : config(*config),
+      params(params),
+      vrg(vertex_rand_gen(params->nb_orbitals, params->interaction_start, rng)),
+      rng(rng) {
+  normalization = vrg.size() * params->U;
  }
 
  /// Tell if `k` is an allowed order
@@ -29,10 +29,8 @@ struct common {
           k != params->min_perturbation_order);
  }
 
- /// Construct random point with space/orbital index, time and alpha
- keldysh_contour_pt get_random_point() {
-  return {rxg(rng), qmc_time_t{rng(delta_t) - params->interaction_start}, 0};
- }
+ /// Construct random vertex
+ inline vertex_t get_random_vertex() { return vrg(); }
 };
 
 // ------------ QMC insertion move --------------------------------------
@@ -58,7 +56,7 @@ struct insert2 : common {
 // ------------ QMC removal move --------------------------------------
 
 struct remove : common {
- keldysh_contour_pt removed_pt;
+ vertex_t removed_vtx;
  int p;
 
  using common::common;
@@ -70,7 +68,7 @@ struct remove : common {
 // ------------ QMC double-removal move --------------------------------------
 
 struct remove2 : common {
- keldysh_contour_pt removed_pt1, removed_pt2;
+ vertex_t removed_vtx1, removed_vtx2;
  int p1, p2;
 
  using common::common;
@@ -82,7 +80,7 @@ struct remove2 : common {
 //-----------QMC vertex shift move------------
 
 struct shift : common {
- keldysh_contour_pt removed_pt;
+ vertex_t removed_vtx;
  int p;
 
  using common::common;

@@ -14,67 +14,34 @@ solver_core::solver_core(solve_parameters_t const& params)
    : qmc(params.random_name, params.random_seed, 1.0, params.verbosity, false), // first_sign is not used
      params(params) {
 
-#ifdef REGISTER_CONFIG
- if (mpi::communicator().rank() == 0)
-  std::cout << "/!\ Configuration Registration ON" << std::endl << std::endl;
-#endif
+ if (mpi::communicator().rank() == 0 and params.store_configurations != 0)
+  std::cout << "/!\\ Configurations are being stored." << std::endl << std::endl;
 
  if (params.interaction_start < 0) TRIQS_RUNTIME_ERROR << "interaction_time must be positive";
  if (params.max_perturbation_order - params.min_perturbation_order + 1 < 2)
   TRIQS_RUNTIME_ERROR << "The range of perturbation orders must cover at least 2 orders";
 
- // make tau list from first annihilation op points lists
- tau_array = array<keldysh_contour_pt, 2>(params.measure_times.size(), params.measure_keldysh_indices.size());
- if (tau_array.is_empty()) TRIQS_RUNTIME_ERROR << "No left input point !";
-
- keldysh_contour_pt tau;
- for (int i = 0; i < params.measure_times.size(); ++i) {
-  for (int j = 0; j < params.measure_keldysh_indices.size(); ++j) {
-   tau = {params.measure_state, params.measure_times[i], params.measure_keldysh_indices[j]};
-   tau_array(i, j) = tau;
-  }
- }
-
  // Check creation and annihilation operators
- if (params.creation_ops.size() != params.annihilation_ops.size() + 1)
-  TRIQS_RUNTIME_ERROR << "Number of creation operators must match the number of annihilation operators + 1";
- if (params.extern_alphas.size() != params.creation_ops.size())
-  TRIQS_RUNTIME_ERROR << "Number of external alphas must match number of creation operators.";
+ if (params.creation_ops.size() != params.annihilation_ops.size() or
+     params.extern_alphas.size() != params.creation_ops.size())
+  TRIQS_RUNTIME_ERROR << "Number of creation operators, of annihilation operators and of external alphas must match";
 
- int rank = 0;
- for (auto const& pt : params.creation_ops) {
-  creation_pts.push_back(make_keldysh_contour_pt(pt, rank));
-  rank++;
- }
-
- annihila_pts.push_back(tau_array(0, 0));
- annihila_pts[0].rank = 0;
- rank = 1;
- for (auto const& pt : params.annihilation_ops) {
-  annihila_pts.push_back(make_keldysh_contour_pt(pt, rank));
-  rank++;
- }
-
- // boundaries
- t_max = *std::max_element(params.measure_times.begin(), params.measure_times.end());
- for (auto const& pt : creation_pts) {
-  if (pt.t > t_max) t_max = pt.t;
- }
- for (auto const& pt : annihila_pts) {
-  if (pt.t > t_max) t_max = pt.t;
+ for (int rank = 0; rank < params.creation_ops.size(); ++rank) {
+  creation_pts.push_back(make_keldysh_contour_pt(params.creation_ops[rank], rank));
+  annihila_pts.push_back(make_keldysh_contour_pt(params.annihilation_ops[rank], rank));
  }
 
  // kernel binning
  kernels_binning =
-     KernelBinning(-params.interaction_start, t_max, params.nb_bins, params.max_perturbation_order,
-                   false); // TODO: it should be defined in measure
+     KernelBinning(-params.interaction_start, 0., params.nb_bins, params.max_perturbation_order,
+                   params.nb_orbitals, false); // TODO: it should be defined in measure
 
  // results arrays
  pn = array<long, 1>(params.max_perturbation_order + 1);
  pn() = 0;
 
- sn = array<dcomplex, 3>(params.max_perturbation_order + 1, params.measure_times.size(),
-                         params.measure_keldysh_indices.size());
+ // to store old method results
+ sn = array<dcomplex, 1>(params.max_perturbation_order + 1);
  sn() = 0;
 };
 
@@ -92,11 +59,8 @@ void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser,
  // configuration
  bool kernels_method = (params.method != 0);
  config = Configuration(green_function_alpha, annihila_pts, creation_pts, params.max_perturbation_order,
-                        params.singular_thresholds, kernels_method, params.cycles_trapped_thresh);
-
- // order zero values
- auto gf_map = map([&](keldysh_contour_pt tau) { return green_function(tau, creation_pts[0]); });
- g0_array = make_matrix(gf_map(tau_array));
+                        params.singular_thresholds, kernels_method, params.nonfixed_op,
+                        params.cycles_trapped_thresh);
 
  // Register moves and measurements
  if (params.w_ins_rem > 0) {
@@ -112,8 +76,6 @@ void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser,
  }
 
  if (params.method == 0) {
-  if (size(tau_array) > 1)
-   TRIQS_RUNTIME_ERROR << "Trying to use a singlepoint measure with multiple input point";
   qmc.add_measure(WeightSignMeasure(&config, &pn, &sn), "Weight sign measure");
  } else if (params.method == 5) {
   qmc.add_measure(TwoDetKernelMeasure(&config, &kernels_binning, &pn, &kernels, &kernel_diracs, &nb_kernels),
@@ -210,28 +172,8 @@ int solver_core::run(const int nb_cycles, const bool do_measure, const int max_t
 }
 
 // --------------------------------
-void solver_core::compute_sn_from_kernels() {
- // TODO: maybe a more advanced integration (trapeze ?)
- // TODO: include dirac deltas
- auto taup = creation_pts[0];
- if (params.method != 5) TRIQS_RUNTIME_ERROR << "Cannot use kernels with this method";
- if (mpi::communicator().rank() == 0) std::cout << "Computing sn from kernels..." << std::flush;
- keldysh_contour_pt tau;
- for (int i = 0; i < second_dim(sn); ++i) { // for each tau (time)
-  for (int a = 0; a < third_dim(sn); ++a) { // for each tau (keldysh index)
-   tau = tau_array(i, a);
-   auto gf_map = map([&](keldysh_contour_pt alpha) { return green_function(tau, alpha); });
-   auto gf_tau_alpha = gf_map(kernels_binning.coord_array());
-   sn(0, i, a) = green_function(tau, taup);
-   for (int order = 1; order < first_dim(sn); ++order) { // for each order
-    sn(order, i, a) = sum(gf_tau_alpha * kernels(order - 1, ellipsis()));
-   }
-  }
- }
- if (mpi::communicator().rank() == 0) std::cout << "done" << std::endl;
-}
-
-// --------------------------------
+// Divides the world into `nb_partitions` partitions and collect results
+// separately in each of them. Usefull for error estimation.
 void solver_core::collect_results(int nb_partitions) {
  mpi::communicator world;
 
@@ -265,19 +207,19 @@ int solver_core::finish(const int run_status) {
 }
 
 // --------------------------------
-std::tuple<double, array<dcomplex, 2>> solver_core::order_zero() {
- if (status < not_ready) TRIQS_RUNTIME_ERROR << "Run aborted";
- if (status < ready) TRIQS_RUNTIME_ERROR << "Unperturbed Green's functions have not been set!";
- double c0 = 0;
+//std::tuple<double, array<dcomplex, 2>> solver_core::order_zero() {
+// if (status < not_ready) TRIQS_RUNTIME_ERROR << "Run aborted";
+// if (status < ready) TRIQS_RUNTIME_ERROR << "Unperturbed Green's functions have not been set!";
+// double c0 = 0;
 
- if (params.method == 5) {
-  c0 = 1.;
- } else { // singlepoint methods only
-  c0 = abs(g0_array(0, 0));
- }
- array<dcomplex, 2> s0 = g0_array / c0;
- if (mpi::communicator().rank() == 0) {
-  std::cout << "c0 = " << c0 << std::endl << std::endl;
- }
- return std::tuple<double, array<dcomplex, 2>>{c0, s0};
-}
+// if (params.method == 5) {
+//  c0 = 1.;
+// } else { // singlepoint methods only
+//  c0 = abs(g0_array(0, 0));
+// }
+// array<dcomplex, 2> s0 = g0_array / c0;
+// if (mpi::communicator().rank() == 0) {
+//  std::cout << "c0 = " << c0 << std::endl << std::endl;
+// }
+// return std::tuple<double, array<dcomplex, 2>>{c0, s0};
+//}

@@ -18,63 +18,63 @@ int main() {
  keldysh_contour_pt a, b;
 
  // matching internal points
- a = keldysh_contour_pt{0, 1.5, 0, -1};
- b = keldysh_contour_pt{0, 1.5, 0, -1};
+ a = keldysh_contour_pt{0, up, 1.5, 0, -1};
+ b = keldysh_contour_pt{0, up, 1.5, 0, -1};
  if (g0_alpha(a, b) != g0(a, b) - 0.5_j) return 1;
 
  // mismatching (in time) internal points
- a = keldysh_contour_pt{0, 1.5, 0, -1};
- b = keldysh_contour_pt{0, 2.0, 0, -1};
+ a = keldysh_contour_pt{0, up, 1.5, 0, -1};
+ b = keldysh_contour_pt{0, up, 2.0, 0, -1};
  if (g0_alpha(a, b) != g0(a, b)) return 2;
 
  // mismatching (in space/orbital) internal points
- a = keldysh_contour_pt{0, 1.5, 0, -1};
- b = keldysh_contour_pt{1, 1.5, 0, -1};
+ a = keldysh_contour_pt{0, up, 1.5, 0, -1};
+ b = keldysh_contour_pt{1, up, 1.5, 0, -1};
  if (g0_alpha(a, b) != g0(a, b)) return 3;
 
  // internal and external points, otherwise equal
- a = keldysh_contour_pt{0, 1.5, 0, -1};
- b = keldysh_contour_pt{0, 1.5, 0, 1};
+ a = keldysh_contour_pt{0, up, 1.5, 0, -1};
+ b = keldysh_contour_pt{0, up, 1.5, 0, 1};
  if (g0_alpha(a, b) != g0(a, b)) return 4;
 
  // external and internal points, otherwise equal
- a = keldysh_contour_pt{0, 1.5, 0, 1};
- b = keldysh_contour_pt{0, 1.5, 0, -1};
+ a = keldysh_contour_pt{0, up, 1.5, 0, 1};
+ b = keldysh_contour_pt{0, up, 1.5, 0, -1};
  if (g0_alpha(a, b) != g0(a, b)) return 5;
 
  // equal but mismatching external points
- a = keldysh_contour_pt{0, 1.5, 0, 1};
- b = keldysh_contour_pt{0, 1.5, 0, 0};
+ a = keldysh_contour_pt{0, up, 1.5, 0, 1};
+ b = keldysh_contour_pt{0, up, 1.5, 0, 0};
  if (g0_alpha(a, b) != g0(a, b)) return 6;
 
  // equal and matching external points
- a = keldysh_contour_pt{0, 1.5, 0, 0};
- b = keldysh_contour_pt{0, 1.5, 0, 0};
+ a = keldysh_contour_pt{0, up, 1.5, 0, 0};
+ b = keldysh_contour_pt{0, up, 1.5, 0, 0};
  if (g0_alpha(a, b) != g0(a, b) - 0.1_j) return 7;
 
  // equal and matching external points
- a = keldysh_contour_pt{0, 1.5, 0, 1};
- b = keldysh_contour_pt{0, 1.5, 0, 1};
+ a = keldysh_contour_pt{0, up, 1.5, 0, 1};
+ b = keldysh_contour_pt{0, up, 1.5, 0, 1};
  if (g0_alpha(a, b) != g0(a, b) - 1_j) return 8;
 
  // different (in time) but matching external points
- a = keldysh_contour_pt{0, 0.5, 0, 1};
- b = keldysh_contour_pt{0, 1.5, 0, 1};
+ a = keldysh_contour_pt{0, up, 0.5, 0, 1};
+ b = keldysh_contour_pt{0, up, 1.5, 0, 1};
  if (g0_alpha(a, b) != g0(a, b) - 1_j) return 9;
 
  // different (in space/orbital) but matching external points
- a = keldysh_contour_pt{2, 0.5, 0, 1};
- b = keldysh_contour_pt{0, 0.5, 0, 1};
+ a = keldysh_contour_pt{2, up, 0.5, 0, 1};
+ b = keldysh_contour_pt{0, up, 0.5, 0, 1};
  if (g0_alpha(a, b) != g0(a, b) - 1_j) return 10;
 
  // different (in keldsh index) but matching external points
- a = keldysh_contour_pt{2, 0.5, 1, 1};
- b = keldysh_contour_pt{0, 0.5, 0, 1};
+ a = keldysh_contour_pt{2, up, 0.5, 1, 1};
+ b = keldysh_contour_pt{0, up, 0.5, 0, 1};
  if (g0_alpha(a, b) != g0(a, b) - 1_j) return 11;
 
  // matching internal points with different keldysh indices
- a = keldysh_contour_pt{1, 0.5, 0, -1};
- b = keldysh_contour_pt{1, 0.5, 1, -1};
+ a = keldysh_contour_pt{1, up, 0.5, 0, -1};
+ b = keldysh_contour_pt{1, up, 0.5, 1, -1};
  if (g0_alpha(a, b) != g0(a, b) - 0.5_j) return 12;
 
  return 0;

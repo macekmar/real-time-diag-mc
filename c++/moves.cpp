@@ -8,19 +8,19 @@ namespace moves {
 dcomplex insert::attempt() {
  if (params->store_configurations == 1) config.register_accepted_config();
 
- auto k = config.order; // order before adding a time
+ auto k = config.order; // order before adding a vertex
  quick_exit = is_quick_exit(k+1);
  if (quick_exit) return 0;
 
  // insert the new line and col.
- auto pt = get_random_point();
- config.insert(k, pt);
+ auto vtx = get_random_vertex();
+ config.insert(k, vtx);
  config.evaluate();
 
  if (params->store_configurations == 2) config.register_attempted_config();
 
  // The Metropolis ratio;
- return delta_t_L_U / (k + 1) * config.current_weight / config.accepted_weight;
+ return normalization / (k + 1) * config.current_weight / config.accepted_weight;
 }
 
 dcomplex insert::accept() {
@@ -38,21 +38,21 @@ void insert::reject() {
 dcomplex insert2::attempt() {
  if (params->store_configurations == 1) config.register_accepted_config();
 
- auto k = config.order; // order before adding two times
+ auto k = config.order; // order before adding two vertices
  quick_exit = is_quick_exit(k+2);
  if (quick_exit) return 0;
 
  // insert the new lines and cols.
- auto pt1 = get_random_point();
- auto pt2 = get_random_point();
- config.insert2(k, k + 1, pt1, pt2);
+ auto vtx1 = get_random_vertex();
+ auto vtx2 = get_random_vertex();
+ config.insert2(k, k + 1, vtx1, vtx2);
 
  config.evaluate();
 
  if (params->store_configurations == 2) config.register_attempted_config();
 
  // The Metropolis ratio
- return delta_t_L_U * delta_t_L_U / ((k + 1) * (k + 2)) * config.current_weight / config.accepted_weight;
+ return normalization * normalization / ((k + 1) * (k + 2)) * config.current_weight / config.accepted_weight;
 }
 
 dcomplex insert2::accept() {
@@ -76,15 +76,15 @@ dcomplex remove::attempt() {
  if (quick_exit) return 0;
 
  // remove the line/col
- p = rng(k);                            // Choose one of the operators for removal
- removed_pt = config.get_config(p);     // store the point to be remove for later reject
- config.remove(p);                      // remove the point for all matrices
+ p = rng(k);                            // Choose one of the vertices for removal
+ removed_vtx = config.get_vertex(p);     // store the vertex to be removed for later reject
+ config.remove(p);                      // remove the vertex for all matrices
  config.evaluate(); // recompute sum over keldysh indices
 
  if (params->store_configurations == 2) config.register_attempted_config();
 
  // The Metropolis ratio
- return k / delta_t_L_U * config.current_weight / config.accepted_weight;
+ return k / normalization * config.current_weight / config.accepted_weight;
 }
 
 dcomplex remove::accept() {
@@ -94,7 +94,7 @@ dcomplex remove::accept() {
 
 void remove::reject() {
  if (quick_exit) return;
- config.insert(p, removed_pt);
+ config.insert(p, removed_vtx);
 }
 
 // ------------ QMC double-removal move --------------------------------------
@@ -107,18 +107,18 @@ dcomplex remove2::attempt() {
  if (quick_exit) return 0;
 
  // remove the lines/cols
- p1 = rng(k);        // Choose one of the operators for removal
+ p1 = rng(k);        // Choose one of the vertices for removal
  p2 = rng(k - 1);    //
  if (p2 >= p1) p2++; // if remove p1, and p2 is later, ????? FIXME
- removed_pt1 = config.get_config(p1);
- removed_pt2 = config.get_config(p2);
+ removed_vtx1 = config.get_vertex(p1);
+ removed_vtx2 = config.get_vertex(p2);
  config.remove2(p1, p2);
  config.evaluate(); // recompute sum over keldysh indices
 
  if (params->store_configurations == 2) config.register_attempted_config();
 
  // The Metropolis ratio
- return k * (k - 1) / pow(delta_t_L_U, 2) * config.current_weight / config.accepted_weight;
+ return k * (k - 1) / pow(normalization, 2) * config.current_weight / config.accepted_weight;
 }
 
 dcomplex remove2::accept() {
@@ -128,7 +128,7 @@ dcomplex remove2::accept() {
 
 void remove2::reject() {
  if (quick_exit) return;
- config.insert2(p1, p2, removed_pt1, removed_pt2);
+ config.insert2(p1, p2, removed_vtx1, removed_vtx2);
 }
 
 // ------------ QMC vertex shift move --------------------------------------
@@ -140,11 +140,11 @@ dcomplex shift::attempt() {
 
  quick_exit = (k == 0); // In particular if k = 0
  if (quick_exit) return 0;
- p = rng(k);                        // Choose one of the operators
- removed_pt = config.get_config(p); // old time, to be saved for the removal case
+ p = rng(k);                        // Choose one of the vertices
+ removed_vtx = config.get_vertex(p); // old vertex, to be saved for the removal case
 
- auto new_pt = get_random_point(); // new time
- config.change_config(p, new_pt);
+ auto new_vtx = get_random_vertex(); // new vertex
+ config.change_vertex(p, new_vtx);
  config.evaluate();
 
  if (params->store_configurations == 2) config.register_attempted_config();
@@ -160,7 +160,7 @@ dcomplex shift::accept() {
 
 void shift::reject() {
  if (quick_exit) return;
- config.change_config(p, removed_pt);
+ config.change_vertex(p, removed_vtx);
 }
 
 }

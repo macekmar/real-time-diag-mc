@@ -32,11 +32,11 @@ class solver_core {
  double cum_qmc_duration = 0;
  Status status = not_ready;
  KernelBinning kernels_binning;
- array<dcomplex, 3> kernels;
- array<dcomplex, 3> kernel_diracs;
- array<long, 3> nb_kernels;
+ array<dcomplex, 4> kernels;
+ array<dcomplex, 4> kernel_diracs;
+ array<long, 4> nb_kernels;
  array<long, 1> pn;
- array<dcomplex, 3> sn;
+ array<dcomplex, 1> sn;
 
  int finish(const int run_status);
 
@@ -47,12 +47,9 @@ class solver_core {
 
  void set_g0(gf_view<retime, matrix_valued> g0_lesser, gf_view<retime, matrix_valued> g0_greater);
 
- std::tuple<double, array<dcomplex, 2>> order_zero();
-
  int run(const int nb_cycles, const bool do_measure, const int max_time);
  int run(const int nb_cycles, const bool do_measure) { return run(nb_cycles, do_measure, -1); };
 
- void compute_sn_from_kernels();
  void collect_results(int nb_partitions);
 
  // getters
@@ -62,10 +59,10 @@ class solver_core {
  std::vector<int> get_config_mult() const { return config.config_mult; }
  std::vector<dcomplex> get_config_weight() const { return config.config_weight; }
  array<long, 1> get_pn() const { return pn; }
- array<dcomplex, 3> get_sn() const { return sn; }
- array<dcomplex, 3> get_kernels() const { return kernels / kernels_binning.get_bin_length(); }
- array<dcomplex, 3> get_kernel_diracs() const { return kernel_diracs; }
- array<long, 3> get_nb_kernels() const { return nb_kernels; }
+ array<dcomplex, 1> get_sn() const { return sn; }
+ array<dcomplex, 4> get_kernels() const { return kernels / kernels_binning.get_bin_length(); }
+ array<dcomplex, 4> get_kernel_diracs() const { return kernel_diracs; }
+ array<long, 4> get_nb_kernels() const { return nb_kernels; }
  array<double, 1> get_bin_times() const { return kernels_binning.get_bin_times(); }
  array<double, 1> get_dirac_times() const { return kernels_binning.get_dirac_times(); }
  double get_U() const { return params.U; }

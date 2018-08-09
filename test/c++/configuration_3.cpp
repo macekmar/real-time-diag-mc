@@ -22,23 +22,21 @@ int main() {
  std::vector<dcomplex> alphas{0., 0.5};
  g0_keldysh_alpha_t g0_alpha = g0_keldysh_alpha_t{g0, 0.5, alphas};
 
- auto a_up = keldysh_contour_pt{0, 0.0, 0, 0};
- auto a_up_p = keldysh_contour_pt{0, 0.1, 1, 0};
- auto a_do = keldysh_contour_pt{1, 0.2, 0, 1};
- auto a_do_p = keldysh_contour_pt{1, 0.3, 0, 1};
- auto b = keldysh_contour_pt{0, 0.4, 0};
- auto c = keldysh_contour_pt{0, 0.5, 0};
- auto d = keldysh_contour_pt{0, 0.6, 0};
+ auto a_up = keldysh_contour_pt{0, up, 0.0, 0, 0};
+ auto a_up_p = keldysh_contour_pt{0, up, 0.1, 1, 0};
+ auto a_do = keldysh_contour_pt{0, down, 0.2, 0, 1};
+ auto a_do_p = keldysh_contour_pt{0, down, 0.3, 0, 1};
+ auto b = keldysh_contour_pt{0, up, 0.4, 0};
+ auto c = keldysh_contour_pt{0, up, 0.5, 0};
+ auto d = keldysh_contour_pt{0, up, 0.6, 0};
 
  std::vector<keldysh_contour_pt> an_pts{a_up, a_do};
  std::vector<keldysh_contour_pt> cr_pts{a_up_p, a_do_p};
- a_do.x = 0;
- a_do_p.x = 0;
 
  auto sing_th = std::pair<double, double>{3.5, 3.5};
  //auto sing_th = std::pair<double, double>{-10000, -10000};
 
- Configuration config(g0_alpha, an_pts, cr_pts, 4, sing_th, true, 100);
+ Configuration config(g0_alpha, an_pts, cr_pts, 4, sing_th, true, false, 100);
 
  if (config.matrices[0].size() != 1) return 10;
  if (not are_equal_pts(config.matrices[0].get_x(0), a_up)) return 11;
@@ -48,7 +46,7 @@ int main() {
  if (not are_equal_pts(config.matrices[1].get_y(0), a_do_p)) return 15;
 
  // add a point and accept the config
- config.insert(0, b);
+ config.insert(0, vertex_t{b.x, b.x, b.t, b.k_index});
  config.evaluate();
  config.accept_config();
 
@@ -79,7 +77,7 @@ int main() {
  if (not are_equal_pts(config.matrices[1].get_y(0), a_do_p)) return 35;
 
  // add two points and accept;
- config.insert2(0, 1, c, d);
+ config.insert2(0, 1, vertex_t{c.x, c.x, c.t, c.k_index}, vertex_t{d.x, d.x, d.t, d.k_index});
  config.evaluate();
  config.accept_config();
 

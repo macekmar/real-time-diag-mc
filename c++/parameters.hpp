@@ -9,38 +9,40 @@ using namespace triqs::gfs;
 #define IMPURITY_MATRIX
 
 #ifdef IMPURITY_MATRIX
-using x_index_t = int;
+using orbital_t = int;
 #endif
+
+using timec_t = double;
+enum spin_t { up, down };
 
 //using namespace triqs::utility;
 
 // All the arguments of the solve function
 struct solve_parameters_t {
 
- /// Keldysh contour points for the creation operators
- std::vector<std::tuple<x_index_t, double, int>> creation_ops;
+ /// External Keldysh contour points for the creation operators
+ std::vector<std::tuple<orbital_t, int, timec_t, int>> creation_ops;
 
- /// Keldysh contour points for the annihilation operators, except the first one.
- // Its size must match `creation_ops` size - 1
- std::vector<std::tuple<x_index_t, double, int>> annihilation_ops;
+ /// External Keldysh contour points for the annihilation operators
+ std::vector<std::tuple<orbital_t, int, timec_t, int>> annihilation_ops;
 
- /// alphas to be used in the extra lines/columns. Same length as `creation_ops`.
+ /// External alphas
  std::vector<dcomplex> extern_alphas;
+
+ /// Operator to develop upon, in the kernel method.
+ // tells if it is the first creation operator (true) or the first annihilation
+ // op (false, default). Ignored if using the old method.
+ bool nonfixed_op = false;
 
  /// time before 0 at which interaction started
  double interaction_start;
 
- /// measure states (for the first input point), for now just one
- int measure_state = 0;
-
- /// measure times (for the first input point)
- std::vector<double> measure_times;
-
- /// measure keldysh indices (for the first input point)
- std::vector<int> measure_keldysh_indices;
-
- /// Alpha term
+ /// Alpha in the density-density interaction term
  double alpha;
+
+ /// Number of orbitals. Orbitals are indexed between 0 and `nb_orbitals`-1.
+ // This indexing is used to querry values of the unperturbed g.
+ int nb_orbitals;
 
  // ----   QMC parameters
 
