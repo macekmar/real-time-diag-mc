@@ -38,30 +38,42 @@ inline keldysh_contour_pt flip_index(keldysh_contour_pt const &t) { return {t.x,
 
 // -------------- Vertex ---------------------------------------
 
-// A vertex is the collection of two (in density-density interaction, four in
-// general) internal contour points with same time and keldysh index. In the
-// case of spin determinant separation, they must be of different spins.
+/* A vertex is the collection of two (in density-density interaction, four in
+ * general) internal contour points with same time and keldysh index, and a
+ * potential value. In the case of spin determinant separation, they must be of
+ * different spins.
+ */
 struct vertex_t {
  orbital_t x_up;
  orbital_t x_do;
  timec_t t;
  int k_index;
+ double potential;
 
  keldysh_contour_pt get_up_pt() { return {x_up, up, t, k_index}; };
  keldysh_contour_pt get_down_pt() { return {x_do, down, t, k_index}; };
 };
 
+/// Potential
+struct potential_data_t {
+ int nb_orbitals;
+ std::vector<double> values;
+ std::vector<orbital_t> i_list;
+ std::vector<orbital_t> j_list;
+};
+
 /// Vertex random generator
 struct vertex_rand_gen {
- int nb_orbitals;
+ potential_data_t potential_data;
  timec_t t_max;
  triqs::mc_tools::random_generator &rng;
 
- vertex_rand_gen(int nb_orbitals, timec_t t_max, triqs::mc_tools::random_generator &rng)
-  : nb_orbitals(nb_orbitals), t_max(t_max), rng(rng) {};
+ vertex_t operator()() {
+  int k = rng(potential_data.values.size());
+  return {potential_data.i_list[k], potential_data.j_list[k], -rng(t_max), 0, potential_data.values[k]};
+ };
 
- vertex_t operator()() { return {rng(nb_orbitals), rng(nb_orbitals), -rng(t_max), 0}; };
- double size() { return nb_orbitals * nb_orbitals * t_max; };
+ double size() { return potential_data.values.size() * t_max; };
 };
 
 // --------------   G0 adaptor   --------------------------------------

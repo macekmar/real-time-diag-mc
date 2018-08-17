@@ -72,7 +72,7 @@ int main() {
  if (config.order != 0) return 12;
 
  // add a point and accept the config
- config.insert(0, vertex_t{b0.x, b0.x, b0.t, b0.k_index});
+ config.insert(vertex_t{b0.x, b0.x, b0.t, b0.k_index, 1.});
  config.evaluate();
  config.accept_config();
 
@@ -108,7 +108,7 @@ int main() {
  if (config.order != 0) return 33;
 
  // add two points and accept;
- config.insert2(0, 1, vertex_t{c0.x, c0.x, c0.t, c0.k_index}, vertex_t{d0.x, d0.x, d0.t, d0.k_index});
+ config.insert2(vertex_t{c0.x, c0.x, c0.t, c0.k_index, 1.}, vertex_t{d0.x, d0.x, d0.t, d0.k_index, 1.});
  config.evaluate();
  config.accept_config();
 

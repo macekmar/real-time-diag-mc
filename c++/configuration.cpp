@@ -9,6 +9,7 @@ Configuration::Configuration(g0_keldysh_alpha_t green_function, std::vector<keld
    : singular_thresholds(singular_thresholds),
      cofactor_threshold(2. * singular_thresholds.first),
      order(0),
+     potential(1.),
      max_order(max_order),
      kernels_comput(kernels_comput),
      nonfixed_op(nonfixed_op),
@@ -53,31 +54,53 @@ Configuration::Configuration(g0_keldysh_alpha_t green_function, std::vector<keld
  accept_config();
 }
 
-void Configuration::insert(int k, vertex_t vtx) {
+void Configuration::insert(vertex_t vtx) {
  auto pt = vtx.get_up_pt();
- matrices[up].insert(k, k, pt, pt);
+ matrices[up].insert(0, 0, pt, pt);
  pt = vtx.get_down_pt();
- matrices[down].insert(k, k, pt, pt);
+ matrices[down].insert(0, 0, pt, pt);
+
+ potential_list.insert(0, vtx.potential);
+ potential *= vtx.potential;
+
  order++;
 };
 
-void Configuration::insert2(int k1, int k2, vertex_t vtx1, vertex_t vtx2) {
+// insert two vertices at once.
+void Configuration::insert2(vertex_t vtx1, vertex_t vtx2) {
  auto pt1 = vtx1.get_up_pt();
  auto pt2 = vtx2.get_up_pt();
- matrices[up].insert2(k1, k2, k1, k2, pt1, pt2, pt1, pt2);
+ matrices[up].insert2(0, 1, 0, 1, pt1, pt2, pt1, pt2);
  pt1 = vtx1.get_down_pt();
  pt2 = vtx2.get_down_pt();
- matrices[down].insert2(k1, k2, k1, k2, pt1, pt2, pt1, pt2);
+ matrices[down].insert2(0, 1, 0, 1, pt1, pt2, pt1, pt2);
+
+ potential_list.insert(0, vtx1.potential);
+ potential_list.insert(1, vtx2.potential); // TODO: check this is the correct order
+ potential *= vtx1.potential * vtx2.potential;
+
  order += 2;
 };
 
 void Configuration::remove(int k) {
  for (auto& m : matrices) m.remove(k, k);
+
+ potential /= potential_list[k];
+ potential_list.erase(k);
+
  order--;
 };
 
+/**
+ * Remove the vertices at positions k1 and k2.
+ * k1 and k2 must be two *distinct* existing positions.
+ */
 void Configuration::remove2(int k1, int k2) {
  for (auto& m : matrices) m.remove2(k1, k2, k1, k2);
+
+ potential /= potential_list[k1] * potential_list[k2];
+ potential_list.erase(k1, k2);
+
  order -= 2;
 };
 
@@ -88,12 +111,15 @@ void Configuration::change_vertex(int k, vertex_t vtx) {
  pt = vtx.get_down_pt();
  matrices[down].change_row(k, pt);
  matrices[down].change_col(k, pt);
+
+ potential *= vtx.potential / potential_list[k];
+ potential_list[k] = vtx.potential;
 };
 
 vertex_t Configuration::get_vertex(int p) const {
  auto pt_up = matrices[up].get_x(p);
  auto pt_down = matrices[down].get_x(p);
- return {pt_up.x, pt_down.x, pt_up.t, pt_up.k_index}; // no consistency check is done
+ return {pt_up.x, pt_down.x, pt_up.t, pt_up.k_index, potential_list[p]}; // no consistency check is done
 };
 
 // -----------------------
@@ -168,6 +194,8 @@ double Configuration::kernels_evaluate() {
   sign = -sign;
  }
 
+ current_kernels() *= potential;
+
  return sum(abs(current_kernels()));
 };
 
@@ -180,7 +208,7 @@ void Configuration::evaluate() {
  if (kernels_comput)
   value = kernels_evaluate();
  else
-  value = keldysh_sum();
+  value = potential * keldysh_sum();
 
  weight_sum(order) += std::abs(value);
  nb_values(order)++;

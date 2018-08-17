@@ -46,7 +46,7 @@ int main() {
  if (not are_equal_pts(config.matrices[1].get_y(0), a_do_p)) return 15;
 
  // add a point and accept the config
- config.insert(0, vertex_t{b.x, b.x, b.t, b.k_index});
+ config.insert(vertex_t{b.x, b.x, b.t, b.k_index, 1.});
  config.evaluate();
  config.accept_config();
 
@@ -77,7 +77,7 @@ int main() {
  if (not are_equal_pts(config.matrices[1].get_y(0), a_do_p)) return 35;
 
  // add two points and accept;
- config.insert2(0, 1, vertex_t{c.x, c.x, c.t, c.k_index}, vertex_t{d.x, d.x, d.t, d.k_index});
+ config.insert2(vertex_t{c.x, c.x, c.t, c.k_index, 1.}, vertex_t{d.x, d.x, d.t, d.k_index, 1.});
  config.evaluate();
  config.accept_config();
 

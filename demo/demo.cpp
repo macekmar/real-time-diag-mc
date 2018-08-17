@@ -25,6 +25,9 @@ int main() {
  params.interaction_start = 150.;
  params.alpha = 0.5;
  params.nb_orbitals = 1;
+ std::get<0>(params.potential).push_back(1.);
+ std::get<1>(params.potential).push_back(0);
+ std::get<2>(params.potential).push_back(0);
 
  params.U = 0.5;
  params.w_ins_rem = 1.0;

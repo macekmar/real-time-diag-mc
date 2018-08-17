@@ -7,26 +7,27 @@ namespace moves {
 
 struct common {
  Configuration &config;
- const solve_parameters_t *params;
+ const solve_parameters_t &params;
  vertex_rand_gen vrg;
  triqs::mc_tools::random_generator &rng;
  double normalization;
  bool quick_exit = false;
 
- common(Configuration *config, const solve_parameters_t *params, const double t_max,
+ common(Configuration &config, const solve_parameters_t &params, const double t_max,
         triqs::mc_tools::random_generator &rng)
-    : config(*config),
+    : config(config),
       params(params),
-      vrg(vertex_rand_gen(params->nb_orbitals, params->interaction_start, rng)),
+      vrg{{params.nb_orbitals, std::get<0>(params.potential), std::get<1>(params.potential),
+           std::get<2>(params.potential)}, params.interaction_start, rng},
       rng(rng) {
-  normalization = vrg.size() * params->U;
+  normalization = vrg.size() * params.U;
  }
 
  /// Tell if `k` is an allowed order
  bool is_quick_exit(int const &k) {
-  return k < params->min_perturbation_order or params->max_perturbation_order < k or
-         (params->forbid_parity_order != -1 and k % 2 == params->forbid_parity_order and
-          k != params->min_perturbation_order);
+  return k < params.min_perturbation_order or params.max_perturbation_order < k or
+         (params.forbid_parity_order != -1 and k % 2 == params.forbid_parity_order and
+          k != params.min_perturbation_order);
  }
 
  /// Construct random vertex

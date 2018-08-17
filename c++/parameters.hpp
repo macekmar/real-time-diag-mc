@@ -18,6 +18,8 @@ enum spin_t { up, down };
 // All the arguments of the solve function
 struct solve_parameters_t {
 
+ // ----   Problem definition parameters
+
  /// External Keldysh contour points for the creation operators
  std::vector<std::tuple<orbital_t, int, timec_t, int>> creation_ops;
 
@@ -41,6 +43,11 @@ struct solve_parameters_t {
  /// Number of orbitals. Orbitals are indexed between 0 and `nb_orbitals`-1.
  // This indexing is used to querry values of the unperturbed g.
  int nb_orbitals;
+
+ /// interaction potential
+ // Made of a list of potentials V_{ij}, a list of i and a list of j.
+ // THey must be of same size with at least one element.
+ std::tuple<std::vector<double>, std::vector<orbital_t>, std::vector<orbital_t>> potential;
 
  // ----   QMC parameters
 
@@ -76,6 +83,7 @@ struct solve_parameters_t {
  std::string random_name = "";
 
  /// Maximum runtime in seconds, use -1 to set infinite
+ //TODO: use it
  int max_time = -1;
 
  /// Verbosity level

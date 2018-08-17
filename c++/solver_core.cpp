@@ -23,6 +23,19 @@ solver_core::solver_core(solve_parameters_t const& params)
      params.extern_alphas.size() != params.creation_ops.size())
   TRIQS_RUNTIME_ERROR << "Number of creation operators, of annihilation operators and of external alphas must match";
 
+ // Check potential
+ auto nb_edges = std::get<0>(params.potential).size();
+ auto& i_list = std::get<1>(params.potential);
+ auto& j_list = std::get<2>(params.potential);
+ if (i_list.size() != nb_edges or j_list.size() != nb_edges)
+  TRIQS_RUNTIME_ERROR << "Potential lists have different sizes.";
+ if (nb_edges < 1)
+  TRIQS_RUNTIME_ERROR << "Potential lists are empty.";
+ for (size_t k = 0; k < nb_edges; ++k) {
+  if (i_list[k] < 0 or i_list[k] >= params.nb_orbitals or j_list[k] < 0 or j_list[k] >= params.nb_orbitals)
+   TRIQS_RUNTIME_ERROR << "Potential lists contain unknown orbitals. Maybe nb_orbitals is too small.";
+ }
+
  for (int rank = 0; rank < params.creation_ops.size(); ++rank) {
   creation_pts.push_back(make_keldysh_contour_pt(params.creation_ops[rank], rank));
   annihila_pts.push_back(make_keldysh_contour_pt(params.annihilation_ops[rank], rank));
@@ -61,15 +74,15 @@ void solver_core::set_g0(triqs::gfs::gf_view<triqs::gfs::retime, triqs::gfs::mat
 
  // Register moves and measurements
  if (params.w_ins_rem > 0) {
-  qmc.add_move(moves::insert{&config, &params, t_max, qmc.get_rng()}, "insertion", params.w_ins_rem);
-  qmc.add_move(moves::remove{&config, &params, t_max, qmc.get_rng()}, "removal", params.w_ins_rem);
+  qmc.add_move(moves::insert{config, params, t_max, qmc.get_rng()}, "insertion", params.w_ins_rem);
+  qmc.add_move(moves::remove{config, params, t_max, qmc.get_rng()}, "removal", params.w_ins_rem);
  }
  if (params.w_dbl > 0) {
-  qmc.add_move(moves::insert2{&config, &params, t_max, qmc.get_rng()}, "insertion2", params.w_dbl);
-  qmc.add_move(moves::remove2{&config, &params, t_max, qmc.get_rng()}, "removal2", params.w_dbl);
+  qmc.add_move(moves::insert2{config, params, t_max, qmc.get_rng()}, "insertion2", params.w_dbl);
+  qmc.add_move(moves::remove2{config, params, t_max, qmc.get_rng()}, "removal2", params.w_dbl);
  }
  if (params.w_shift > 0) {
-  qmc.add_move(moves::shift{&config, &params, t_max, qmc.get_rng()}, "shift", params.w_shift);
+  qmc.add_move(moves::shift{config, params, t_max, qmc.get_rng()}, "shift", params.w_shift);
  }
 
  if (params.method == 0) {

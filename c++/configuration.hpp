@@ -2,6 +2,10 @@
 #include "./qmc_data.hpp"
 #include <triqs/det_manip.hpp>
 
+#include <forward_list>
+#include <iterator>
+#include <utility>
+
 using triqs::det_manip::det_manip;
 
 // -----------------------
@@ -58,6 +62,53 @@ array<typename det_manip<T>::value_type, 1> cofactor_col(det_manip<T>& matrix, s
 };
 
 // -----------------------
+template <typename T>
+class wrapped_forward_list {
+
+ std::forward_list<T> list;
+
+ public:
+
+ // insert (before index)
+ void insert(size_t k, T value) {
+  auto it = list.before_begin();
+  std::advance(it, k);
+  list.insert_after(it, value);
+ };
+
+ void erase(size_t k) {
+  auto it = list.before_begin();
+  std::advance(it, k);
+  list.erase_after(it);
+ };
+
+ // k1 != k2 needed
+ void erase(size_t k1, size_t k2) {
+  if (k2 < k1) std::swap(k1, k2);
+  auto it = list.before_begin();
+  std::advance(it, k1);
+  list.erase_after(it);
+  std::advance(it, k2 - k1 - 1);
+  list.erase_after(it);
+ };
+
+ // read-only access
+ T operator[](size_t k) const {
+  auto it = list.begin();
+  std::advance(it, k);
+  return *it;
+ };
+
+ // assignement
+ T& operator[](size_t k) {
+  auto it = list.begin();
+  std::advance(it, k);
+  return *it;
+ };
+
+};
+
+// -----------------------
 class Configuration {
 
  private:
@@ -66,6 +117,8 @@ class Configuration {
  spin_t spin_dvpt; // tells which matrix is to be developped
  std::pair<double, double> singular_thresholds; // for det_manip
  double cofactor_threshold;
+ wrapped_forward_list<double> potential_list;
+ double potential = 1.;
  int max_order = 0;
  array<double, 1> weight_sum;
  array<long, 1> nb_values;
@@ -79,8 +132,7 @@ class Configuration {
  dcomplex keldysh_sum_cofact(int p); // not used ??
 
  public:
- std::vector<det_manip<g0_keldysh_alpha_t>>
-     matrices; // M matrices for up and down, the first one contains the first annihilation point
+ std::vector<det_manip<g0_keldysh_alpha_t>> matrices;
  int order;
  array<dcomplex, 2> current_kernels;
  array<dcomplex, 2> accepted_kernels; // kernels of the last accepted config
@@ -101,8 +153,8 @@ class Configuration {
                std::pair<double, double> singular_thresholds, bool kernels_comput,
                bool nonfixed_op, int cycles_trapped_thresh);
 
- void insert(int k, vertex_t vtx);
- void insert2(int k1, int k2, vertex_t vtx1, vertex_t vtx2);
+ void insert(vertex_t vtx);
+ void insert2(vertex_t vtx1, vertex_t vtx2);
  void remove(int k);
  void remove2(int k1, int k2);
  void change_vertex(int k, vertex_t vtx);
