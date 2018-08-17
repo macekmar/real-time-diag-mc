@@ -1,56 +1,95 @@
-# from pytriqs.utility import mpi
 from mpi4py import MPI
 from ctint_keldysh import SolverCore
-from perturbation_series import perturbation_series, staircase_perturbation_series, staircase_perturbation_series_cum, compute_cn, staircase_leading_elts
 import numpy as np
-import itertools
 from pytriqs.archive import HDFArchive
 from datetime import datetime, timedelta
 from time import clock
 import cPickle
+from os.path import splitext
+from copy import deepcopy
+from scipy.stats import linregress
 
-def reverse_axis(array):
-    """For first dimensions broadcasting"""
-    return np.transpose(array, tuple(np.arange(array.ndim)[::-1]))
-
-def variance_error(on, comm=MPI.COMM_WORLD, weight=None):
+def expand_axis(a, val, end=False, axis=0):
     """
-    Compute the error on `on` through sqrt(var(on)/(nb of proccess-1)), where the variance is calculated over
+    Expand the axis `axis` of array `a` with `val`.
+    Returns an array with same shape as `a` but increased by one along axis `axis`.
+    `val` is used to fill in the thus openned positions.
+    """
+    # FIXME: is this the same as np.insert(a, 0, val, axis=0) ???
+    shape = list(a.shape)
+    shape[axis] = 1
+    if end:
+        return np.append(a, np.tile(val, shape), axis=axis)
+    else:
+        return np.append(np.tile(val, shape), a, axis=axis)
+
+def squeeze_except(a, except_axes):
+    """
+    Like np.squeeze but ignoring axes in the list `except_axis`.
+    """
+    shape = list(a.shape)
+    for d in range(a.ndim):
+        if d not in except_axes and shape[d] == 1:
+            shape[d] = -1
+    k = 0
+    while k < len(shape):
+        if shape[k] == -1:
+            del shape[k]
+        else:
+            k += 1
+
+    return a.reshape(tuple(shape))
+
+
+def variance_error(data, comm=MPI.COMM_WORLD, weight=None, unbiased=True):
+    """
+    Compute the error on `data` through sqrt(var(data)/(nb of proccess-1)), where the variance is calculated over
     the processes of communicator `comm`.
-    `weight` can be a number (the weight of this process), an array with same shape as `on`, or None (same
+    `weight` can be a number (the weight of this process), an array with same shape as `data`, or None (same
     weights for all).
-    Returns an array of complex with same shape as `on`.
+    Returns an array of complex with same shape as `data`.
     """
     if comm.size == 1:
-        return np.zeros_like(on)
+        return np.zeros_like(data)
 
     weighted = weight is not None
     if comm.rank != 0:
-        comm.gather(on)
+        comm.gather(data)
         if weighted: comm.gather(weight)
-        on_error = comm.bcast(None)
+        data_error = comm.bcast(None)
     else:
-        on_all = np.array(comm.gather(on), dtype=complex)
+        data_all = np.array(comm.gather(data), dtype=complex)
         if weighted:
             weight_all = np.array(comm.gather(weight))
             weight_sum = np.sum(weight_all, axis=0)
 
             # do not consider weight which sums to 0
             if (weight_all.ndim == 1):
-                if (weight_sum == 0): weight_all = None
+                if (weight_sum == 0):
+                    weight_all = None
+                    weighted = False
             else:
-                weight_all[:, weight_sum == 0] = 1
+                weight_all[:, weight_sum == 0] = 1.
+                weight_sum[weight_sum == 0] = float(comm.size)
 
         else:
             weight_all = None
 
-        avg_on_all = np.average(on_all, weights=weight_all, axis=0)
-        var_on_all = np.average(np.abs(on_all - avg_on_all[np.newaxis, ...])**2, weights=weight_all, axis=0)
+        avg_data_all = np.average(data_all, weights=weight_all, axis=0)
+        var_data_all = np.average(np.abs(data_all - avg_data_all[np.newaxis, ...])**2, weights=weight_all, axis=0)
 
-        on_error = np.sqrt(var_on_all / float(comm.size - 1))
-        comm.bcast(on_error)
+        ### unbiased estimator
+        if unbiased:
+            if not weighted:
+                factor = comm.size / float(comm.size - 1)
+            else:
+                factor = weight_sum**2 / float(weight_sum**2 - np.sum(weight_all**2, axis=0))
 
-    return on_error
+        data_error = np.sqrt(factor * var_data_all / float(comm.size))
+
+        comm.bcast(data_error)
+
+    return data_error
 
 def save_configuration_list(solver, filename, comm=MPI.COMM_WORLD):
     """
@@ -81,9 +120,9 @@ def save_configuration_list(solver, filename, comm=MPI.COMM_WORLD):
 #         U_proposed = U
 #     return U_proposed
 
-from scipy.stats import linregress
 def calc_ideal_U(pn, U):
     """calculates ideal U value"""
+    # FIXME: raises warnings. Make it simpler and cuter.
     if len(pn) < 2:
         raise ValueError('pn must be at least of length 2')
     an = [max(pn[0], pn[1])]
@@ -94,324 +133,345 @@ def calc_ideal_U(pn, U):
     return 2. * U * np.exp(-slope)
 
 def reduce_binning(x, chunk_size, axis=-1):
+    """
+    Reduces the size of ND array `x` along dimension `axis` by summing together
+    chunks of size `chunk_size`.
+    """
     x = np.swapaxes(x, axis, 0)
     shape = (-1, chunk_size) + x.shape[1:]
     x = x[:x.shape[0] - x.shape[0] % chunk_size].reshape(shape).sum(axis=1)
     return np.swapaxes(x, axis, 0)
 
-class Results(dict):
 
-    def __init__(self, world, starttime, size_partition, nb_bins_sum):
-        super(Results, self).__init__()
-        self.nb_runs = 0
-        self.world = world
-        self.size_part = min(size_partition, world.size)
-        color = world.rank // (world.size // self.size_part)
-        # self.part = world.Split(color, world.rank) # split in at least `self.size_part` parts of equal size
-        self.nb_bins_sum = nb_bins_sum
-        self.is_part_master = (world.rank % (world.size // self.size_part) == 0) and (color < self.size_part)
-        self.part_comm = world.Split(self.is_part_master, world.rank)
-        if not self.is_part_master:
-            self.part_comm.Free()
+def _collect_results(solver, res_structure, size_part, comm=MPI.COMM_WORLD):
+    """
+    Cumulate results of the cpp solver according to a process partitionning.
+    Results are returned only by `comm` master proc, in a dictionnary.
+
+    The partitionning is given by `size_part`, the nb of *equal* parts in the partition.
+    Details of what and how it is collected is given in `res_structure`.
+    The communicator `comm` should be the same as the one with which the cpp
+    solver has been run.
+
+    This function can be run several times, but with decreasing partition size
+    only, and making sure the old partition is nested in the new one. Indeed
+    cumulation of results is not (always) reversible. (#FIXME)
+    """
+    is_part_master = solver.collect_results(size_part)
+
+    part_comm = comm.Split(is_part_master, comm.rank)
+    if not is_part_master:
+        part_comm.Free()
+    else:
+        assert part_comm.size == size_part
+
+    output = {}
+    change_axis = lambda x: np.rollaxis(x, 0, x.ndim) # send first axis to last position
+
+    for key in res_structure:
+        if isinstance(key, tuple):
+            key_coord, key = key
+
+            if comm.rank == 0:
+                output[key_coord] = getattr(solver, key_coord)
+
+        if is_part_master:
+            data = part_comm.gather(getattr(solver, key), 0)
+        if comm.rank == 0:
+            output[key] = change_axis(np.array(data))
+
+    if comm.rank == 0:
+        return output
+
+def extract_results(solver, results, res_name, res_structure, params, append):
+    """
+    Extract results from the cpp solver and place them in the list `results`.
+
+    Full results (cumulated over all proc) and partial (over a partition) are
+    extracted, as well as some metadata. These are placed in a dictionnary and
+    appended to `results`, if `append` is True, or replaces `results[-1]`
+    otherwise.  The dictionnary contains three keys: `res_name`,
+    `res_name`+'_part' and 'metadata'.  Details of what and how it is collected
+    is given in `res_structure`.
+    """
+
+    ### extract
+    ### the order of these two lines matters !
+    res_part = _collect_results(solver, res_structure, params['size_part'])
+    res_all = _collect_results(solver, res_structure, 1)
+
+    res = {}
+    res[res_name] = res_all
+    res[res_name + '_part'] = res_part
+
+    ### metadata that are different in each subrun
+    res['metadata'] = {}
+    res['metadata']['max_order'] = solver.max_order
+    res['metadata']['U'] = solver.U
+    res['metadata']['durations'] = solver.qmc_duration
+    res['metadata']['nb_measures'] = solver.nb_measures
+
+    ### append or replace
+    if append:
+        results.append(res)
+    else:
+        results[-1] = res
+
+
+def _add_cn_to_results(results, res_name):
+    """
+    Add cn to `results` last slot.
+
+    cn is calculated using pn and U of the last run, and cn calculated for the
+    previous run if it exists. If not, c0 is taken to be 1.
+
+    Recall the formula:
+    c_n = c_{n-k} p_{n} / (p_{n-k} U^k)
+    where n-k is the largest order of the previous run.
+
+    Note: if runs are separated by more than one non-zero order, it may not be
+    the best formula, statistically speaking.
+    """
+    if len(results) > 1:
+        cn = results[-2][res_name]['cn']
+        new_pn = results[-1][res_name]['pn'][len(cn)-1:]
+        new_cn = cn[-1] * new_pn[1:] / (new_pn[0] * results[-1]['metadata']['U'] ** np.arange(1, len(new_pn)))
+        results[-1][res_name]['cn'] = np.append(cn, new_cn)
+    else:
+        c0 = 1.
+        pn = results[-1][res_name]['pn']
+        cn = c0 * pn[1:] / (pn[0] * results[-1]['metadata']['U'] ** np.arange(1, len(pn)))
+        results[-1][res_name]['cn'] = expand_axis(cn, c0, end=False, axis=0)
+
+def _save_in_archive(results, res_name, res_structure, archive, bin_reduction=False, nb_bins_sum=None):
+    """
+    Saves a reduced version of the `res_name` data of `results` in `archive`.
+
+    `res_structure` tells what is saved and if/how it is reduced.
+    `archive` may be any dictionnary-like object, more specifically an open hdf5 archive.
+    If `bin_reduction` is True, time-dependant data is reduced by summing over chunks of size `nb_bins_sum`.
+
+    Order-dependant data are gathered along the different runs (the different slots of `results`).
+    """
+    for key in res_structure:
+        if isinstance(key, tuple):
+            key_coord, key_data = key
+            coord = results[-1][res_name][key_coord]
+
+            data = results[0][res_name][key_data]
+            for res in results[1:]:
+                # data.append(res[res_name][key_data][len(data):])
+                data = np.concatenate((data, res[res_name][key_data][len(data):]), axis=0)
+            # data = np.array(data)
+
+            if bin_reduction:
+                coord = reduce_binning(coord, nb_bins_sum) / float(nb_bins_sum)
+                data = reduce_binning(data, nb_bins_sum, axis=1) / float(nb_bins_sum)
+
+            archive[key_data] = squeeze_except(data, [0, 1])
+            archive[key_coord] = coord
+
         else:
-            assert self.part_comm.size == self.size_part
+            data = list(results[0][res_name][key])
+            for res in results[1:]:
+                data.append(res[res_name][key][len(data):])
+            archive[key] = squeeze_except(np.array(data), [0])
 
-        self.starttime = starttime
-        self['pn'] = []
-        self['pn_each'] = []
-        self['pn_part'] = []
-        self['sn'] = []
-        self['sn_each'] = []
-        self['kernels'] = []
-        self['kernel_diracs'] = []
-        self['nb_kernels'] = []
-        self['U'] = []
-        self['durations'] = []
-        self['nb_measures'] = []
+def refine_and_save_results(results, res_name, res_structure, params):
+    """
+    """
+    res_structure_tmp = deepcopy(res_structure)
 
-        self['bin_times'] = None
-        self['dirac_times'] = None
-        self['run_time'] = None
+    _add_cn_to_results(results, res_name)
+    _add_cn_to_results(results, res_name + '_part')
+    res_structure_tmp.append('cn')
 
-        if self.world.rank == 0:
-            self['pn_part_save'] = []
-            self['kernels_part_save'] = []
-            self['kernel_diracs_part_save'] = []
+    ### create archive and fill it with leading elements and metadata
+    with HDFArchive(params['filename'], 'w') as ar:
 
-    def append_empty_slot(self):
-        self.nb_runs += 1
-        self['pn'].append(None)
-        self['pn_each'].append(None)
-        self['pn_part'].append(None)
-        self['sn'].append(None)
-        self['sn_each'].append(None)
-        self['kernels'].append(None)
-        self['kernel_diracs'].append(None)
-        self['nb_kernels'].append(None)
-        self['U'].append(None)
-        self['durations'].append(None)
-        self['nb_measures'].append(None)
+        ### metadata
+        ar.create_group('metadata')
+        metadata = ar['metadata']
 
-        if self.world.rank == 0:
-            self['pn_part_save'].append(None)
-            self['kernels_part_save'].append(None)
-            self['kernel_diracs_part_save'].append(None)
+        for key in ['max_order', 'U', 'durations', 'nb_measures']:
+            metadata[key] = np.array([res['metadata'][key] for res in results])
 
-    def fill_last_slot(self, solver_core, compute_on=False):
-        assert(len(self['pn']) == 1 or len(solver_core.pn) >= len(self['pn'][-2]))
-        assert(self.nb_runs > 0)
-        assert('c0' in self)
-        self['pn'][-1] = solver_core.pn
-        self['sn'][-1] = solver_core.sn
-        self['kernels'][-1] = solver_core.kernels
-        self['kernel_diracs'][-1] = solver_core.kernel_diracs
-        self['nb_kernels'][-1] = solver_core.nb_kernels
-        self['U'][-1] = solver_core.U
-        self['durations'][-1] = solver_core.qmc_duration
-        self['nb_measures'][-1] = solver_core.nb_measures
+        metadata['nb_proc'] = MPI.COMM_WORLD.size
+        metadata['interaction_start'] = params['interaction_start']
+        metadata['start_time'] = str(params['start_time'])
+        metadata['run_time'] = (datetime.now() - params['start_time']).total_seconds()
 
-        self['bin_times'] = np.array(solver_core.bin_times)
-        self['dirac_times'] = np.array(solver_core.dirac_times)
-        self['run_time'] = (datetime.now() - self.starttime).total_seconds()
-        self['cn'] = compute_cn(self['pn'], self['U'], self['c0'])
+        ### data
+        ar.create_group(res_name)
+        res_ar = ar[res_name]
+        ar.create_group(res_name + '_part')
+        res_part_ar = ar[res_name + '_part']
 
-        solver_core.collect_results(self.world.size)
-        self['pn_each'][-1] = solver_core.pn
-        self['sn_each'][-1] = solver_core.sn
+        _save_in_archive(results, res_name, res_structure_tmp, res_ar)
+        _save_in_archive(results, res_name + '_part', res_structure_tmp, res_part_ar,
+                         bin_reduction=True, nb_bins_sum=params['nb_bins_sum'])
 
-        solver_core.collect_results(self.size_part)
-        self['pn_part'][-1] = solver_core.pn
-        cn_part = compute_cn(self['pn_part'], self['U'], self['c0'])
-        kernels_part = solver_core.kernels
-        kernels_part = reduce_binning(kernels_part, self.nb_bins_sum, axis=1) / float(self.nb_bins_sum)
-        self['bin_times_part'] = reduce_binning(self['bin_times'], self.nb_bins_sum) / float(self.nb_bins_sum)
-        kernel_diracs_part = solver_core.kernel_diracs
+        print 'Saved in {0}\n'.format(params['filename'])
 
-        if self.is_part_master:
-            pn_part = self.part_comm.gather(self['pn_part'][-1], 0)
-            cn_part = self.part_comm.gather(cn_part, 0)
-            kernels_part = self.part_comm.gather(kernels_part, 0)
-            kernel_diracs_part = self.part_comm.gather(kernel_diracs_part, 0)
+###############################################################################
 
-        if self.world.rank == 0:
-            change_axis = lambda x: np.rollaxis(x, 0, x.ndim) # send first axis to last position
-            self['pn_part_save'][-1] = change_axis(np.array(pn_part, dtype=int))
-            self['cn_part_save'] = change_axis(np.array(cn_part, dtype=float))
-            self['kernels_part_save'][-1] = change_axis(np.array(kernels_part, dtype=complex))
-            self['kernel_diracs_part_save'][-1] = change_axis(np.array(kernel_diracs_part, dtype=complex))
+### Parameters and default values. None means there is no default value and the
+### parameter is required.
+### They are checked for at the beginning of the python code, so the cpp default
+### values are overriden (I don;t know how to get them so no choice)
+PARAMS_PYTHON_KEYS = {'start_time': None,
+                      'staircase': None,
+                      'nb_cycles': None,
+                      'nb_warmup_cycles': None,
+                      'save_period': None,
+                      'filename': None,
+                      'g0_lesser': None,
+                      'g0_greater': None,
+                      'size_part': 1,
+                      'nb_bins_sum': 1}
 
-        if compute_on:
-            # values
-            n_dim_sn = self['sn'][0][0].ndim
-            slicing = (slice(None),) + n_dim_sn * (np.newaxis,) # for broadcasting cn array onto sn array
-            self['on'] = np.squeeze(staircase_leading_elts(self['sn']) * self['cn'][slicing])
+### The following params should be the same as in parameters.hpp (and the default values too !)
+PARAMS_CPP_KEYS = {'creation_ops': None,
+                   'annihilation_ops': None,
+                   'extern_alphas': None,
+                   'nonfixed_op': False,
+                   'interaction_start': None,
+                   'alpha': None,
+                   'nb_orbitals': None,
+                   'U': None,
+                   'w_ins_rem': 1.,
+                   'w_dbl': 0.5,
+                   'w_shift': 0.,
+                   'max_perturbation_order': 3,
+                   'min_perturbation_order': 0,
+                   'forbid_parity_order': -1,
+                   'length_cycle': 50,
+                   'random_seed': 34788 + 928374 * MPI.COMM_WORLD.rank,
+                   'random_name': '',
+                   'max_time': -1,
+                   'verbosity': 0,
+                   'method': 5,
+                   'nb_bins': 10000,
+                   'singular_thresholds': None,
+                   'cycles_trapped_thres': 100,
+                   'store_configurations': 0}
 
-            # errors
-            cn_each = compute_cn(self['pn_each'], self['U'], self['c0'])
-            self['cn_error'] = variance_error(cn_each, self.world)
-            self['sn_error'] = []
-            sn_each = staircase_leading_elts(self['sn_each'])
-            for pn, sn in zip(staircase_leading_elts(self['pn_each']), sn_each):
-                self['sn_error'].append(variance_error(sn, self.world, weight=pn))
-            self['sn_error'] = np.array(self['sn_error'])
-            on_each = np.squeeze(sn_each * cn_each[slicing])
-            self['on_error'] = np.squeeze(variance_error(on_each, self.world)) #TODO: weight with nb of measures
+def solve(params):
+    world = MPI.COMM_WORLD
 
-    def save(self, filename, params):
-        assert self.world.rank == 0
-        with HDFArchive(filename, 'w') as ar:
-            ar.create_group('metadata')
-            metadata = ar['metadata']
-            metadata['U'] = self['U']
-            metadata['durations'] = self['durations']
-            metadata['nb_proc'] = self.world.size
-            metadata['interaction_start'] = params['interaction_start']
-            metadata['nb_measures'] = self['nb_measures'] # cumulated over proc
-            metadata['run_time'] = self['run_time']
+    ### start time
+    params['start_time'] = datetime.now()
 
-            ar.create_group('kernels')
-            kernels = ar['kernels']
-            kernels['kernels'] = staircase_leading_elts(self['kernels'])
-            kernels['nb_kernels'] = staircase_leading_elts(self['nb_kernels'])
-            kernels['cn'] = self['cn']
-            kernels['pn'] = staircase_leading_elts(self['pn'])
-            kernels['bin_times'] = self['bin_times']
-            kernels['kernel_diracs'] = staircase_leading_elts(self['kernel_diracs'])
-            kernels['dirac_times'] = self['dirac_times']
+    ### manage parameters
+    def check_params(params, reference):
+        for key, default in reference.items():
+            if key not in params:
+                if default is None:
+                    raise ValueError, "Parameter '{0}' is missing !".format(key)
+                else:
+                    params[key] = default
+                    if world.rank == 0:
+                        print "Parameter {0} defaulted to {1}".format(key, str(default))
 
-            ar.create_group('kernels_part')
-            kernels_part = ar['kernels_part']
-            kernels_part['kernels'] = staircase_leading_elts(self['kernels_part_save'])
-            kernels_part['pn'] = staircase_leading_elts(self['pn_part_save'])
-            kernels_part['cn'] = self['cn_part_save']
-            kernels_part['bin_times'] = self['bin_times_part']
-            kernels_part['size_part'] = self.size_part
-            kernels_part['nb_bins_sum'] = self.nb_bins_sum
-            kernels_part['kernel_diracs'] = staircase_leading_elts(self['kernel_diracs_part_save'])
-            kernels_part['dirac_times'] = self['dirac_times']
+    params_cpp = params.copy()
+    check_params(params, PARAMS_PYTHON_KEYS)
+    check_params(params, PARAMS_CPP_KEYS)
+    for key in PARAMS_PYTHON_KEYS:
+        del params_cpp[key]
 
-            if 'on' in self:
-                ar.create_group('green_function')
-                green_function = ar['green_function']
-                green_function['times'] = params['measure_times']
-                green_function['on'] = self['on']
-                green_function['on_error'] = self['on_error']
-                green_function['sn'] = staircase_leading_elts(self['sn'])
-                green_function['sn_error'] = self['sn_error']
-                green_function['cn'] = self['cn']
-                green_function['cn_error'] = self['cn_error']
-                green_function['pn'] = staircase_leading_elts(self['pn'])
+    ### manage staircase
+    if params['staircase']:
+        orders = np.arange(params['min_perturbation_order'] + 1, params['max_perturbation_order'] + 1)
+        if params['forbid_parity_order'] != -1:
+            orders = orders[orders % 2 == params['forbid_parity_order']]
+    else:
+        orders = [params['max_perturbation_order']]
 
-        print 'Saved in', filename
+    ### result structure
+    results = []
+    if params['method'] != 0:
+        res_name = 'kernels'
+        res_structure = ['pn', ('bin_times', 'kernels'), ('bin_times', 'nb_kernels'),
+                ('dirac_times', 'kernel_diracs')]
+    else:
+        res_name = 'green_function'
+        res_structure = ['sn', 'pn']
 
 
-class SolverPython(object):
+    ### loop over orders
+    for k in orders:
+        if world.rank == 0:
+            print "---------------- Order", k, "----------------"
 
-    def __init__(self, g0_lesser, g0_greater, parameters, filename=None):
-        self.g0_lesser = g0_lesser
-        self.g0_greater = g0_greater
-        self.parameters = parameters.copy()
-        self.world = MPI.COMM_WORLD
-        if 'size_part' not in self.parameters: self.parameters['size_part'] = 10
-        if 'nb_bins_sum' not in self.parameters: self.parameters['nb_bins_sum'] = 10
-        self.res = Results(self.world, datetime.now(), self.parameters['size_part'],
-                           self.parameters['nb_bins_sum'])
-        del self.parameters['size_part']
-        del self.parameters['nb_bins_sum']
+        params_cpp['max_perturbation_order'] = k
+        S = SolverCore(**params_cpp)
+        S.set_g0(params['g0_lesser'], params['g0_greater'])
 
-        self.filename = filename
-
-    def order_zero(self):
-        params = self.parameters.copy()
-        params['U'] = float('NaN')
-        S = SolverCore(**params)
-        S.set_g0(self.g0_lesser, self.g0_greater)
-
-        c0, s0 = S.order_zero
-        self.res['c0'] = c0
-
-    def checkpoint(self, solver_core, compute=False):
-        if self.world.rank == 0:
-            print 'Checkpoint order {0} ({1})'.format(solver_core.max_order, datetime.now())
-            print 'pn:', solver_core.pn
-
-        self.res.fill_last_slot(solver_core, compute)
-
-        if self.world.rank == 0 and self.filename is not None:
-            self.res.save(self.filename, self.parameters)
-            print
-
-    def prerun_and_run(self, nb_warmup_cycles, nb_cycles, order, U, save_period=-1):
-        self.res.append_empty_slot()
-        params = self.parameters.copy()
-
-        params['max_perturbation_order'] = order
-        params['U'] = U
-        S = SolverCore(**params)
-        S.set_g0(self.g0_lesser, self.g0_greater)
-
-        # prerun
+        ### prerun
         start = clock()
-        if self.world.rank == 0:
+        if world.rank == 0:
             print '\n* Pre run'
-        S.run(nb_warmup_cycles, True)
-        prerun_duration = float(clock() - start)
-        prerun_duration = self.world.allreduce(prerun_duration) / float(self.world.size) # take average
-        if self.world.rank == 0:
-            print 'pn:', S.pn
-        new_U = calc_ideal_U(S.pn, U)
+        S.run(params['nb_warmup_cycles'], True)
+        prerun_duration = world.allreduce(float(clock() - start)) / float(world.size) # take average
+        if world.rank == 0:
+            print 'pn (node 0):', S.pn
+        new_U = calc_ideal_U(world.allreduce(S.pn), S.U)
 
-        # time estimation
+        ### time estimation
+        save_period = params['save_period']
         if save_period > 0:
             save_period = max(save_period, 60) # 1 minute mini
-            nb_cycles_per_subrun = int(float(nb_warmup_cycles * save_period) / prerun_duration + 0.5)
+            nb_cycles_per_subrun = int(float(params['nb_warmup_cycles'] * save_period) / prerun_duration + 0.5)
         else:
-            nb_cycles_per_subrun = nb_cycles
+            nb_cycles_per_subrun = params['nb_cycles']
 
-        if self.world.rank == 0:
+        if world.rank == 0:
             print 'Nb cycles per subrun =', nb_cycles_per_subrun
-            est_run_time = prerun_duration * float(nb_cycles + nb_warmup_cycles) / float(nb_warmup_cycles)
+            est_run_time = prerun_duration * float(params['nb_cycles'] + params['nb_warmup_cycles']) \
+                            / float(params['nb_warmup_cycles'])
             print 'Estimated run time =', timedelta(seconds=est_run_time)
 
-        # prepare new solver taking prerun into account
-        if self.world.rank == 0:
-            print 'Changing U:', U, '=>', new_U
-        params['U'] = new_U
-        S = SolverCore(**params)
-        S.set_g0(self.g0_lesser, self.g0_greater)
+        ### prepare new solver taking prerun into account
+        if world.rank == 0:
+            print 'Changing U:', S.U, '=>', new_U
+        params_cpp['U'] = new_U # is also used as a first guess U in next order
+        S = SolverCore(**params_cpp)
+        S.set_g0(params['g0_lesser'], params['g0_greater'])
 
-        # warmup
-        if self.world.rank == 0:
+        ### warmup
+        if world.rank == 0:
             print '\n* Warmup'
-        S.run(nb_warmup_cycles, False)
+        S.run(params['nb_warmup_cycles'], False)
 
-        # main run
-        if self.world.rank == 0:
+        ### main run
+        if world.rank == 0:
             print '\n* Main runs'
 
-        for _ in range(nb_cycles // nb_cycles_per_subrun):
-            S.run(nb_cycles_per_subrun, True)
-            self.checkpoint(S)
-        if (nb_cycles % nb_cycles_per_subrun) != 0:
-            S.run(nb_cycles % nb_cycles_per_subrun, True)
-        else:
-            S.collect_results(1) # make sure we collect over world
-        S.compute_sn_from_kernels
-        self.checkpoint(S, compute=True)
+        nb_cycles_left = params['nb_cycles']
+        append = True
+        while nb_cycles_left > 0:
+            nb_cycles_todo = min(nb_cycles_per_subrun, nb_cycles_left)
+            S.run(nb_cycles_todo, True)
+            nb_cycles_left -= nb_cycles_todo
 
-        return S
+            extract_results(S, results, res_name, res_structure, params, append)
+            append = False
 
+            if world.rank == 0 and params['filename'] is not None:
+                refine_and_save_results(results, res_name, res_structure, params)
 
-######################### Front End #######################
+    if params['store_configurations'] > 0 and not params['staircase']:
+        save_configuration_list(S, splitext(params['filename'])[0])
 
-def single_solve(g0_lesser, g0_greater, parameters_, filename=None, save_period=-1):
-
-    parameters = parameters_.copy()
-    nb_warmup_cycles = parameters.pop('n_warmup_cycles')
-    nb_cycles = parameters.pop('n_cycles')
-
-    solver = SolverPython(g0_lesser, g0_greater, parameters, filename)
-    solver.order_zero()
-    S = solver.prerun_and_run(nb_warmup_cycles, nb_cycles, parameters['max_perturbation_order'],
-                              parameters['U'], save_period=save_period)
-
-    if 'store_configurations' in parameters and parameters['store_configurations'] > 0:
-        save_configuration_list(S, filename)
-
-    return np.squeeze(solver.res['on']), np.squeeze(solver.res['on_error'])
+    return results
 
 
-def staircase_solve(g0_lesser, g0_greater, parameters_, filename=None, save_period=-1):
-    parameters = parameters_.copy()
-
-    if 'store_configurations' in parameters and parameters['store_configurations'] > 0:
-        raise NotImplementedError
-
-    nb_warmup_cycles = parameters.pop('n_warmup_cycles')
-    nb_cycles = parameters.pop('n_cycles')
-    parameters["min_perturbation_order"] = 0
-    max_order = parameters["max_perturbation_order"]
-    U = parameters['U']
-
-    orders = list(range(1, max_order + 1))
-    if 'forbid_parity_order' in parameters and parameters['forbid_parity_order'] != -1:
-        orders = orders[parameters['forbid_parity_order']::2]
-
-    solver = SolverPython(g0_lesser, g0_greater, parameters, filename)
-    solver.order_zero()
-
-    for i, k in enumerate(orders):
-        if solver.world.rank == 0:
-            print "---------------- Order", k, "----------------"
-        solver.prerun_and_run(nb_warmup_cycles, nb_cycles, k, U, save_period=save_period)
-        U = solver.res['U'][-1]
-
-    return np.squeeze(solver.res['on']), np.squeeze(solver.res['on_error'])
 
 
 if __name__ == '__main__':
+    import warnings
 
-    # test reduce_binning
+    ### test reduce_binning
     a = np.arange(30).reshape(2, 15)
     assert np.array_equal(reduce_binning(a, 5, 1), np.array([[10, 35, 60], [85, 110, 135]]))
     assert np.array_equal(a, np.arange(30).reshape(2, 15))
@@ -420,77 +480,173 @@ if __name__ == '__main__':
     assert np.array_equal(reduce_binning(a, 6, 1), np.array([[15, 51], [105, 141]]))
     assert np.array_equal(a, np.arange(30).reshape(2, 15))
 
+    ### test squeeze_except
+    a = np.arange(20).reshape(1, 5, 1, 4)
+    assert squeeze_except(a, [0]).shape == (1, 5, 4)
+
+    ### test squeeze_except
+    a = np.arange(20).reshape(1, 5, 1, 4)
+    assert squeeze_except(a, [1]).shape == (5, 4)
+
+    ### test squeeze_except
+    a = np.arange(20).reshape(1, 5, 1, 4)
+    assert squeeze_except(a, [1, 2]).shape == (5, 1, 4)
+
+    ### test squeeze_except
+    a = np.array([]).reshape(0, 5, 1, 4)
+    assert a.shape == (0, 5, 1, 4)
+    assert squeeze_except(a, [1]).shape == (0, 5, 4)
+
     world = MPI.COMM_WORLD
-    if world.size != 4:
-        raise RuntimeError('These tests must be run with MPI on 4 processes') # for following tests
+    if world.size == 4:
 
-    # test variance_error
-    if world.rank == 0:
-        array = np.array([12.3, 68., 0.52])
-    elif world.rank == 1:
-        array = np.array([4.5, -6.3, 9.4])
-    elif world.rank == 2:
-        array = np.array([-86.4, 40, 63.1])
-    elif world.rank == 3:
-        array = np.array([10, 20, 30])
+        ### test variance_error
+        if world.rank == 0:
+            array = np.array([12.3, 68., 0.52])
+        elif world.rank == 1:
+            array = np.array([4.5, -6.3, 9.4])
+        elif world.rank == 2:
+            array = np.array([-86.4, 40, 63.1])
+        elif world.rank == 3:
+            array = np.array([10, 20, 30])
 
-    error_ref = [20.688855695760459, 13.603693202582892, 12.033703451140882]
-    error = variance_error(array, world)
-    assert(error.shape == (3,))
-    assert(np.allclose(error, error_ref, atol=1e-5))
+        error_ref = np.array([20.688855695760459, 13.603693202582892, 12.033703451140882]) * np.sqrt(4/3.)
+        error = variance_error(array, world)
+        # print error_ref
+        # print error
+        assert(error.shape == (3,))
+        assert(np.allclose(error, error_ref, atol=1e-5))
 
-    # test variance_error
-    if world.rank == 0:
-        array = np.array([[12.3, 0.], [68., 0.], [0.52, 1]])
-    elif world.rank == 1:
-        array = np.array([[4.5, 1.], [-6.3, 0], [9.4, 1]])
-    elif world.rank == 2:
-        array = np.array([[-86.4, 0.], [40, 0.], [63.1, 0]])
-    elif world.rank == 3:
-        array = np.array([[10, 0.], [20, 0], [30, 0]])
+        ### test variance_error
+        if world.rank == 0:
+            array = np.array([[12.3, 0.], [68., 0.], [0.52, 1]])
+        elif world.rank == 1:
+            array = np.array([[4.5, 1.], [-6.3, 0], [9.4, 1]])
+        elif world.rank == 2:
+            array = np.array([[-86.4, 0.], [40, 0.], [63.1, 0]])
+        elif world.rank == 3:
+            array = np.array([[10, 0.], [20, 0], [30, 0]])
 
-    error_ref = [[20.688855695760459, 0.21650635094610965], [13.603693202582892, 0.], [12.033703451140882, 0.25]]
-    error = variance_error(array, world)
-    assert(error.shape == (3, 2))
-    assert(np.allclose(error, error_ref, atol=1e-5))
+        error_ref = np.array([[20.688855695760459, 0.21650635094610965], [13.603693202582892, 0.], [12.033703451140882, 0.25]]) * np.sqrt(4/3.)
+        error = variance_error(array, world)
+        assert(error.shape == (3, 2))
+        assert(np.allclose(error, error_ref, atol=1e-5))
 
-    # test variance_error
-    if world.rank == 0:
-        array = np.array([[12.3 +0j, 0.], [68., 0.], [0.52, 1]])
-        weight = 100
-    elif world.rank == 1:
-        array = np.array([[4.5, 1.], [-6.3, 0], [9.4, 1]])
-        weight = 75.
-    elif world.rank == 2:
-        array = np.array([[-86.4, 0.], [40, 0.], [63.1, 0]])
-        weight = 0
-    elif world.rank == 3:
-        array = np.array([[10, 0.], [20, 0], [30, 0]])
-        weight = 60
+        ### test variance_error
+        if world.rank == 0:
+            array = np.array([[12.3 +0j, 0.], [68., 0.], [0.52, 1]])
+            weight = 100
+        elif world.rank == 1:
+            array = np.array([[4.5, 1.], [-6.3, 0], [9.4, 1]])
+            weight = 75.
+        elif world.rank == 2:
+            array = np.array([[-86.4, 0.], [40, 0.], [63.1, 0]])
+            weight = 0
+        elif world.rank == 3:
+            array = np.array([[10, 0.], [20, 0], [30, 0]])
+            weight = 60
 
-    error_ref = [[1.6809385918497846, 0.2330734287256026], [16.251235980435649, 0.], [5.90993608255, 0.218020229063]]
-    error = variance_error(array, world, weight=weight)
-    # print error
-    assert(error.shape == (3, 2))
-    assert(np.allclose(error, error_ref, atol=1e-5))
+        error_ref = np.array([[1.6809385918497846, 0.2330734287256026], [16.251235980435649, 0.], [5.90993608255, 0.218020229063]]) * np.sqrt(235.**2 / float(235.**2 - (100**2 + 75**2 + 60**2)))
+        error = variance_error(array, world, weight=weight)
+        # print error
+        assert(error.shape == (3, 2))
+        assert(np.allclose(error, error_ref, atol=1e-5))
 
-    # test variance_error
-    if world.rank == 0:
-        array = np.array([[12.3 +0j, 0.], [68., 0.], [0.52, 1]])
-        weight = 0
-    elif world.rank == 1:
-        array = np.array([[4.5, 1.], [-6.3, 0], [9.4, 1]])
-        weight = 0
-    elif world.rank == 2:
-        array = np.array([[-86.4, 0.], [40, 0.], [63.1, 0]])
-        weight = 0
-    elif world.rank == 3:
-        array = np.array([[10, 0.], [20, 0], [30, 0]])
-        weight = 0
+        ### test variance_error
+        if world.rank == 0:
+            array = np.array([[12.3 +0j, 0.], [68., 0.], [0.52, 1]])
+            weight = 0
+        elif world.rank == 1:
+            array = np.array([[4.5, 1.], [-6.3, 0], [9.4, 1]])
+            weight = 0
+        elif world.rank == 2:
+            array = np.array([[-86.4, 0.], [40, 0.], [63.1, 0]])
+            weight = 0
+        elif world.rank == 3:
+            array = np.array([[10, 0.], [20, 0], [30, 0]])
+            weight = 0
 
-    error_ref = [[20.688855695760459, 0.21650635094610965], [13.603693202582892, 0.], [12.033703451140882, 0.25]]
-    error = variance_error(array, world, weight=weight)
-    # print error
-    assert(error.shape == (3, 2))
-    assert(np.allclose(error, error_ref, atol=1e-5))
+        error_ref = np.array([[20.688855695760459, 0.21650635094610965], [13.603693202582892, 0.], [12.033703451140882, 0.25]]) * np.sqrt(4/3.)
+        error = variance_error(array, world, weight=weight)
+        # print error
+        assert(error.shape == (3, 2))
+        assert(np.allclose(error, error_ref, atol=1e-5))
+
+    else:
+        warnings.warn("Tests of 'variance_error' must be run with MPI on 4 processes. Some tests have not been run.", RuntimeWarning)
+
+    ### test _add_cn_to_results
+    results = [{'Paul': {'pn': np.array([1, 5, 18, 39])}, 'metadata': {'U': 0.8}}]
+    _add_cn_to_results(results, 'Paul')
+    assert len(results) == 1
+    assert np.array_equal(results[0]['Paul']['pn'], np.array([1, 5, 18, 39]))
+    assert results[0]['metadata']['U'] == 0.8
+    assert results[0]['Paul']['cn'].shape == (4,)
+    # print results[0]['Paul']['cn']
+    assert np.allclose(results[0]['Paul']['cn'], np.array([1., 6.25, 28.125, 76.171875]))
+
+    ### test _add_cn_to_results
+    ### should work with extra axes
+    results = [{'Paul': {'pn': np.array([[1], [5]])}, 'metadata': {'U': 0.8}}]
+    _add_cn_to_results(results, 'Paul')
+    assert len(results) == 1
+    assert np.array_equal(results[0]['Paul']['pn'], np.array([[1], [5]]))
+    assert results[0]['metadata']['U'] == 0.8
+    assert results[0]['Paul']['cn'].shape == (2, 1)
+    # print results[0]['Paul']['cn']
+    assert np.allclose(results[0]['Paul']['cn'], np.array([[1.], [6.25]]))
+
+    ### test _add_cn_to_results
+    run1 = {'Paul': {'pn': np.array([10, 32]), 'cn': np.array([1., 6.4])}, 'metadata': {'U': 0.5}}
+    run2 = {'Paul': {'pn': np.array([4, 27, 56]), 'cn': np.array([1., 6.4, 22.123456790123456])}, 'metadata': {'U': 0.6}}
+    run3 = {'Paul': {'pn': np.array([1, 5, 18, 39])}, 'metadata': {'U': 0.8}}
+    results = [run1, run2, run3]
+    _add_cn_to_results(results, 'Paul')
+    assert len(results) == 3
+    assert np.array_equal(results[-1]['Paul']['pn'], np.array([1, 5, 18, 39]))
+    assert results[-1]['metadata']['U'] == 0.8
+    assert results[-1]['Paul']['cn'].shape == (4,)
+    assert np.allclose(results[-1]['Paul']['cn'], np.array([1., 6.4, 22.123456790123456, 59.917695473251015]))
+
+    ### test _add_cn_to_results
+    run1 = {'Paul': {'pn': np.array([10, 0, 32]), 'cn': np.array([1., 0, 12.5])}, 'metadata': {'U': 0.5}}
+    run2 = {'Paul': {'pn': np.array([4, 0, 27, 0, 56]), 'cn': np.array([1., 0, 12.5, 0, 73.74485596707818])}, 'metadata': {'U': 0.6}}
+    run3 = {'Paul': {'pn': np.array([1, 0, 5, 0, 18, 0, 39])}, 'metadata': {'U': 0.8}}
+    results = [run1, run2, run3]
+    _add_cn_to_results(results, 'Paul')
+    assert len(results) == 3
+    assert np.array_equal(results[-1]['Paul']['pn'], np.array([1, 0, 5, 0, 18, 0, 39]))
+    assert results[-1]['metadata']['U'] == 0.8
+    assert results[-1]['Paul']['cn'].shape == (7,)
+    assert np.allclose(results[-1]['Paul']['cn'], np.array([1., 0, 12.5, 0, 73.74485596707818, 0, 249.65706447187918]))
+
+    ### test _save_in_archive
+    pn = np.array([[3], [12]])
+    t = np.linspace(0, 10, 5)
+    vn = np.linspace(0, 10, 5)*1.j
+    vn = np.vstack((vn, 2*vn)) # of shape (2, 5)
+    vn = vn.reshape((2, 5, 1))
+    run1 = {'Paul': {'pn': pn, 't': t, 'vn': vn}, 'Jacques': {'bla': None}}
+    pn = np.array([[5], [31], [99]])
+    vn = np.linspace(1, 4, 5)*1.j
+    vn = np.vstack((vn, 2*vn, 3*vn)) # of shape (3, 5)
+    vn = vn.reshape((3, 5, 1))
+    run2 = {'Paul': {'pn': pn, 't': t, 'vn': vn}, 'Jacques': {'bla': None}}
+    results = [run1, run2]
+    res_structure = ['pn', ('t', 'vn')]
+
+    archive = {} # simulate an archive with a dict
+    _save_in_archive(results, 'Paul', res_structure, archive)
+
+    pn = np.array([3, 12, 99])
+    t = np.linspace(0, 10, 5)
+    v1 = np.linspace(0, 10, 5)*1.j
+    v2 = 2*v1
+    v3 = 3*np.linspace(1, 4, 5)*1.j
+    vn = np.vstack((v1, v2, v3)) # of shape (3, 5)
+    archive_ref = {'pn': pn, 't': t, 'vn': vn}
+    assert len(archive) == 3
+    assert np.array_equal(archive['pn'], archive_ref['pn'])
+    assert np.array_equal(archive['t'], archive_ref['t'])
+    assert np.array_equal(archive['vn'], archive_ref['vn'])
 

@@ -172,23 +172,42 @@ int solver_core::run(const int nb_cycles, const bool do_measure, const int max_t
 }
 
 // --------------------------------
-// Divides the world into `nb_partitions` partitions and collect results
-// separately in each of them. Usefull for error estimation.
-void solver_core::collect_results(int nb_partitions) {
+/* Divides world into P = `size_partition` equal parts plus a minimal remain
+ * part and collects (cumulates) results within each of these parts.
+ *
+ * No division is done if `size_partition` is 1, results are cumulated over all
+ * processes.
+ * Returns true if this process is a master of one of the equal parts, false
+ * otherwise.
+ *
+ * This is usefull for error estimation, as it allows to gather P different but
+ * comparable results with a maximal number of process K per result. If N is
+ * the total number of processes, this condition is true when N = KP + R with R
+ * >= 0 minimal. Therefore K = N // P. The last part, made of R = K % P
+ * processes may be ignored.
+ *
+ * As parts are made of contiguous ranks, color is rank // K = rank // (N // P).
+ * The color of the remain part, if it exists, is therefore P.
+ *
+ * /!\ cumulation may not be revertible ! (FIXME)
+ */
+bool solver_core::collect_results(int size_partition) {
  mpi::communicator world;
 
- if (nb_partitions <= 1) {
+ if (size_partition <= 1) {
   qmc.collect_results(world);
   cum_qmc_duration = mpi::mpi_all_reduce(qmc_duration, world);
+  return (world.rank() == 0);
  } else {
   // create partitions
-  int nb_part = std::min(nb_partitions, world.size());
-  int color = world.rank() / (world.size() / nb_part);
+  int nb_parts = std::min(size_partition, world.size());
+  int color = world.rank() / (world.size() / nb_parts);
   mpi::communicator part = world.split(color, world.rank());
 
   // collect within these partitions
   qmc.collect_results(part);
   cum_qmc_duration = mpi::mpi_all_reduce(qmc_duration, part);
+  return (part.rank() == 0) and (color < nb_parts);
  }
 }
 

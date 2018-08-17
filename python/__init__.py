@@ -26,7 +26,14 @@ DOC
 from ctint_keldysh import SolverCore
 from g0_semi_circ import make_g0_semi_circular, make_g0c_semi_circular_freq, make_g0_semi_circular_freq
 from g0_flat_band import make_g0_flat_band, make_g0c_flat_band_freq, make_g0_flat_band_freq
-from perturbation_series import perturbation_series, staircase_perturbation_series
-from solver import single_solve, staircase_solve, variance_error
+from solver import solve, variance_error
 
-__all__ = ['SolverCore','make_g0_semi_circular', 'make_g0c_semi_circular_freq', 'make_g0_semi_circular_freq', 'make_g0_flat_band', 'make_g0c_flat_band_freq', 'make_g0_flat_band_freq', 'perturbation_series', 'staircase_perturbation_series', 'single_solve', 'staircase_solve']
+__all__ = ['SolverCore',
+           'make_g0_semi_circular',
+           'make_g0c_semi_circular_freq',
+           'make_g0_semi_circular_freq',
+           'make_g0_flat_band',
+           'make_g0c_flat_band_freq',
+           'make_g0_flat_band_freq',
+           'variance_error',
+           'solve']

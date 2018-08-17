@@ -1,8 +1,10 @@
 from pytriqs.utility import mpi
-from ctint_keldysh import *
-from pytriqs.archive import *
+from ctint_keldysh import make_g0_semi_circular, solve
+from ctint_keldysh.construct_gf import kernel_GF_from_archive
+from pytriqs.archive import HDFArchive
 import numpy as np
 import os
+from matplotlib import pyplot as plt
 
 p = {}
 p["beta"] = 200.0
@@ -13,31 +15,91 @@ p["epsilon_d"] = 0.5
 p["muL"] = 0.
 p["muR"] = 0.
 
-g0_lesser, g0_greater = make_g0_semi_circular(**p)
+g0_less_triqs, g0_grea_triqs = make_g0_semi_circular(**p)
 
 times = np.linspace(-40.0, 0.0, 101)
+filename = 'out_files/' + os.path.basename(__file__)[:-3] + '.out.h5'
 p = {}
-p["creation_ops"] = [(0, 0.0, 0)]
-p["annihilation_ops"] = []
+
+p["staircase"] = True
+p["nb_warmup_cycles"] = 1000
+p["nb_cycles"] = 10000
+p["save_period"] = 60
+p["filename"] = filename
+p["g0_lesser"] = g0_less_triqs
+p["g0_greater"] = g0_grea_triqs
+p["size_part"] = 1
+p["nb_bins_sum"] = 10
+
+p["creation_ops"] = [(0, 0, 0.0, 0)]
+p["annihilation_ops"] = [(0, 0, 0.0, 0)]
 p["extern_alphas"] = [0.]
+p["nonfixed_op"] = False
 p["interaction_start"] = 40.0
-p["measure_state"] = 0
-p["measure_keldysh_indices"] = [0, 1]
-p["measure_times"] = times
-p["U"] = 2.5 # U_qmc
-p["min_perturbation_order"] = 0
-p["max_perturbation_order"] = 2
 p["alpha"] = 0.0
-p["n_warmup_cycles"] = 1000
-p["n_cycles"] = 100000
-p["length_cycle"] = 50
+p["nb_orbitals"] = 1
+
+p["U"] = 2.5 # U_qmc
+p["w_ins_rem"] = 1.
 p["w_dbl"] = 0
 p["w_shift"] = 0
+p["max_perturbation_order"] = 2
+p["min_perturbation_order"] = 0
+p["forbid_parity_order"] = -1
+p["length_cycle"] = 50
 p["method"] = 5
 p["singular_thresholds"] = [3.5, 3.3]
 
-filename = 'out_files/' + os.path.basename(__file__)[:-3] + '.out.h5'
-on, on_error = staircase_solve(g0_lesser, g0_greater, p, filename, save_period=60)
+results = solve(p)
+
+with HDFArchive(filename, 'r') as ar:
+    kernel = kernel_GF_from_archive(ar, 'kernels', p["nonfixed_op"])
+
+g0_less = np.vectorize(lambda t: g0_less_triqs(t)[0, 0] if np.abs(t) < 100. else 0.)
+g0_grea = np.vectorize(lambda t: g0_grea_triqs(t)[0, 0] if np.abs(t) < 100. else 0.)
+GF = kernel.convol_g_left(g0_less, g0_grea, 100.)
+GF.apply_gf_sym()
+GF.increment_order(g0_less, g0_grea)
+
+plt.plot(GF.times, GF.less.values[0].real, 'b')
+plt.plot(GF.times, GF.less.values[0].imag, 'r')
+plt.plot(GF.times, g0_less(GF.times).real, 'g')
+plt.plot(GF.times, g0_less(GF.times).imag, 'm')
+plt.show()
+
+with HDFArchive('ref_data/order1_params1.ref.h5', 'r') as ref:
+    plt.plot(ref['less']['times'], ref['less']['o1'].real, 'g.-')
+    plt.plot(ref['less']['times'], ref['less']['o1'].imag, 'm.-')
+plt.plot(GF.times, GF.less.values[1].real, 'b')
+plt.plot(GF.times, GF.less.values[1].imag, 'r')
+plt.xlim(-50, 10)
+plt.show()
+
+with HDFArchive('ref_data/order1_params1.ref.h5', 'r') as ref:
+    plt.plot(ref['grea']['times'], ref['grea']['o1'].real, 'g.-')
+    plt.plot(ref['grea']['times'], ref['grea']['o1'].imag, 'm.-')
+plt.plot(GF.times, GF.grea.values[1].real, 'b')
+plt.plot(GF.times, GF.grea.values[1].imag, 'r')
+plt.xlim(-50, 10)
+plt.show()
+
+with HDFArchive('ref_data/order2_params1.ref.h5', 'r') as ref:
+    plt.plot(ref['less']['times'], ref['less']['o2'].real, 'go')
+    plt.plot(ref['less']['times'], ref['less']['o2'].imag, 'mo')
+plt.plot(GF.times, GF.less.values[2].real, 'b')
+plt.plot(GF.times, GF.less.values[2].imag, 'r')
+plt.xlim(-50, 10)
+plt.show()
+
+with HDFArchive('ref_data/order2_params1.ref.h5', 'r') as ref:
+    plt.plot(ref['grea']['times'], ref['grea']['o2'].real, 'go')
+    plt.plot(ref['grea']['times'], ref['grea']['o2'].imag, 'mo')
+plt.plot(GF.times, GF.grea.values[2].real, 'b')
+plt.plot(GF.times, GF.grea.values[2].imag, 'r')
+plt.xlim(-50, 10)
+plt.show()
+
+exit()
 
 if on.shape != (3, 101, 2):
     raise RuntimeError, 'FAILED: on shape is ' + str(on.shape) + ' but should be (3, 101, 2)'
@@ -49,8 +111,8 @@ if mpi.world.rank == 0:
     # order 0
     rtol = 0.001
     atol = 0.0001
-    o0_less = np.array([g0_lesser(t)[0, 0] for t in times], dtype=complex)
-    o0_grea = np.array([g0_greater(t)[0, 0] for t in times], dtype=complex)
+    o0_less = np.array([g0_less_triqs(t)[0, 0] for t in times], dtype=complex)
+    o0_grea = np.array([g0_grea_triqs(t)[0, 0] for t in times], dtype=complex)
 
     if not np.allclose(on[0, :, 0], o0_less, rtol=rtol, atol=atol):
         raise RuntimeError, 'FAILED o0 less'

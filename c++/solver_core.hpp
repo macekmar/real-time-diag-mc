@@ -50,7 +50,7 @@ class solver_core {
  int run(const int nb_cycles, const bool do_measure, const int max_time);
  int run(const int nb_cycles, const bool do_measure) { return run(nb_cycles, do_measure, -1); };
 
- void collect_results(int nb_partitions);
+ bool collect_results(int nb_partitions);
 
  // getters
  double get_qmc_duration() const { return cum_qmc_duration; }

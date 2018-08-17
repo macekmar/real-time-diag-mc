@@ -90,7 +90,7 @@ c.add_method("""int run (int nb_cycles, bool do_measure, int max_time)""",
 c.add_method("""int run (int nb_cycles, bool do_measure)""",
              doc = """ """)
 
-c.add_method("""void collect_results (int nb_partitions)""",
+c.add_method("""bool collect_results (int nb_partitions)""",
              doc = """ """)
 
 c.add_property(name = "qmc_duration",
