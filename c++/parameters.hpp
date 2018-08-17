@@ -1,21 +1,19 @@
 #pragma once
+
 #include <vector>
 #include <string>
 
-//template <typename T> using view_t = typename T::view_type;
-using namespace triqs::gfs;
-//using my_gf_view = gf<retime, matrix_valued>::view_type;
+/// This header is included in the whole project, so the following usings are global.
+using namespace triqs::arrays;
 
-#define IMPURITY_MATRIX
-
-#ifdef IMPURITY_MATRIX
+using dcomplex = std::complex<double>;
 using orbital_t = int;
-#endif
-
 using timec_t = double;
 enum spin_t { up, down };
 
-//using namespace triqs::utility;
+//template <typename T> using view_t = typename T::view_type;
+//using namespace triqs::gfs;
+//using my_gf_view = gf<retime, matrix_valued>::view_type;
 
 // All the arguments of the solve function
 struct solve_parameters_t {

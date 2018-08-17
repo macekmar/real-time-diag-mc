@@ -1,16 +1,10 @@
 #pragma once
 #include "./measure.hpp"
 #include "./qmc_data.hpp"
-#include <assert.h>
 #include <triqs/mc_tools.hpp>
 
 #include <triqs/gfs.hpp>
 
-// using namespace triqs::gfs;
-using namespace triqs::arrays;
-
-auto size_fold = fold([](size_t r, keldysh_contour_pt x) { return r + 1; });
-template <typename ArrayType> size_t size(ArrayType some_array) { return size_fold(some_array, 0); }
 
 // ------------ The main class of the solver -----------------------
 
@@ -45,12 +39,13 @@ class solver_core {
  TRIQS_WRAP_ARG_AS_DICT // Wrap the solver parameters as a ** call in python with the clang & c++2py tool
      solver_core(solve_parameters_t const& params);
 
- void set_g0(gf_view<retime, matrix_valued> g0_lesser, gf_view<retime, matrix_valued> g0_greater);
+ void set_g0(triqs::gfs::gf_view<triqs::gfs::retime, triqs::gfs::matrix_valued> g0_lesser,
+             triqs::gfs::gf_view<triqs::gfs::retime, triqs::gfs::matrix_valued> g0_greater);
 
  int run(const int nb_cycles, const bool do_measure, const int max_time);
  int run(const int nb_cycles, const bool do_measure) { return run(nb_cycles, do_measure, -1); };
 
- bool collect_results(int nb_partitions);
+ bool collect_results(int size_partition);
 
  // getters
  double get_qmc_duration() const { return cum_qmc_duration; }

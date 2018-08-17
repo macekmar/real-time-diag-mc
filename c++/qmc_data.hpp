@@ -1,9 +1,11 @@
 #pragma once
-#include "./model_adaptor.hpp"
+#include <triqs/gfs.hpp>
+#include <triqs/mc_tools.hpp>
 #include <triqs/arrays.hpp>
 #include <triqs/det_manip.hpp>
+#include "./parameters.hpp"
 
-// --------------   Point on the Keldysh contour   --------------------------------------
+// --------------   Point on the Keldysh contour   ---------------------------
 
 /// A point on the Keldysh contour
 struct keldysh_contour_pt {
@@ -64,6 +66,9 @@ struct vertex_rand_gen {
 
 // --------------   G0 adaptor   --------------------------------------
 
+
+using g0_t = triqs::gfs::gf<triqs::gfs::retime, triqs::gfs::matrix_valued>;
+
 /**
  * Adapt G0_lesser and G0_greater into a function taking two points on the Keldysh contour
  * It is the function that appears in the calculation of the determinant (det_manip, cf below).
@@ -72,13 +77,13 @@ struct vertex_rand_gen {
  */
 struct g0_keldysh_t {
 
- g0_adaptor_t g0_lesser;
- g0_adaptor_t g0_greater;
+ g0_t g0_lesser;
+ g0_t g0_greater;
 
  dcomplex operator()(keldysh_contour_pt const &a, keldysh_contour_pt const &b) const {
 
   // at equal contour time (Float is ok in == since we are not doing any operations on times), discard Keldysh index and use g_lesser
-  if (a.t == b.t and a.k_index == b.k_index) return g0_lesser(a.x, b.x, a.t, b.t);
+  if (a.t == b.t and a.k_index == b.k_index) return g0_lesser(a.t - b.t)(a.x, b.x);
 
   //  // mapping: is it lesser or greater?
   //  //  a    b    (a.time > b.time)   L/G ?
@@ -90,7 +95,7 @@ struct g0_keldysh_t {
   //  //  0    1           *             L
   //  //  1    0           *             G
   bool is_greater = (a.k_index == b.k_index ? (a.k_index xor (a.t > b.t)) : a.k_index);
-  return (is_greater ? g0_greater(a.x, b.x, a.t, b.t) : g0_lesser(a.x, b.x, a.t, b.t));
+  return (is_greater ? g0_greater(a.t - b.t)(a.x, b.x) : g0_lesser(a.t - b.t)(a.x, b.x));
  }
 };
 

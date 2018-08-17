@@ -1,6 +1,5 @@
 #include "./measure.hpp"
 
-using namespace triqs::arrays;
 using namespace triqs::statistics;
 namespace mpi = triqs::mpi;
 

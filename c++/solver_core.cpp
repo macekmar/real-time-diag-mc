@@ -2,10 +2,7 @@
 #include "./moves.hpp"
 #include <triqs/det_manip.hpp>
 
-using namespace triqs::arrays;
-using namespace triqs::gfs;
 namespace mpi = triqs::mpi;
-using triqs::utility::mindex;
 using triqs::arrays::range;
 
 
@@ -47,13 +44,13 @@ solver_core::solver_core(solve_parameters_t const& params)
 
 // --------------------------------
 // TODO: put the green functions in the parameters dictionnary so as to construct in one step only
-void solver_core::set_g0(gf_view<retime, matrix_valued> g0_lesser,
-                         gf_view<retime, matrix_valued> g0_greater) {
+void solver_core::set_g0(triqs::gfs::gf_view<triqs::gfs::retime, triqs::gfs::matrix_valued> g0_lesser,
+                         triqs::gfs::gf_view<triqs::gfs::retime, triqs::gfs::matrix_valued> g0_greater) {
  if (status < not_ready) TRIQS_RUNTIME_ERROR << "Run aborted";
  if (status > not_ready) TRIQS_RUNTIME_ERROR << "Green functions already set up. Cannot change.";
 
  // non interacting Green function
- green_function = g0_keldysh_t{g0_adaptor_t{g0_lesser}, g0_adaptor_t{g0_greater}};
+ green_function = g0_keldysh_t{g0_t{g0_lesser}, g0_t{g0_greater}};
  green_function_alpha = g0_keldysh_alpha_t{green_function, params.alpha, params.extern_alphas};
 
  // configuration

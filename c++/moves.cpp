@@ -118,7 +118,7 @@ dcomplex remove2::attempt() {
  if (params->store_configurations == 2) config.register_attempted_config();
 
  // The Metropolis ratio
- return k * (k - 1) / pow(normalization, 2) * config.current_weight / config.accepted_weight;
+ return k * (k - 1) / (normalization * normalization) * config.current_weight / config.accepted_weight;
 }
 
 dcomplex remove2::accept() {
