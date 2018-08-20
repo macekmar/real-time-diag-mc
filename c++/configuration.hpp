@@ -62,55 +62,60 @@ array<typename det_manip<T>::value_type, 1> cofactor_col(det_manip<T>& matrix, s
 };
 
 // -----------------------
+/**
+ * Adding some handy methods to std::forward_list.
+ *
+ * forward_list are singly-chained sequence containers that allow constant time
+ * insertion and removal (erase).
+ */
 template <typename T>
-class wrapped_forward_list {
-
- std::forward_list<T> list;
+class wrapped_forward_list : public std::forward_list<T> {
 
  public:
 
- // insert (before index)
+ // insert before index
  void insert(size_t k, T value) {
-  auto it = list.before_begin();
+  auto it = std::forward_list<T>::before_begin();
   std::advance(it, k);
-  list.insert_after(it, value);
+  std::forward_list<T>::insert_after(it, value);
  };
 
+ // erase at index
  void erase(size_t k) {
-  auto it = list.before_begin();
+  auto it = std::forward_list<T>::before_begin();
   std::advance(it, k);
-  list.erase_after(it);
+  std::forward_list<T>::erase_after(it);
  };
 
- // k1 != k2 needed
+ // erase at two indices k1 != k2
  void erase(size_t k1, size_t k2) {
   if (k2 < k1) std::swap(k1, k2);
-  auto it = list.before_begin();
+  auto it = std::forward_list<T>::before_begin();
   std::advance(it, k1);
-  list.erase_after(it);
+  std::forward_list<T>::erase_after(it);
   std::advance(it, k2 - k1 - 1);
-  list.erase_after(it);
+  std::forward_list<T>::erase_after(it);
  };
 
- // read-only access
+ // access
  T operator[](size_t k) const {
-  auto it = list.begin();
+  auto it = std::forward_list<T>::begin();
   std::advance(it, k);
   return *it;
  };
 
  // assignement
  T& operator[](size_t k) {
-  auto it = list.begin();
+  auto it = std::forward_list<T>::begin();
   std::advance(it, k);
   return *it;
  };
-
 };
 
 // -----------------------
 class Configuration {
 
+ // attributes
  private:
  bool kernels_comput = true;
  bool nonfixed_op;
@@ -124,12 +129,6 @@ class Configuration {
  array<long, 1> nb_values;
  int cycles_trapped = 0;
  int cycles_trapped_thresh = 100;
-
- // Configuration(const Configuration&) = delete;  // non construction-copyable
- // void operator=(const Configuration&) = delete; // non copyable
- double kernels_evaluate();
- dcomplex keldysh_sum();
- dcomplex keldysh_sum_cofact(int p); // not used ??
 
  public:
  std::vector<det_manip<g0_keldysh_alpha_t>> matrices;
@@ -147,11 +146,20 @@ class Configuration {
  std::vector<dcomplex> config_weight;
 
  // methods
+ private:
+ double kernels_evaluate();
+ dcomplex keldysh_sum();
+ dcomplex keldysh_sum_cofact(int p); // not used ??
+
+ public:
  Configuration(){};
  Configuration(g0_keldysh_alpha_t green_function, std::vector<keldysh_contour_pt> annihila_pts,
                std::vector<keldysh_contour_pt> creation_pts, int max_order,
                std::pair<double, double> singular_thresholds, bool kernels_comput,
                bool nonfixed_op, int cycles_trapped_thresh);
+
+ //Configuration(const Configuration&) = delete;  // non construction-copyable
+ // void operator=(const Configuration&) = delete; // non copyable
 
  void insert(vertex_t vtx);
  void insert2(vertex_t vtx1, vertex_t vtx2);

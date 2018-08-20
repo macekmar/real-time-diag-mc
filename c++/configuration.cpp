@@ -2,6 +2,15 @@
 
 //#define REGENERATE_MATRIX_BEFORE_EACH_GRAY_CODE
 
+/**
+ * The Configuration class represents the current state of the Markov chain.
+ * Its instance should be unique.
+ *
+ * Vertices are added, removed or changed by the Monte-Carlo moves. The
+ * Configuration object allows to evaluate the weight and kernels of a
+ * configuration and to keep memory of the previously accepted weight and
+ * kernels.
+ */
 Configuration::Configuration(g0_keldysh_alpha_t green_function, std::vector<keldysh_contour_pt> annihila_pts,
                              std::vector<keldysh_contour_pt> creation_pts, int max_order,
                              std::pair<double, double> singular_thresholds, bool kernels_comput,
@@ -54,6 +63,9 @@ Configuration::Configuration(g0_keldysh_alpha_t green_function, std::vector<keld
  accept_config();
 }
 
+/**
+ * Insert a vertex at first position.
+ */
 void Configuration::insert(vertex_t vtx) {
  auto pt = vtx.get_up_pt();
  matrices[up].insert(0, 0, pt, pt);
@@ -66,7 +78,11 @@ void Configuration::insert(vertex_t vtx) {
  order++;
 };
 
-// insert two vertices at once.
+/**
+ * Insert two vertices at first positions.
+ *
+ * `vtx1` is now at position 0 and `vtx2` at position 1.
+ */
 void Configuration::insert2(vertex_t vtx1, vertex_t vtx2) {
  auto pt1 = vtx1.get_up_pt();
  auto pt2 = vtx2.get_up_pt();
@@ -82,6 +98,9 @@ void Configuration::insert2(vertex_t vtx1, vertex_t vtx2) {
  order += 2;
 };
 
+/**
+ * Remove the vertex at position `k`.
+ */
 void Configuration::remove(int k) {
  for (auto& m : matrices) m.remove(k, k);
 
@@ -92,7 +111,7 @@ void Configuration::remove(int k) {
 };
 
 /**
- * Remove the vertices at positions k1 and k2.
+ * Remove the vertices at positions `k1` and `k2`.
  * k1 and k2 must be two *distinct* existing positions.
  */
 void Configuration::remove2(int k1, int k2) {
@@ -104,6 +123,9 @@ void Configuration::remove2(int k1, int k2) {
  order -= 2;
 };
 
+/**
+ * Change vertex at position `k` into `vtx`.
+ */
 void Configuration::change_vertex(int k, vertex_t vtx) {
  auto pt = vtx.get_up_pt();
  matrices[up].change_row(k, pt);
@@ -116,19 +138,29 @@ void Configuration::change_vertex(int k, vertex_t vtx) {
  potential_list[k] = vtx.potential;
 };
 
-vertex_t Configuration::get_vertex(int p) const {
- auto pt_up = matrices[up].get_x(p);
- auto pt_down = matrices[down].get_x(p);
- return {pt_up.x, pt_down.x, pt_up.t, pt_up.k_index, potential_list[p]}; // no consistency check is done
+/**
+ * Return a copy of the vertex at position `k`.
+ *
+ * Vertices are not actually stored, so it is reconstructed from the Keldysh
+ * points in the matrices.
+ */
+vertex_t Configuration::get_vertex(int k) const {
+ auto pt_up = matrices[up].get_x(k);
+ auto pt_down = matrices[down].get_x(k);
+ return {pt_up.x, pt_down.x, pt_up.t, pt_up.k_index, potential_list[k]}; // no consistency check is done
 };
 
-// -----------------------
- /* Evaluate the kernels for the current configuration. Fill `current_kernels` appropriately
-  * and return the corresponding weight (as a real positive value):
-  * W(\vec{u}) = \sum_{p=1}^n \sum_{a=0,1}| K_p^a(\vec{u}) |
-  * If order n=0, `current_kernels` is not changed and the arbitrary weight 1 is returned.
-  * */
- // TODO: write down the formula this implements
+/**
+ * Evaluate the kernels for the current configuration.
+ *
+ * Fill `current_kernels` appropriately and return the corresponding weight
+ * (as a real positive value):
+ * W(\vec{u}) = \sum_{p=1}^n \sum_{a=0,1}| K_p^a(\vec{u}) |
+ * If order n=0, `current_kernels` is not changed and the arbitrary weight 1
+ * is returned.
+ *
+ * TODO: write down the formula this implements
+ */
 double Configuration::kernels_evaluate() {
  if (order == 0) return 1.; // is this a good value ?
  if (order > 63) TRIQS_RUNTIME_ERROR << "order overflow";
@@ -199,10 +231,13 @@ double Configuration::kernels_evaluate() {
  return sum(abs(current_kernels()));
 };
 
-// -----------------------
- /* Evaluate the kernels and weight of the current configuration.
-  * Store them into `current_kernels` and `current_weight`.
-  */
+/**
+ * Evaluate the kernels and weight of the current configuration.
+ * Store them into `current_kernels` and `current_weight`.
+ *
+ * If the old method has been chosen, just evaluates the weight by a simple
+ * Keldysh sum.
+ */
 void Configuration::evaluate() {
  dcomplex value;
  if (kernels_comput)
@@ -215,7 +250,12 @@ void Configuration::evaluate() {
  current_weight = value;
 }
 
-// -----------------------
+/**
+ * Accept the current configuration.
+ *
+ * This simply copy `current_weight` and `current_kernels` into
+ * `accepted_weight` and `accepted_kernels`.
+ */
 void Configuration::accept_config() {
  if (cycles_trapped > 100) std::cout << "Trapped " << cycles_trapped << " cycles" << std::endl;
  cycles_trapped = 0;
@@ -223,7 +263,13 @@ void Configuration::accept_config() {
  accepted_kernels() = current_kernels();
 }
 
-// -----------------------
+/**
+ * Increment the trapped counter, and if threshold has been reached, reevaluate
+ * the current configuration.
+ *
+ * The weight and kernels are automatically accepted, so this method should be
+ * called on accepted configurations only.
+ */
 void Configuration::incr_cycles_trapped() {
  cycles_trapped++;
  if (cycles_trapped % cycles_trapped_thresh == 0) {
@@ -234,9 +280,13 @@ void Configuration::incr_cycles_trapped() {
  }
 }
 
-// -----------------------
-// build configuration signature
-// TODO: add orbitals in the signature
+/**
+ * Build configuration signature.
+ *
+ * This is used to store the configurations in a file. It is not supposed to
+ * give exhaustive information.
+ * TODO: add orbitals in the signature
+ */
 std::vector<double> Configuration::signature() {
  std::vector<double> signa;
  for (int i = 0; i < order; ++i) {
@@ -245,9 +295,10 @@ std::vector<double> Configuration::signature() {
  return signa;
 };
 
-// -----------------------
-// Register the configuration as if it has been accepted (accepted weight is stored).
-// Increment multiplicity if it didn't change since last registration.
+/**
+ * Register the configuration as if it has been accepted (accepted weight is stored).
+ * Increment multiplicity if it didn't change since last registration.
+ */
 void Configuration::register_accepted_config() {
  auto config = signature();
 
@@ -260,8 +311,10 @@ void Configuration::register_accepted_config() {
  }
 };
 
-// -----------------------
-// Register the configuration as if it has been attempted only (current weight is stored).
+/**
+ * Register the configuration as if it has been attempted only (current weight is stored).
+ * No use of multiplicity here.
+ */
 void Configuration::register_attempted_config() {
  auto config = signature();
 
@@ -269,17 +322,28 @@ void Configuration::register_attempted_config() {
  config_weight.emplace_back(current_weight);
 };
 
-// -----------------------
-// TODO: add orbitals in the print
+/**
+ * Print the current configuration.
+ *
+ * Prints the lists of contour points which composes the matrices, as well as
+ * the list of potentials of vertices.
+ */
 void Configuration::print() {
  std::cout << std::endl;
  int n;
  for (auto& m : matrices) {
   n = m.size();
-  for (int i = 0; i < n; ++i) std::cout << "(" << m.get_x(i).t << ", " << m.get_x(i).k_index << "), ";
+  for (int i = 0; i < n; ++i) std::cout << "(" << m.get_x(i).x << ", " << m.get_x(i).t << ", " << m.get_x(i).k_index << "), ";
   std::cout << std::endl;
-  for (int i = 0; i < n; ++i) std::cout << "(" << m.get_y(i).t << ", " << m.get_y(i).k_index << "), ";
-  std::cout << std::endl;
+  for (int i = 0; i < n; ++i) std::cout << "(" << m.get_y(i).x << ", " << m.get_y(i).t << ", " << m.get_y(i).k_index << "), ";
   std::cout << std::endl;
  }
+ std::cout << "V = ";
+ for (auto it = potential_list.begin(); it != potential_list.end(); ++it) {
+  std::cout << *it << ", ";
+ }
+ std::cout << std::endl;
+ std::cout << "V product = " << potential;
+ std::cout << std::endl;
+ std::cout << std::endl;
 };

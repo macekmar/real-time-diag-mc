@@ -8,8 +8,10 @@ bool are_equal_pts(keldysh_contour_pt const& p1, keldysh_contour_pt const& p2) {
  return p1.x == p2.x and p1.t == p2.t and p1.k_index == p2.k_index and p1.rank == p2.rank;
 };
 
+/**
+ * Test that the evaluation of configurations does not change the matrices.
+ */
 int main() {
- /// Test that the evaluation of configurations does not change the matrices.
 
  auto g_less = gf<retime, matrix_valued>{{-10., 10., 1001}, {2, 2}};
  auto g_less_f = make_gf_from_fourier(g_less);
@@ -22,10 +24,13 @@ int main() {
  std::vector<dcomplex> alphas{0., 0.5};
  g0_keldysh_alpha_t g0_alpha = g0_keldysh_alpha_t{g0, 0.5, alphas};
 
+ //external points
  auto a_up = keldysh_contour_pt{0, up, 0.0, 0, 0};
  auto a_up_p = keldysh_contour_pt{0, up, 0.1, 1, 0};
  auto a_do = keldysh_contour_pt{0, down, 0.2, 0, 1};
  auto a_do_p = keldysh_contour_pt{0, down, 0.3, 0, 1};
+
+ // internal points
  auto b = keldysh_contour_pt{0, up, 0.4, 0};
  auto c = keldysh_contour_pt{0, up, 0.5, 0};
  auto d = keldysh_contour_pt{0, up, 0.6, 0};
@@ -34,7 +39,7 @@ int main() {
  std::vector<keldysh_contour_pt> cr_pts{a_up_p, a_do_p};
 
  auto sing_th = std::pair<double, double>{3.5, 3.5};
- //auto sing_th = std::pair<double, double>{-10000, -10000};
+ //auto sing_th = std::pair<double, double>{-10000, -10000}; // always singular
 
  Configuration config(g0_alpha, an_pts, cr_pts, 4, sing_th, true, false, 100);
 

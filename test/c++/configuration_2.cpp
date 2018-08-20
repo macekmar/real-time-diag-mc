@@ -6,33 +6,42 @@ using triqs::arrays::range;
 
 #define ABS_TOL 1.e-15
 #define REL_TOL 1.e-10
+
 bool is_not_close(dcomplex a, dcomplex b) {
  bool output = abs(a - b) > REL_TOL * abs(b) + ABS_TOL;
  if (output) std::cout << "Diff = " << abs(a - b) << std::endl;
  return output;
 }
+
 bool is_not_close_array1(array<dcomplex, 1> a, array<dcomplex, 1> b) {
  bool output = max_element(abs(a - b) - REL_TOL * abs(b)) > ABS_TOL;
  if (output) std::cout << "Diff = " << max_element(abs(a - b)) << std::endl;
  return output;
 }
+
 bool is_close_array2(array<dcomplex, 2> a, array<dcomplex, 2> b) {
  return max_element(abs(a - b) - REL_TOL * abs(b)) > ABS_TOL;
 }
 
-dcomplex det_2x2(g0_keldysh_alpha_t g, keldysh_contour_pt a, keldysh_contour_pt b, keldysh_contour_pt c,
-                 keldysh_contour_pt d) {
+dcomplex det_2x2(g0_keldysh_alpha_t g, keldysh_contour_pt a, keldysh_contour_pt b,
+                                       keldysh_contour_pt c, keldysh_contour_pt d) {
  return g(a, c) * g(b, d) - g(b, c) * g(a, d);
 };
 
-dcomplex det_3x3(g0_keldysh_alpha_t g, keldysh_contour_pt a, keldysh_contour_pt b, keldysh_contour_pt c,
-                 keldysh_contour_pt d, keldysh_contour_pt e, keldysh_contour_pt f) {
+dcomplex det_3x3(g0_keldysh_alpha_t g, keldysh_contour_pt a, keldysh_contour_pt b,
+                                       keldysh_contour_pt c, keldysh_contour_pt d,
+                                       keldysh_contour_pt e, keldysh_contour_pt f) {
  dcomplex output = g(a, d) * (g(b, e) * g(c, f) - g(c, e) * g(b, f));
  output += -g(b, d) * (g(a, e) * g(c, f) - g(c, e) * g(a, f));
  output += g(c, d) * (g(b, e) * g(a, f) - g(a, e) * g(b, f));
  return output;
 };
 
+/**
+ * Proceed to a sequence of insertions and removals of vertices, and check the
+ * weight and kernel are as expected.
+ * Work with a two-particle correlator (half up half down).
+ */
 int main() {
 
  auto g_less = gf<retime, matrix_valued>{{-10., 10., 1001}, {2, 2}};
@@ -46,9 +55,12 @@ int main() {
  std::vector<dcomplex> alphas{0., 1.5};
  g0_keldysh_alpha_t g0_alpha = g0_keldysh_alpha_t{g0, 0.5, alphas};
 
+ // external points
  auto a_up = keldysh_contour_pt{0, up, 1.5, 0, 0};
  auto a_up_p = keldysh_contour_pt{0, up, 1.4, 1, 0};
  auto a_do = keldysh_contour_pt{0, down, 0.5, 0, 1};
+
+ // internal points
  auto b0 = keldysh_contour_pt{0, up, 0.3, 0};
  auto b1 = flip_index(b0);
  auto c0 = keldysh_contour_pt{0, up, -1.3, 0};
@@ -60,7 +72,7 @@ int main() {
  std::vector<keldysh_contour_pt> cr_pts{a_up_p, a_do};
 
  auto sing_th = std::pair<double, double>{3.5, 3.5};
- // auto sing_th = std::pair<double, double>{-10000, -10000};
+ // auto sing_th = std::pair<double, double>{-10000, -10000}; // always singular
 
  Configuration config(g0_alpha, an_pts, cr_pts, 4, sing_th, true, false, 100);
  dcomplex ref_weight = 1;
