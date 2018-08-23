@@ -11,10 +11,6 @@ using orbital_t = int;
 using timec_t = double;
 enum spin_t { up, down };
 
-//template <typename T> using view_t = typename T::view_type;
-//using namespace triqs::gfs;
-//using my_gf_view = gf<retime, matrix_valued>::view_type;
-
 // All the arguments of the solve function
 struct solve_parameters_t {
 
@@ -46,7 +42,7 @@ struct solve_parameters_t {
 
  /// interaction potential
  // Made of a list of potentials V_{ij}, a list of i and a list of j.
- // THey must be of same size with at least one element.
+ // They must be of same size with at least one element.
  std::tuple<std::vector<double>, std::vector<orbital_t>, std::vector<orbital_t>> potential;
 
  // ----   QMC parameters
@@ -91,7 +87,7 @@ struct solve_parameters_t {
  //int verbosity = ((triqs::mpi::communicator().rank() == 0) ? 3 : 0); // silence the slave nodes
 
  /// Method
- int method = 5;
+ int method = 1;
 
  /// nb of bins for the kernels
  int nb_bins = 10000;

@@ -9,15 +9,16 @@
 using triqs::det_manip::det_manip;
 
 // -----------------------
-template <typename T>
-array<typename det_manip<T>::value_type, 1> cofactor_row(det_manip<T>& matrix, size_t i, size_t n) {
- /* Computes the n-th first cofactors of the i-th row of `matrix`.
+ /**
+  * Computes the n-th first cofactors of the i-th row of `matrix`.
   * This does NOT use the inverse matrix.
   *
   * In det_manip, vaues of the x-list are constant along rows, while values of
   * the y-list are constant along columns. That is at least the convention I
   * use to name rows and columns.
   */
+template <typename T>
+array<typename det_manip<T>::value_type, 1> cofactor_row(det_manip<T>& matrix, size_t i, size_t n) {
  array<typename det_manip<T>::value_type, 1> cofactors(n);
  int signs[2] = {1, -1};
  auto x_i = matrix.get_x(i);
@@ -35,15 +36,16 @@ array<typename det_manip<T>::value_type, 1> cofactor_row(det_manip<T>& matrix, s
  return cofactors;
 };
 
-template <typename T>
-array<typename det_manip<T>::value_type, 1> cofactor_col(det_manip<T>& matrix, size_t j, size_t n) {
- /* Computes the n-th first cofactors of the j-th column of `matrix`.
+ /**
+  * Computes the n-th first cofactors of the j-th column of `matrix`.
   * This does NOT use the inverse matrix.
   *
   * In det_manip, vaues of the x-list are constant along rows, while values of
   * the y-list are constant along columns. That is at least the convention I
   * use to name rows and columns.
   */
+template <typename T>
+array<typename det_manip<T>::value_type, 1> cofactor_col(det_manip<T>& matrix, size_t j, size_t n) {
  array<typename det_manip<T>::value_type, 1> cofactors(n);
  int signs[2] = {1, -1};
  auto y_j = matrix.get_y(j);
@@ -158,8 +160,13 @@ class Configuration {
                std::pair<double, double> singular_thresholds, bool kernels_comput,
                bool nonfixed_op, int cycles_trapped_thresh);
 
- //Configuration(const Configuration&) = delete;  // non construction-copyable
- // void operator=(const Configuration&) = delete; // non copyable
+ Configuration(const Configuration&) = delete;  // non construction-copyable
+ void operator=(const Configuration&) = delete; // non copyable
+ Configuration(Configuration&&) = default; // construction-movable
+ Configuration& operator=(Configuration&&) = default; // movable
+ // For some weird reason, `Configuration` needs to be movable to be
+ // non-copyable. If not, compilation fails saying that we tried to copy
+ // `det_manip` which is non-copyable ??!!
 
  void insert(vertex_t vtx);
  void insert2(vertex_t vtx1, vertex_t vtx2);

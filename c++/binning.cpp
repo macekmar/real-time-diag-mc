@@ -18,16 +18,10 @@ KernelBinning::KernelBinning(double t_min_, double t_max_, int nb_bins_, int max
  nb_values = array<long, 4>(max_order, nb_bins, 2, nb_orbitals);
  nb_values() = 0;
 
- coord_array = array<keldysh_contour_pt, 3>(nb_bins, 2, nb_orbitals);
  bin_times = array<double, 1>(nb_bins);
  double time = t_min + 0.5 * bin_length; // middle of the bin
  for (int i = 0; i < nb_bins; ++i) {
   bin_times(i) = time;
-  for (int k_index : {0, 1}) {
-   for (int x = 0; x < nb_orbitals; ++x) {
-    coord_array(i, k_index, x) = {x, up, time, k_index};
-   }
-  }
   time += bin_length;
  }
 }

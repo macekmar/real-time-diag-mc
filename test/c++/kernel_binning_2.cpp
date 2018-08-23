@@ -1,4 +1,8 @@
 #include "../c++/binning.hpp"
+#include "./utility.hpp"
+
+#define ABS_TOL 1.e-14
+#define REL_TOL 1.e-10
 
 int main() {
  /// Test KernelBinning with matching boundaries
@@ -7,15 +11,9 @@ int main() {
  // bins must be ]-1; 1], ]1; 3], ]3; 5], ]5; 7]
  if (binning.get_bin_length() != 2.) return 1;
 
- bool coord_array_ok = true;
- for (int a : {0, 1}) {
-  coord_array_ok = coord_array_ok and
-                   binning.coord_array(0, a, 0) == keldysh_contour_pt{0, up, 0., a} and
-                   binning.coord_array(1, a, 0) == keldysh_contour_pt{0, up, 2., a} and
-                   binning.coord_array(2, a, 0) == keldysh_contour_pt{0, up, 4., a} and
-                   binning.coord_array(3, a, 0) == keldysh_contour_pt{0, up, 6., a};
- }
- if (not coord_array_ok) return 2;
+ auto bin_times = binning.get_bin_times();
+ auto bin_times_ref = array<double, 1>{0, 2, 4, 6};
+ if (not is_close_array(bin_times, bin_times_ref, REL_TOL, ABS_TOL)) return 2;
 
  binning.add(1, {0, up, 1., 0}, {0., 1.}); // go in bin 0
  binning.add(1, {0, up, 2., 0}, {1.5, 0.}); // go in bin 1

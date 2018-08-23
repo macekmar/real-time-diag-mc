@@ -13,8 +13,6 @@ class KernelBinning {
  int nb_bins;
 
  public:
- array<keldysh_contour_pt, 3> coord_array;
-
  KernelBinning(){};
  KernelBinning(double t_min_, double t_max_, int nb_bins_, int max_order, int nb_orbitals, bool match_boundaries);
 
@@ -29,7 +27,5 @@ class KernelBinning {
  array<dcomplex, 4> get_dirac_values() const;
  array<double, 1> get_dirac_times() const;
 
- // array_const_view<keldysh_contour_pt, 2> get_coord_array() const { return coord_array(); }; // view
- // doesnt work ??
 };
 

@@ -1,4 +1,8 @@
 #include "../c++/binning.hpp"
+#include "./utility.hpp"
+
+#define ABS_TOL 1.e-14
+#define REL_TOL 1.e-10
 
 int main() {
  /// Test the default KernelBinning
@@ -7,15 +11,9 @@ int main() {
  // bins must be ]0; 2.5], ]2.5; 5], ]5; 7.5], ]7.5, 10]
  if (binning.get_bin_length() != 2.5) return 1;
 
- bool coord_array_ok = true;
- for (int a : {0, 1}) {
-  coord_array_ok = coord_array_ok and
-                   binning.coord_array(0, a, 0) == keldysh_contour_pt{0, up, 1.25, a} and
-                   binning.coord_array(1, a, 0) == keldysh_contour_pt{0, up, 3.75, a} and
-                   binning.coord_array(2, a, 0) == keldysh_contour_pt{0, up, 6.25, a} and
-                   binning.coord_array(3, a, 0) == keldysh_contour_pt{0, up, 8.75, a};
- }
- if (not coord_array_ok) return 2;
+ auto bin_times = binning.get_bin_times();
+ auto bin_times_ref = array<double, 1>{1.25, 3.75, 6.25, 8.75};
+ if (not is_close_array(bin_times, bin_times_ref, REL_TOL, ABS_TOL)) return 2;
 
  binning.add(1, {0, up, 2.5, 0}, {0., 1.}); // go in bin 0
  binning.add(1, {0, up, 3., 0}, {1.5, 0.}); // go in bin 1

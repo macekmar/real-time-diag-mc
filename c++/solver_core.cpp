@@ -62,6 +62,16 @@ void solver_core::set_g0(triqs::gfs::gf_view<triqs::gfs::retime, triqs::gfs::mat
  if (status < not_ready) TRIQS_RUNTIME_ERROR << "Run aborted";
  if (status > not_ready) TRIQS_RUNTIME_ERROR << "Green functions already set up. Cannot change.";
 
+ // orbitals check
+ if (second_dim(g0_lesser.data()) != third_dim(g0_lesser.data()))
+   TRIQS_RUNTIME_ERROR << "Lesser is not a square matrix !";
+ if (second_dim(g0_greater.data()) != third_dim(g0_greater.data()))
+   TRIQS_RUNTIME_ERROR << "Greater is not a square matrix !";
+ if (second_dim(g0_lesser.data()) != params.nb_orbitals)
+   TRIQS_RUNTIME_ERROR << "Lesser matrix size should match the number of orbitals";
+ if (second_dim(g0_greater.data()) != params.nb_orbitals)
+   TRIQS_RUNTIME_ERROR << "Greater matrix size should match the number of orbitals";
+
  // non interacting Green function
  green_function = g0_keldysh_t{g0_t{g0_lesser}, g0_t{g0_greater}};
  green_function_alpha = g0_keldysh_alpha_t{green_function, params.alpha, params.extern_alphas};
@@ -87,7 +97,7 @@ void solver_core::set_g0(triqs::gfs::gf_view<triqs::gfs::retime, triqs::gfs::mat
 
  if (params.method == 0) {
   qmc.add_measure(WeightSignMeasure(&config, &pn, &sn), "Weight sign measure");
- } else if (params.method == 5) {
+ } else if (params.method == 1) {
   qmc.add_measure(TwoDetKernelMeasure(&config, &kernels_binning, &pn, &kernels, &kernel_diracs, &nb_kernels),
                   "Kernel measure");
  } else {
@@ -104,7 +114,7 @@ int solver_core::run(const int nb_cycles, const bool do_measure, const int max_t
  if (status < ready) TRIQS_RUNTIME_ERROR << "Unperturbed Green's functions have not been set !";
  // order zero case
  if (params.max_perturbation_order == 0)
-  TRIQS_RUNTIME_ERROR << "Order zero cannot run, use order_zero method instead";
+  TRIQS_RUNTIME_ERROR << "Order zero cannot run";
 
  mpi::communicator world;
  world.barrier();
@@ -235,20 +245,3 @@ int solver_core::finish(const int run_status) {
  return run_status;
 }
 
-// --------------------------------
-//std::tuple<double, array<dcomplex, 2>> solver_core::order_zero() {
-// if (status < not_ready) TRIQS_RUNTIME_ERROR << "Run aborted";
-// if (status < ready) TRIQS_RUNTIME_ERROR << "Unperturbed Green's functions have not been set!";
-// double c0 = 0;
-
-// if (params.method == 5) {
-//  c0 = 1.;
-// } else { // singlepoint methods only
-//  c0 = abs(g0_array(0, 0));
-// }
-// array<dcomplex, 2> s0 = g0_array / c0;
-// if (mpi::communicator().rank() == 0) {
-//  std::cout << "c0 = " << c0 << std::endl << std::endl;
-// }
-// return std::tuple<double, array<dcomplex, 2>>{c0, s0};
-//}

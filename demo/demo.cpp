@@ -36,7 +36,7 @@ int main() {
  params.max_perturbation_order = 6;
  params.min_perturbation_order = 0;
  params.verbosity = 1;
- params.method = 5;
+ params.method = 1;
  params.nb_bins = 100;
  params.singular_thresholds = std::pair<double, double>{4.5, 3.3};
 
