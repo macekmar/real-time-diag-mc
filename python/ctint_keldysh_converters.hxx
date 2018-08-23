@@ -20,6 +20,7 @@ template <> struct py_converter<solve_parameters_t> {
   PyDict_SetItemString( d, "interaction_start"     , convert_to_python(x.interaction_start));
   PyDict_SetItemString( d, "alpha"                 , convert_to_python(x.alpha));
   PyDict_SetItemString( d, "nb_orbitals"           , convert_to_python(x.nb_orbitals));
+  PyDict_SetItemString( d, "potential"             , convert_to_python(x.potential));
   PyDict_SetItemString( d, "U"                     , convert_to_python(x.U));
   PyDict_SetItemString( d, "w_ins_rem"             , convert_to_python(x.w_ins_rem));
   PyDict_SetItemString( d, "w_dbl"                 , convert_to_python(x.w_dbl));
@@ -63,6 +64,7 @@ template <> struct py_converter<solve_parameters_t> {
   res.interaction_start = convert_from_python<double>(PyDict_GetItemString(dic, "interaction_start"));
   res.alpha = convert_from_python<double>(PyDict_GetItemString(dic, "alpha"));
   res.nb_orbitals = convert_from_python<int>(PyDict_GetItemString(dic, "nb_orbitals"));
+  res.potential = convert_from_python<std::tuple<std::vector<double>, std::vector<orbital_t>, std::vector<orbital_t> >>(PyDict_GetItemString(dic, "potential"));
   res.U = convert_from_python<double>(PyDict_GetItemString(dic, "U"));
   _get_optional(dic, "w_ins_rem"             , res.w_ins_rem                ,1.0);
   _get_optional(dic, "w_dbl"                 , res.w_dbl                    ,0.5);
@@ -75,7 +77,7 @@ template <> struct py_converter<solve_parameters_t> {
   _get_optional(dic, "random_name"           , res.random_name              ,"");
   _get_optional(dic, "max_time"              , res.max_time                 ,-1);
   _get_optional(dic, "verbosity"             , res.verbosity                ,0);
-  _get_optional(dic, "method"                , res.method                   ,5);
+  _get_optional(dic, "method"                , res.method                   ,1);
   _get_optional(dic, "nb_bins"               , res.nb_bins                  ,10000);
   res.singular_thresholds = convert_from_python<std::pair<double, double>>(PyDict_GetItemString(dic, "singular_thresholds"));
   _get_optional(dic, "cycles_trapped_thresh" , res.cycles_trapped_thresh    ,100);
@@ -110,7 +112,7 @@ template <> struct py_converter<solve_parameters_t> {
   std::stringstream fs, fs2; int err=0;
 
 #ifndef TRIQS_ALLOW_UNUSED_PARAMETERS
-  std::vector<std::string> ks, all_keys = {"creation_ops","annihilation_ops","extern_alphas","nonfixed_op","interaction_start","alpha","nb_orbitals","U","w_ins_rem","w_dbl","w_shift","max_perturbation_order","min_perturbation_order","forbid_parity_order","length_cycle","random_seed","random_name","max_time","verbosity","method","nb_bins","singular_thresholds","cycles_trapped_thresh","store_configurations"};
+  std::vector<std::string> ks, all_keys = {"creation_ops","annihilation_ops","extern_alphas","nonfixed_op","interaction_start","alpha","nb_orbitals","potential","U","w_ins_rem","w_dbl","w_shift","max_perturbation_order","min_perturbation_order","forbid_parity_order","length_cycle","random_seed","random_name","max_time","verbosity","method","nb_bins","singular_thresholds","cycles_trapped_thresh","store_configurations"};
   pyref keys = PyDict_Keys(dic);
   if (!convertible_from_python<std::vector<std::string>>(keys, true)) {
    fs << "\nThe dict keys are not strings";
@@ -122,30 +124,31 @@ template <> struct py_converter<solve_parameters_t> {
     fs << "\n"<< ++err << " The parameter '" << k << "' is not recognized.";
 #endif
 
-  _check_mandatory<std::vector<std::tuple<orbital_t, int, timec_t, int> >>(dic, fs, err, "creation_ops"          , "std::vector<std::tuple<orbital_t, int, timec_t, int> >");
-  _check_mandatory<std::vector<std::tuple<orbital_t, int, timec_t, int> >>(dic, fs, err, "annihilation_ops"      , "std::vector<std::tuple<orbital_t, int, timec_t, int> >");
-  _check_mandatory<std::vector<dcomplex>                                 >(dic, fs, err, "extern_alphas"         , "std::vector<dcomplex>");
-  _check_optional <bool                                                  >(dic, fs, err, "nonfixed_op"           , "bool");
-  _check_mandatory<double                                                >(dic, fs, err, "interaction_start"     , "double");
-  _check_mandatory<double                                                >(dic, fs, err, "alpha"                 , "double");
-  _check_mandatory<int                                                   >(dic, fs, err, "nb_orbitals"           , "int");
-  _check_mandatory<double                                                >(dic, fs, err, "U"                     , "double");
-  _check_optional <double                                                >(dic, fs, err, "w_ins_rem"             , "double");
-  _check_optional <double                                                >(dic, fs, err, "w_dbl"                 , "double");
-  _check_optional <double                                                >(dic, fs, err, "w_shift"               , "double");
-  _check_optional <int                                                   >(dic, fs, err, "max_perturbation_order", "int");
-  _check_optional <int                                                   >(dic, fs, err, "min_perturbation_order", "int");
-  _check_optional <int                                                   >(dic, fs, err, "forbid_parity_order"   , "int");
-  _check_optional <int                                                   >(dic, fs, err, "length_cycle"          , "int");
-  _check_optional <int                                                   >(dic, fs, err, "random_seed"           , "int");
-  _check_optional <std::string                                           >(dic, fs, err, "random_name"           , "std::string");
-  _check_optional <int                                                   >(dic, fs, err, "max_time"              , "int");
-  _check_optional <int                                                   >(dic, fs, err, "verbosity"             , "int");
-  _check_optional <int                                                   >(dic, fs, err, "method"                , "int");
-  _check_optional <int                                                   >(dic, fs, err, "nb_bins"               , "int");
-  _check_mandatory<std::pair<double, double>                             >(dic, fs, err, "singular_thresholds"   , "std::pair<double, double>");
-  _check_optional <int                                                   >(dic, fs, err, "cycles_trapped_thresh" , "int");
-  _check_optional <int                                                   >(dic, fs, err, "store_configurations"  , "int");
+  _check_mandatory<std::vector<std::tuple<orbital_t, int, timec_t, int> >                          >(dic, fs, err, "creation_ops"          , "std::vector<std::tuple<orbital_t, int, timec_t, int> >");
+  _check_mandatory<std::vector<std::tuple<orbital_t, int, timec_t, int> >                          >(dic, fs, err, "annihilation_ops"      , "std::vector<std::tuple<orbital_t, int, timec_t, int> >");
+  _check_mandatory<std::vector<dcomplex>                                                           >(dic, fs, err, "extern_alphas"         , "std::vector<dcomplex>");
+  _check_optional <bool                                                                            >(dic, fs, err, "nonfixed_op"           , "bool");
+  _check_mandatory<double                                                                          >(dic, fs, err, "interaction_start"     , "double");
+  _check_mandatory<double                                                                          >(dic, fs, err, "alpha"                 , "double");
+  _check_mandatory<int                                                                             >(dic, fs, err, "nb_orbitals"           , "int");
+  _check_mandatory<std::tuple<std::vector<double>, std::vector<orbital_t>, std::vector<orbital_t> >>(dic, fs, err, "potential"             , "std::tuple<std::vector<double>, std::vector<orbital_t>, std::vector<orbital_t> >");
+  _check_mandatory<double                                                                          >(dic, fs, err, "U"                     , "double");
+  _check_optional <double                                                                          >(dic, fs, err, "w_ins_rem"             , "double");
+  _check_optional <double                                                                          >(dic, fs, err, "w_dbl"                 , "double");
+  _check_optional <double                                                                          >(dic, fs, err, "w_shift"               , "double");
+  _check_optional <int                                                                             >(dic, fs, err, "max_perturbation_order", "int");
+  _check_optional <int                                                                             >(dic, fs, err, "min_perturbation_order", "int");
+  _check_optional <int                                                                             >(dic, fs, err, "forbid_parity_order"   , "int");
+  _check_optional <int                                                                             >(dic, fs, err, "length_cycle"          , "int");
+  _check_optional <int                                                                             >(dic, fs, err, "random_seed"           , "int");
+  _check_optional <std::string                                                                     >(dic, fs, err, "random_name"           , "std::string");
+  _check_optional <int                                                                             >(dic, fs, err, "max_time"              , "int");
+  _check_optional <int                                                                             >(dic, fs, err, "verbosity"             , "int");
+  _check_optional <int                                                                             >(dic, fs, err, "method"                , "int");
+  _check_optional <int                                                                             >(dic, fs, err, "nb_bins"               , "int");
+  _check_mandatory<std::pair<double, double>                                                       >(dic, fs, err, "singular_thresholds"   , "std::pair<double, double>");
+  _check_optional <int                                                                             >(dic, fs, err, "cycles_trapped_thresh" , "int");
+  _check_optional <int                                                                             >(dic, fs, err, "store_configurations"  , "int");
   if (err) goto _error;
   return true;
 

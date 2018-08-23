@@ -1,18 +1,8 @@
 import numpy as np
-from toolbox import fourier_transform, vcut, symmetrize
+from toolbox import fourier_transform, vcut, symmetrize #TODO: remove dependence on my toolbox
 import warnings
 from copy import copy
-from solver import expand_axis
-
-def mult_by_1darray(a, b, axis):
-    """
-    Multiply element wize the ND array `a` by the 1D array `b` along `axis`.
-    `axis` is an axis of `a`.
-    Returns a ND array with same shape as `a`.
-    """
-    dim_array = np.ones((a.ndim,), dtype=int)
-    dim_array[axis] = -1
-    return a * b.reshape(dim_array)
+from utility import expand_axis, mult_by_1darray, mult_by_2darray, is_incr_reg_spaced, convolve, convolve_coord
 
 def _fourier_transform_with_diracs(times, values, dirac_times, dirac_values, max_puls, min_data_pts):
     p = np.log2(np.pi*min_data_pts / float((times[1] - times[0]) * max_puls))
@@ -69,7 +59,7 @@ class TimeGF(object):
     `half` is one of the strings 'positive', 'negative', 'both'.
     """
 
-    def __init__(self, times, values, dirac_times, dirac_values, half):
+    def __init__(self, times, values, dirac_times=None, dirac_values=None, half=''):
         self.times = times
         self.values = values # (order, times, orbitals, [others])
         self.dirac_times = dirac_times
@@ -108,6 +98,54 @@ class TimeGF(object):
                 self.dirac_times, self.dirac_values, max_puls=max_puls, min_data_pts=min_data_pts)
 
         return PulsGF(puls, spectrum)
+
+    def convol_g_right(self, g0, cutoff_g0):
+        """
+        Orbitals not implemented yet
+        """
+        if self.half != 'both':
+            warnings.warn(RuntimeWarning, 'The function is not completely known, convolution is only partial!')
+
+        times = self.times
+        delta_t = times[1] - times[0]
+        times_g0 = np.arange(-(cutoff_g0 // delta_t), cutoff_g0 // delta_t + 0.5, 1.) * delta_t
+        if len(times_g0) < len(times):
+            raise ValueError, 'Need a larger cutoff.'
+        new_times = convolve_coord(times, times_g0, mode='same')
+
+        values = delta_t * convolve(self.values, g0(times_g0), mode='same', axis=1)
+
+        for k, t in enumerate(self.dirac_times):
+            shifted_new_times = new_times - t
+            while shifted_new_times.ndim + 1 < self.dirac_values.ndim:
+                shifted_new_times = shifted_new_times[:, np.newaxis]
+            values += g0(shifted_new_times) * self.dirac_values[:, k:k+1]
+
+        return TimeGF(new_times, values, None, None, half='both')
+
+    def convol_g_left(self, g0, cutoff_g0):
+        """
+        Orbitals not implemented yet
+        """
+        if self.half != 'both':
+            warnings.warn(RuntimeWarning, 'The function is not completely known, convolution is only partial!')
+
+        times = self.times
+        delta_t = times[1] - times[0]
+        times_g0 = np.arange(-(cutoff_g0 // delta_t), cutoff_g0 // delta_t + 0.5, 1.) * delta_t
+        if len(times_g0) < len(times):
+            raise ValueError, 'Need a larger cutoff.'
+        new_times = convolve_coord(times, times_g0, mode='same')
+
+        values = delta_t * convolve(self.values, g0(times_g0), mode='same', axis=1)
+
+        for k, t in enumerate(self.dirac_times):
+            shifted_new_times = new_times - t
+            while shifted_new_times.ndim + 1 < self.dirac_values.ndim:
+                shifted_new_times = shifted_new_times[:, np.newaxis]
+            values += g0(shifted_new_times) * self.dirac_values[:, k:k+1]
+
+        return TimeGF(new_times, values, None, None, half='both')
 
     def increment_order(self, new_g0, new_dirac_times=None, new_dirac_values=None):
         """
@@ -196,51 +234,10 @@ class PulsGF(object):
 
 ###############################################################################
 
-def is_incr_reg_spaced(a, rtol=1e-05, atol=1e-08):
-    diff = a[1:] - a[:-1]
-    is_ok = (np.abs(diff - diff[0]) < atol + rtol * np.abs(diff)).all()
-    is_ok = is_ok and (diff > 0.).all()
-    return is_ok
-
 def theta(x):
     output = np.array(x > 0, dtype=float)
     output[x == 0] = 0.5
     return output
-
-def convolve(a, b, mode, axis):
-    """
-    Convolves a ND array `a` with an 1D array `b` along one axis.
-    """
-    return np.apply_along_axis(lambda m: np.convolve(m, b, mode=mode), axis=axis, arr=a)
-
-def convolve_coord(coord_a, coord_b, mode='full'):
-
-    ### order inputs so that a is larger than b
-    if len(coord_a) < len(coord_b):
-        return convolve_coord(coord_b, coord_a, mode)
-
-    ### check validity of coordinates arrays
-    if not is_incr_reg_spaced(coord_a) or not is_incr_reg_spaced(coord_b):
-        raise ValueError
-    delta_t = coord_a[1] - coord_a[0]
-    delta_t_b = coord_b[1] - coord_b[0]
-    if np.abs(delta_t - delta_t_b) >= 1e-10 * delta_t:
-        raise ValueError
-
-    ### full coord array
-    conv_coord = np.arange(coord_a[0] + coord_b[0], coord_a[-1] + coord_b[-1] + 0.5*delta_t, delta_t)
-
-    if mode == 'full':
-        return conv_coord
-    elif mode == 'same':
-        n = (len(coord_b)-1) // 2
-        p = (len(coord_b)-1) % 2
-        return conv_coord[n:-n-p]
-    elif mode == 'valid':
-        n = len(coord_b) - 1
-        return conv_coord[n:-n]
-    else:
-        raise ValueError
 
 class TimeKeldyshGF(object):
 
@@ -267,6 +264,24 @@ class TimeKeldyshGF(object):
         return PulsKeldyshGF(self.less.fourier_transform(max_puls, min_data_pts),
                              self.grea.fourier_transform(max_puls, min_data_pts))
 
+    def advanced(self):
+        """
+        Compute the corresponding advanced function:
+        adva(t) = theta(-t)*(lesser(t) - greater(t))
+        """
+        if self.half == 'positive':
+            raise RuntimeError, 'Lesser and greater must be known on the negative half to do this operation.'
+
+        adva_values = self.less.values - self.grea.values
+        adva_values[:, self.times > 0.] = 0.
+        adva_values[:, self.times == 0.] *= 0.5
+
+        adva_dirac_values = self.less.dirac_values - self.grea.dirac_values
+        adva_dirac_values[:, self.dirac_times > 0.] = 0.
+        adva_dirac_values[:, self.dirac_times == 0.] *= 0.5
+
+        return TimeGF(self.times, adva_values, self.dirac_times, adva_dirac_values, 'both')
+
     def retarded(self):
         """
         Compute the corresponding retarded function:
@@ -276,12 +291,12 @@ class TimeKeldyshGF(object):
             raise RuntimeError, 'Lesser and greater must be known on the positive half to do this operation.'
 
         reta_values = self.grea.values - self.less.values
-        reta_values[self.times < 0.] = 0.
-        reta_values[self.times == 0.] *= 0.5
+        reta_values[:, self.times < 0.] = 0.
+        reta_values[:, self.times == 0.] *= 0.5
 
         reta_dirac_values = self.grea.dirac_values - self.less.dirac_values
-        reta_dirac_values[self.dirac_times < 0.] = 0.
-        reta_dirac_values[self.dirac_times == 0.] *= 0.5
+        reta_dirac_values[:, self.dirac_times < 0.] = 0.
+        reta_dirac_values[:, self.dirac_times == 0.] *= 0.5
 
         return TimeGF(self.times, reta_values, self.dirac_times, reta_dirac_values, 'both')
 
@@ -319,11 +334,11 @@ class TimeKeldyshGF(object):
         g0_ordr_values = theta(-times_g0) * g0_less_values + theta(times_g0) * g0_grea_values
         g0_anti_values = theta(-times_g0) * g0_grea_values + theta(times_g0) * g0_less_values
 
-        less_values = convolve(self.less.values, g0_anti_values, mode='same', axis=1)
-        less_values += convolve(self.grea.values, g0_less_values, mode='same', axis=1)
+        less_values =  convolve(self.grea.values, g0_less_values, mode='same', axis=1)
+        less_values += - convolve(self.less.values, g0_anti_values, mode='same', axis=1)
         less_values *= delta_t
         grea_values = convolve(self.grea.values, g0_ordr_values, mode='same', axis=1)
-        grea_values += convolve(self.less.values, g0_grea_values, mode='same', axis=1)
+        grea_values += - convolve(self.less.values, g0_grea_values, mode='same', axis=1)
         grea_values *= delta_t
         less_values = less_values[:, mask]
         grea_values = grea_values[:, mask]
@@ -333,10 +348,12 @@ class TimeKeldyshGF(object):
         for k, t in enumerate(self.dirac_times):
             if self.half == 'both' or t >= 0.: # FIXME: not sure what to do if t==0
                 shifted_new_times = new_times - t
-                less_values += self.grea.dirac_values[:, k:k+1] * g0_less(shifted_new_times)[np.newaxis, :]
-                less_values += self.less.dirac_values[:, k:k+1] * g0_anti(shifted_new_times)[np.newaxis, :]
-                grea_values += self.grea.dirac_values[:, k:k+1] * g0_ordr(shifted_new_times)[np.newaxis, :]
-                grea_values += self.less.dirac_values[:, k:k+1] * g0_grea(shifted_new_times)[np.newaxis, :]
+                while shifted_new_times.ndim + 1 < self.less.dirac_values.ndim:
+                    shifted_new_times = shifted_new_times[:, np.newaxis]
+                less_values += self.grea.dirac_values[:, k:k+1] * g0_less(shifted_new_times)
+                less_values -= self.less.dirac_values[:, k:k+1] * g0_anti(shifted_new_times)
+                grea_values += self.grea.dirac_values[:, k:k+1] * g0_ordr(shifted_new_times)
+                grea_values -= self.less.dirac_values[:, k:k+1] * g0_grea(shifted_new_times)
 
         lesser = TimeGF(new_times, less_values, None, None, half='positive')
         greater = TimeGF(new_times, grea_values, None, None, half='positive')
@@ -372,10 +389,10 @@ class TimeKeldyshGF(object):
         g0_anti_values = theta(-times_g0) * g0_grea_values + theta(times_g0) * g0_less_values
 
         less_values = convolve(self.less.values, g0_ordr_values, mode='same', axis=1)
-        less_values += convolve(self.grea.values, g0_less_values, mode='same', axis=1)
+        less_values += - convolve(self.grea.values, g0_less_values, mode='same', axis=1)
         less_values *= delta_t
         grea_values = convolve(self.less.values, g0_grea_values, mode='same', axis=1)
-        grea_values += convolve(self.grea.values, g0_anti_values, mode='same', axis=1)
+        grea_values += - convolve(self.grea.values, g0_anti_values, mode='same', axis=1)
         grea_values *= delta_t
         less_values = less_values[:, mask]
         grea_values = grea_values[:, mask]
@@ -385,10 +402,12 @@ class TimeKeldyshGF(object):
         for k, t in enumerate(self.dirac_times):
             if self.half == 'both' or t <= 0.: # FIXME: not sure what to do if t==0
                 shifted_new_times = new_times - t
-                less_values += g0_ordr(shifted_new_times)[np.newaxis, :] * self.less.dirac_values[:, k:k+1]
-                less_values += g0_less(shifted_new_times)[np.newaxis, :] * self.grea.dirac_values[:, k:k+1]
-                grea_values += g0_grea(shifted_new_times)[np.newaxis, :] * self.less.dirac_values[:, k:k+1]
-                grea_values += g0_anti(shifted_new_times)[np.newaxis, :] * self.grea.dirac_values[:, k:k+1]
+                while shifted_new_times.ndim + 1 < self.less.dirac_values.ndim:
+                    shifted_new_times = shifted_new_times[:, np.newaxis]
+                less_values += g0_ordr(shifted_new_times) * self.less.dirac_values[:, k:k+1]
+                less_values -= g0_less(shifted_new_times) * self.grea.dirac_values[:, k:k+1]
+                grea_values += g0_grea(shifted_new_times) * self.less.dirac_values[:, k:k+1]
+                grea_values -= g0_anti(shifted_new_times) * self.grea.dirac_values[:, k:k+1]
 
         lesser = TimeGF(new_times, less_values, None, None, half='negative')
         greater = TimeGF(new_times, grea_values, None, None, half='negative')
@@ -471,28 +490,46 @@ class PulsKeldyshGF(object):
 
 ###############################################################################
 
-def kernel_GF_from_archive(ar, name, nonfixed_op):
-    kernels = mult_by_1darray(ar[name]['kernels'], ar[name]['cn'][1:], axis=0)
-    kernel_diracs = mult_by_1darray(ar[name]['kernel_diracs'], ar[name]['cn'][1:], axis=0)
+def kernel_GF_from_archive(ar, nonfixed_op):
+    if ar['cn'].ndim <= 1:
+        kernels = mult_by_1darray(ar['kernels'], ar['cn'][1:], axis=0)
+        kernel_diracs = mult_by_1darray(ar['kernel_diracs'], ar['cn'][1:], axis=0)
+    else:
+        kernels = mult_by_2darray(ar['kernels'], ar['cn'][1:], 0, -1)
+        kernel_diracs = mult_by_2darray(ar['kernel_diracs'], ar['cn'][1:], 0, -1)
 
     a = 1 if nonfixed_op else 0
 
-    less = TimeGF(ar[name]['bin_times'],
-                  kernels[:, :, a],
-                  ar[name]['dirac_times'],
+    less = TimeGF(ar['bin_times'],
+                  pow(-1, a) * kernels[:, :, a],
+                  ar['dirac_times'],
                   kernel_diracs[:, :, a],
                   'negative')
 
     a = 1 - a
-    grea = TimeGF(ar[name]['bin_times'],
-                  kernels[:, :, a],
-                  ar[name]['dirac_times'],
+    grea = TimeGF(ar['bin_times'],
+                  pow(-1, a) * kernels[:, :, a],
+                  ar['dirac_times'],
                   kernel_diracs[:, :, a],
                   'negative')
 
     return TimeKeldyshGF(less, grea)
 
+
+def oldway_GF_from_archive(ar_list, times, g0, half):
+    shape = ar_list[0]['sn'].shape
+    if len(shape) < 2:
+        on = np.zeros((shape[0], len(times)), dtype=complex)
+    else:
+        on = np.zeros((shape[0], len(times), shape[1]), dtype=complex)
+
+    for k, t in enumerate(times):
+        res = ar_list[k]
+        on[:, k] = res['sn'] * res['cn'] * np.abs(g0(t))
+    return TimeGF(times, on, half=copy(half))
+
 if __name__ == '__main__':
+    print 'Start tests'
 
     ### test TimeGF.increment_order
     times = np.linspace(0, 1, 10)
@@ -527,60 +564,4 @@ if __name__ == '__main__':
         assert (f.dirac_values[1:, 0, :] == 1.).all() # other orders untouched
         assert (f.dirac_values[1:, 1, :] == 0.).all() # other orders untouched
 
-    ### test convolve_coord
-    ta = np.arange(0., 5. + 0.1, 0.5) # +0.1 to include 5.
-    tb = np.arange(-2.2, 1.8 + 0.1, 0.5)
-    a = np.linspace(0, 1, len(ta))
-    b = np.linspace(0, 1, len(tb))
-    tab = convolve_coord(ta, tb, mode='full')
-    ab = np.convolve(a, b, mode='full')
-    assert len(tab) == len(ab)
-    assert np.array_equal(tab, np.arange(-2.2, 6.8 + 0.1, 0.5))
-    tab = convolve_coord(ta, tb, mode='same')
-    ab = np.convolve(a, b, mode='same')
-    assert len(tab) == len(ab)
-    tab = convolve_coord(ta, tb, mode='valid')
-    ab = np.convolve(a, b, mode='valid')
-    assert len(tab) == len(ab)
-
-    ### test convolve_coord
-    ### def ta and a
-    ta = np.linspace(-1., 1., 11)
-    a = np.zeros(11)
-    a[np.where(ta == 0.)[0]] = 1. # a is a peak centered on ta = 0
-    ### def tb and b
-    tb = np.linspace(-1., 1.2, 12) # = ta plus an extra point on the right
-    assert (tb[:-1] == ta).all()
-    b = np.zeros(12)
-    b[np.where(tb == 0.)[0]] = 1. # b is a peak centered on tb = 0
-    ### def tc and c
-    tc = np.linspace(-1.2, 1.2, 13) # = ta plus an extra point on the right and on the left
-    assert np.isclose(tc[1:-1], ta).all()
-    c = np.zeros(13)
-    c[np.where(tc == 0.)[0]] = 1. # c is a peak centered on tc = 0
-    for mode in ['full', 'same', 'valid']:
-        ### for different input array sizes, check if autoconvol of a centered
-        ### peak gives a centered peak (it should)
-        # print mode
-        tol = 1e-10
-
-        aa = np.convolve(a, a, mode=mode)
-        taa = convolve_coord(ta, ta, mode=mode)
-        assert len(taa) == len(np.convolve(ta, ta, mode=mode))
-        assert np.abs(taa[np.where(aa == 1.)[0]]) < tol
-
-        if mode != 'valid': # peak is not visible in valid mode here
-            bb = np.convolve(b, b, mode=mode)
-            tbb = convolve_coord(tb, tb, mode=mode)
-            assert len(tbb) == len(np.convolve(tb, tb, mode=mode))
-            assert np.abs(tbb[np.where(bb == 1.)[0]]) < tol
-
-        ab = np.convolve(a, b, mode=mode)
-        tab = convolve_coord(ta, tb, mode=mode)
-        assert len(tab) == len(np.convolve(ta, tb, mode=mode))
-        assert np.abs(tab[np.where(ab == 1.)[0]]) < tol
-
-        cb = np.convolve(c, b, mode=mode)
-        tcb = convolve_coord(tc, tb, mode=mode)
-        assert len(tcb) == len(np.convolve(tc, tb, mode=mode))
-        assert np.abs(tcb[np.where(cb == 1.)[0]]) < tol
+    print 'Success'
