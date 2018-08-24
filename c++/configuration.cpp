@@ -13,14 +13,14 @@
  */
 Configuration::Configuration(g0_keldysh_alpha_t green_function, std::vector<keldysh_contour_pt> annihila_pts,
                              std::vector<keldysh_contour_pt> creation_pts, int max_order,
-                             std::pair<double, double> singular_thresholds, bool kernels_comput,
+                             std::pair<double, double> singular_thresholds, int method,
                              bool nonfixed_op, int cycles_trapped_thresh)
    : singular_thresholds(singular_thresholds),
      cofactor_threshold(2. * singular_thresholds.first),
      order(0),
      potential(1.),
      max_order(max_order),
-     kernels_comput(kernels_comput),
+     method(method),
      nonfixed_op(nonfixed_op),
      spin_dvpt(creation_pts[0].s),
      cycles_trapped_thresh(cycles_trapped_thresh) {
@@ -64,35 +64,32 @@ Configuration::Configuration(g0_keldysh_alpha_t green_function, std::vector<keld
 }
 
 /**
- * Insert a vertex at first position.
+ * Insert a vertex at position k (before index k).
  */
-void Configuration::insert(vertex_t vtx) {
+void Configuration::insert(int k, vertex_t vtx) {
  auto pt = vtx.get_up_pt();
- matrices[up].insert(0, 0, pt, pt);
+ matrices[up].insert(k, k, pt, pt);
  pt = vtx.get_down_pt();
- matrices[down].insert(0, 0, pt, pt);
+ matrices[down].insert(k, k, pt, pt);
 
- potential_list.insert(0, vtx.potential);
+ potential_list.insert(k, vtx.potential);
  potential *= vtx.potential;
 
  order++;
 };
 
 /**
- * Insert two vertices at first positions.
- *
- * `vtx1` is now at position 0 and `vtx2` at position 1.
+ * Insert two vertices such that `vtx1` is now at position k1 and `vtx2` at position k2.
  */
-void Configuration::insert2(vertex_t vtx1, vertex_t vtx2) {
+void Configuration::insert2(int k1, int k2, vertex_t vtx1, vertex_t vtx2) {
  auto pt1 = vtx1.get_up_pt();
  auto pt2 = vtx2.get_up_pt();
- matrices[up].insert2(0, 1, 0, 1, pt1, pt2, pt1, pt2);
+ matrices[up].insert2(k1, k2, k1, k2, pt1, pt2, pt1, pt2);
  pt1 = vtx1.get_down_pt();
  pt2 = vtx2.get_down_pt();
- matrices[down].insert2(0, 1, 0, 1, pt1, pt2, pt1, pt2);
+ matrices[down].insert2(k1, k2, k1, k2, pt1, pt2, pt1, pt2);
 
- potential_list.insert(0, vtx1.potential);
- potential_list.insert(1, vtx2.potential); // TODO: check this is the correct order
+ potential_list.insert2(k1, k2, vtx1.potential, vtx2.potential);
  potential *= vtx1.potential * vtx2.potential;
 
  order += 2;
@@ -112,13 +109,12 @@ void Configuration::remove(int k) {
 
 /**
  * Remove the vertices at positions `k1` and `k2`.
- * k1 and k2 must be two *distinct* existing positions.
  */
 void Configuration::remove2(int k1, int k2) {
  for (auto& m : matrices) m.remove2(k1, k2, k1, k2);
 
  potential /= potential_list[k1] * potential_list[k2];
- potential_list.erase(k1, k2);
+ potential_list.erase2(k1, k2);
 
  order -= 2;
 };
@@ -197,7 +193,7 @@ double Configuration::kernels_evaluate() {
   det_fix = sign * matrix_fix.determinant();
   det_dvpt = matrix_dvpt.determinant();
 
-  if (matrix_dvpt.get_cond_nb() > cofactor_threshold or (not std::isnormal(std::abs(det_dvpt)))) {
+  if (matrix_dvpt.get_cond_nb() > cofactor_threshold or (not std::isnormal(std::abs(det_dvpt))) or method == 2) {
    // matrix is singular, calculate cofactors
    nb_cofact(order - 1)++;
 
@@ -240,13 +236,15 @@ double Configuration::kernels_evaluate() {
  */
 void Configuration::evaluate() {
  dcomplex value;
- if (kernels_comput)
+ if (method != 0)
   value = kernels_evaluate();
  else
   value = potential * keldysh_sum();
 
+ // TODO: move this into moves
  weight_sum(order) += std::abs(value);
  nb_values(order)++;
+
  current_weight = value;
 }
 
@@ -276,7 +274,7 @@ void Configuration::incr_cycles_trapped() {
   evaluate();
   accepted_weight = current_weight;
   accepted_kernels() = current_kernels();
-  // do not reset cycles_trapped to 0
+  // do not reset cycles_trapped to 0, its done after acceptation
  }
 }
 
@@ -333,9 +331,11 @@ void Configuration::print() {
  int n;
  for (auto& m : matrices) {
   n = m.size();
-  for (int i = 0; i < n; ++i) std::cout << "(" << m.get_x(i).x << ", " << m.get_x(i).t << ", " << m.get_x(i).k_index << "), ";
+  std::cout << "x = ";
+  for (int i = 0; i < n; ++i) std::cout << "(" << m.get_x(i).x << ", " << m.get_x(i).s << ", " << m.get_x(i).t << ", " << m.get_x(i).k_index << "), ";
   std::cout << std::endl;
-  for (int i = 0; i < n; ++i) std::cout << "(" << m.get_y(i).x << ", " << m.get_y(i).t << ", " << m.get_y(i).k_index << "), ";
+  std::cout << "y = ";
+  for (int i = 0; i < n; ++i) std::cout << "(" << m.get_y(i).x << ", " << m.get_y(i).s << ", " << m.get_y(i).t << ", " << m.get_y(i).k_index << "), ";
   std::cout << std::endl;
  }
  std::cout << "V = ";

@@ -77,27 +77,26 @@ void solver_core::set_g0(triqs::gfs::gf_view<triqs::gfs::retime, triqs::gfs::mat
  green_function_alpha = g0_keldysh_alpha_t{green_function, params.alpha, params.extern_alphas};
 
  // configuration
- bool kernels_method = (params.method != 0);
  config = Configuration(green_function_alpha, annihila_pts, creation_pts, params.max_perturbation_order,
-                        params.singular_thresholds, kernels_method, params.nonfixed_op,
+                        params.singular_thresholds, params.method, params.nonfixed_op,
                         params.cycles_trapped_thresh);
 
  // Register moves and measurements
  if (params.w_ins_rem > 0) {
-  qmc.add_move(moves::insert{config, params, t_max, qmc.get_rng()}, "insertion", params.w_ins_rem);
-  qmc.add_move(moves::remove{config, params, t_max, qmc.get_rng()}, "removal", params.w_ins_rem);
+  qmc.add_move(moves::insert{config, params, qmc.get_rng()}, "insertion", params.w_ins_rem);
+  qmc.add_move(moves::remove{config, params, qmc.get_rng()}, "removal", params.w_ins_rem);
  }
  if (params.w_dbl > 0) {
-  qmc.add_move(moves::insert2{config, params, t_max, qmc.get_rng()}, "insertion2", params.w_dbl);
-  qmc.add_move(moves::remove2{config, params, t_max, qmc.get_rng()}, "removal2", params.w_dbl);
+  qmc.add_move(moves::insert2{config, params, qmc.get_rng()}, "insertion2", params.w_dbl);
+  qmc.add_move(moves::remove2{config, params, qmc.get_rng()}, "removal2", params.w_dbl);
  }
  if (params.w_shift > 0) {
-  qmc.add_move(moves::shift{config, params, t_max, qmc.get_rng()}, "shift", params.w_shift);
+  qmc.add_move(moves::shift{config, params, qmc.get_rng()}, "shift", params.w_shift);
  }
 
  if (params.method == 0) {
   qmc.add_measure(WeightSignMeasure(&config, &pn, &sn), "Weight sign measure");
- } else if (params.method == 1) {
+ } else if (params.method == 1 or params.method == 2) {
   qmc.add_measure(TwoDetKernelMeasure(&config, &kernels_binning, &pn, &kernels, &kernel_diracs, &nb_kernels),
                   "Kernel measure");
  } else {

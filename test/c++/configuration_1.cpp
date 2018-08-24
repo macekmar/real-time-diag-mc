@@ -73,7 +73,7 @@ int main() {
  //auto sing_th = std::pair<double, double>{-10000, -10000}; // always singular
 
  const int max_order = 4;
- Configuration config(g0_alpha, an_pts, cr_pts, max_order, sing_th, true, false, 100);
+ Configuration config(g0_alpha, an_pts, cr_pts, max_order, sing_th, 1, false, 100);
  dcomplex ref_weight = 1;
  auto ref_kernels = array<dcomplex, 2>(max_order+1, 2); // (different points, keldysh index)
 
@@ -85,7 +85,7 @@ int main() {
 
  // ---------------------------------------------------------------------------
  // add a vertex and accept the config
- config.insert(vertex_t{b0.x, b0.x, b0.t, b0.k_index, 2.});
+ config.insert(0, vertex_t{b0.x, b0.x, b0.t, b0.k_index, 2.});
  config.evaluate();
  config.accept_config();
 
@@ -120,7 +120,7 @@ int main() {
 
  // ---------------------------------------------------------------------------
  // add two vertices and accept;
- config.insert2(vertex_t{c0.x, c0.x, c0.t, c0.k_index, 1.5}, vertex_t{d0.x, d0.x, d0.t, d0.k_index, 3.2});
+ config.insert2(0, 1, vertex_t{c0.x, c0.x, c0.t, c0.k_index, 1.5}, vertex_t{d0.x, d0.x, d0.t, d0.k_index, 3.2});
  config.evaluate();
  config.accept_config();
 
@@ -155,7 +155,7 @@ int main() {
 
  // ---------------------------------------------------------------------------
  // add a vertex, then remove two, do not accept
- config.insert(vertex_t{e0.x, e0.x, e0.t, e0.k_index, -0.5});
+ config.insert(0, vertex_t{e0.x, e0.x, e0.t, e0.k_index, -0.5});
  config.remove2(1, 2); // remove c and d, stays only e
  config.evaluate();
 

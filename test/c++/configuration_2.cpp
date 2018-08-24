@@ -74,7 +74,7 @@ int main() {
  auto sing_th = std::pair<double, double>{3.5, 3.5};
  // auto sing_th = std::pair<double, double>{-10000, -10000}; // always singular
 
- Configuration config(g0_alpha, an_pts, cr_pts, 4, sing_th, true, false, 100);
+ Configuration config(g0_alpha, an_pts, cr_pts, 4, sing_th, 1, false, 100);
  dcomplex ref_weight = 1;
  auto ref_kernels = array<dcomplex, 2>(5, 2);
 
@@ -84,7 +84,7 @@ int main() {
  if (config.order != 0) return 12;
 
  // add a point and accept the config
- config.insert(vertex_t{b0.x, b0.x, b0.t, b0.k_index, 1.});
+ config.insert(0, vertex_t{b0.x, b0.x, b0.t, b0.k_index, 1.});
  config.evaluate();
  config.accept_config();
 
@@ -120,7 +120,7 @@ int main() {
  if (config.order != 0) return 33;
 
  // add two points and accept;
- config.insert2(vertex_t{c0.x, c0.x, c0.t, c0.k_index, 1.}, vertex_t{d0.x, d0.x, d0.t, d0.k_index, 1.});
+ config.insert2(0, 1, vertex_t{c0.x, c0.x, c0.t, c0.k_index, 1.}, vertex_t{d0.x, d0.x, d0.t, d0.k_index, 1.});
  config.evaluate();
  config.accept_config();
 

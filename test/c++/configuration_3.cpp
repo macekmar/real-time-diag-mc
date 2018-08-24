@@ -41,7 +41,7 @@ int main() {
  auto sing_th = std::pair<double, double>{3.5, 3.5};
  //auto sing_th = std::pair<double, double>{-10000, -10000}; // always singular
 
- Configuration config(g0_alpha, an_pts, cr_pts, 4, sing_th, true, false, 100);
+ Configuration config(g0_alpha, an_pts, cr_pts, 4, sing_th, 1, false, 100);
 
  if (config.matrices[0].size() != 1) return 10;
  if (not are_equal_pts(config.matrices[0].get_x(0), a_up)) return 11;
@@ -51,7 +51,7 @@ int main() {
  if (not are_equal_pts(config.matrices[1].get_y(0), a_do_p)) return 15;
 
  // add a point and accept the config
- config.insert(vertex_t{b.x, b.x, b.t, b.k_index, 1.});
+ config.insert(0, vertex_t{b.x, b.x, b.t, b.k_index, 1.});
  config.evaluate();
  config.accept_config();
 
@@ -82,7 +82,7 @@ int main() {
  if (not are_equal_pts(config.matrices[1].get_y(0), a_do_p)) return 35;
 
  // add two points and accept;
- config.insert2(vertex_t{c.x, c.x, c.t, c.k_index, 1.}, vertex_t{d.x, d.x, d.t, d.k_index, 1.});
+ config.insert2(0, 1, vertex_t{c.x, c.x, c.t, c.k_index, 1.}, vertex_t{d.x, d.x, d.t, d.k_index, 1.});
  config.evaluate();
  config.accept_config();
 

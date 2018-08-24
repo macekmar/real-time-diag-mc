@@ -10,7 +10,8 @@ list(APPEND test_names
 	g0_keldysh_alpha
 	kernel_binning_1
 	kernel_binning_2
-	kernel_binning_3)
+	kernel_binning_3
+    moves)
 
 foreach(test_name ${test_names})
 	set(test_file "${test_name}.x")

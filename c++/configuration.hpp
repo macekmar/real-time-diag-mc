@@ -82,6 +82,19 @@ class wrapped_forward_list : public std::forward_list<T> {
   std::forward_list<T>::insert_after(it, value);
  };
 
+ // insert two values so that they will be at positions `k1` and `k2`.
+ void insert2(size_t k1, size_t k2, T value1, T value2) {
+  if (k2 < k1) {
+   std::swap(k1, k2);
+   std::swap(value1, value2);
+  }
+  auto it = std::forward_list<T>::before_begin();
+  std::advance(it, k1);
+  std::forward_list<T>::insert_after(it, value1);
+  std::advance(it, k2 - k1);
+  std::forward_list<T>::insert_after(it, value2);
+ };
+
  // erase at index
  void erase(size_t k) {
   auto it = std::forward_list<T>::before_begin();
@@ -90,7 +103,7 @@ class wrapped_forward_list : public std::forward_list<T> {
  };
 
  // erase at two indices k1 != k2
- void erase(size_t k1, size_t k2) {
+ void erase2(size_t k1, size_t k2) {
   if (k2 < k1) std::swap(k1, k2);
   auto it = std::forward_list<T>::before_begin();
   std::advance(it, k1);
@@ -119,7 +132,7 @@ class Configuration {
 
  // attributes
  private:
- bool kernels_comput = true;
+ int method;
  bool nonfixed_op;
  spin_t spin_dvpt; // tells which matrix is to be developped
  std::pair<double, double> singular_thresholds; // for det_manip
@@ -157,7 +170,7 @@ class Configuration {
  Configuration(){};
  Configuration(g0_keldysh_alpha_t green_function, std::vector<keldysh_contour_pt> annihila_pts,
                std::vector<keldysh_contour_pt> creation_pts, int max_order,
-               std::pair<double, double> singular_thresholds, bool kernels_comput,
+               std::pair<double, double> singular_thresholds, int method,
                bool nonfixed_op, int cycles_trapped_thresh);
 
  Configuration(const Configuration&) = delete;  // non construction-copyable
@@ -168,8 +181,8 @@ class Configuration {
  // non-copyable. If not, compilation fails saying that we tried to copy
  // `det_manip` which is non-copyable ??!!
 
- void insert(vertex_t vtx);
- void insert2(vertex_t vtx1, vertex_t vtx2);
+ void insert(int k, vertex_t vtx);
+ void insert2(int k1, int k2, vertex_t vtx1, vertex_t vtx2);
  void remove(int k);
  void remove2(int k1, int k2);
  void change_vertex(int k, vertex_t vtx);

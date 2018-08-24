@@ -1,9 +1,7 @@
 #pragma once
+#include "./parameters.hpp"
 #include <triqs/gfs.hpp>
 #include <triqs/mc_tools.hpp>
-#include <triqs/arrays.hpp>
-#include <triqs/det_manip.hpp>
-#include "./parameters.hpp"
 
 // --------------   Point on the Keldysh contour   ---------------------------
 
@@ -83,7 +81,7 @@ using g0_t = triqs::gfs::gf<triqs::gfs::retime, triqs::gfs::matrix_valued>;
 
 /**
  * Adapt G0_lesser and G0_greater into a function taking two points on the Keldysh contour
- * It is the function that appears in the calculation of the determinant (det_manip, cf below).
+ * It is the function that appears in the calculation of the determinant (det_manip).
  * It is in fact a lambda, but I need its explicit type below to declare det_manip, so I write it explicitly
  * here.
  */
@@ -131,6 +129,4 @@ struct g0_keldysh_alpha_t {
   }
  }
 };
-
-using triqs::det_manip::det_manip;
 

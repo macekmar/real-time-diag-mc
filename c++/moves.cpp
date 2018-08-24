@@ -14,7 +14,7 @@ dcomplex insert::attempt() {
 
  // insert the new line and col.
  auto vtx = get_random_vertex();
- config.insert(vtx);
+ config.insert(0, vtx);
  config.evaluate();
 
  if (params.store_configurations == 2) config.register_attempted_config();
@@ -30,7 +30,7 @@ dcomplex insert::accept() {
 
 void insert::reject() {
  if (quick_exit) return;
- config.remove(config.order - 1);
+ config.remove(0);
 }
 
 // ------------ QMC double-insertion move --------------------------------------
@@ -45,7 +45,7 @@ dcomplex insert2::attempt() {
  // insert the new lines and cols.
  auto vtx1 = get_random_vertex();
  auto vtx2 = get_random_vertex();
- config.insert2(vtx1, vtx2);
+ config.insert2(0, 1, vtx1, vtx2);
 
  config.evaluate();
 
@@ -63,7 +63,7 @@ dcomplex insert2::accept() {
 void insert2::reject() {
  if (quick_exit) return;
  auto k = config.order;
- config.remove2(k - 2, k - 1);
+ config.remove2(0, 1);
 }
 
 //// ------------ QMC removal move --------------------------------------
@@ -94,7 +94,7 @@ dcomplex remove::accept() {
 
 void remove::reject() {
  if (quick_exit) return;
- config.insert(removed_vtx); // position of vertex is irrelevant
+ config.insert(p, removed_vtx); // position of vertex is irrelevant
 }
 
 // ------------ QMC double-removal move --------------------------------------
@@ -128,7 +128,7 @@ dcomplex remove2::accept() {
 
 void remove2::reject() {
  if (quick_exit) return;
- config.insert2(removed_vtx1, removed_vtx2); // position of vertex is irrelevant
+ config.insert2(p1, p2, removed_vtx1, removed_vtx2); // position of vertex is irrelevant
 }
 
 // ------------ QMC vertex shift move --------------------------------------

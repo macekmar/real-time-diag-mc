@@ -12,8 +12,6 @@ int main() {
 
  auto g_less = gf<retime, matrix_valued>{{-100., 100., 1001}, {3, 3}};
  auto g_less_f = make_gf_from_fourier(g_less);
- //triqs::clef::placeholder<0> w_;
- //g_less_f(w_) << -0.5_j / (w_ - 1.2 + 2.5_j) * array<dcomplex, 2>{{1, 1}, {1, 1}};
 
  // let's build an antihermitian lesser GF.
  for (auto w : g_less_f.mesh()) {

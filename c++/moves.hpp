@@ -13,7 +13,7 @@ struct common {
  double normalization;
  bool quick_exit = false;
 
- common(Configuration &config, const solve_parameters_t &params, const double t_max,
+ common(Configuration &config, const solve_parameters_t &params,
         triqs::mc_tools::random_generator &rng)
     : config(config),
       params(params),
