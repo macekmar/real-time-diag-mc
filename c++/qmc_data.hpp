@@ -58,7 +58,26 @@ struct potential_data_t {
  std::vector<double> values;
  std::vector<orbital_t> i_list;
  std::vector<orbital_t> j_list;
+
+ /**
+  * Finds the potential between two orbitals.
+  * Utility function, not used within the Monte-Carlo itself.
+  */
+ double potential_of(orbital_t i, orbital_t j) {
+  auto v_it = values.begin();
+  auto i_it = i_list.begin();
+  auto j_it = j_list.begin();
+  while (i_it != i_list.end()) {
+   if (*i_it == i and *j_it == j) return *v_it;
+   ++v_it;
+   ++i_it;
+   ++j_it;
+  }
+  return 0.; // no matching pair found
+ };
 };
+
+inline potential_data_t make_potential_data(int nb_orbital, std::tuple<std::vector<double>, std::vector<orbital_t>, std::vector<orbital_t>> tuple) { return {nb_orbital, std::get<0>(tuple), std::get<1>(tuple), std::get<2>(tuple)}; };
 
 /// Vertex random generator
 struct vertex_rand_gen {

@@ -188,6 +188,8 @@ class Configuration {
  void change_vertex(int k, vertex_t vtx);
  vertex_t get_vertex(int p) const;
 
+ void remove_all() { while (order > 0) remove(0); };
+
  void evaluate();
  void accept_config();
  void incr_cycles_trapped();

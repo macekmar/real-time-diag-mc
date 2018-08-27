@@ -244,3 +244,33 @@ int solver_core::finish(const int run_status) {
  return run_status;
 }
 
+/**
+ * Evaluate and return QMC weight with the given vertices.
+ *
+ * Vertices are added to Configuration, then removed, so that the perturbation
+ * order goes back to zero.  Any previous vertex in Configuration is removed
+ * beforehand.
+ *
+ * This is a utility function, not to be used during a Monte-Carlo run.
+ */
+double solver_core::evaluate_qmc_weight(std::vector<std::tuple<orbital_t, orbital_t, timec_t>> vertices) {
+ if (vertices.size() > params.max_perturbation_order)
+  TRIQS_RUNTIME_ERROR << "Too many vertices compared to the max perturbation order.";
+
+ auto pot_data = make_potential_data(params.nb_orbitals, params.potential);
+
+ config.remove_all();
+
+ orbital_t i, j;
+ for (auto it = vertices.rbegin(); it != vertices.rend(); ++it) {
+  i = std::get<0>(*it);
+  j = std::get<1>(*it);
+  config.insert(0, {i, j, std::get<2>(*it), 0, pot_data.potential_of(i, j)});
+ }
+
+ config.evaluate();
+ config.remove_all();
+
+ return config.current_weight.real();
+};
+
