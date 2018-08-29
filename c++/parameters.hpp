@@ -79,10 +79,6 @@ struct solve_parameters_t {
  /// Name of random number generator
  std::string random_name = "";
 
- /// Maximum runtime in seconds, use -1 to set infinite
- //TODO: use it
- int max_time = -1;
-
  /// Verbosity level
  int verbosity = 0; // silence triqs qmc display
  //int verbosity = ((triqs::mpi::communicator().rank() == 0) ? 3 : 0); // silence the slave nodes
@@ -103,5 +99,7 @@ struct solve_parameters_t {
  //  Disable the feature if 0.
  //  /!\ will use huge amount of memory, use with small number of cycles only !
  int store_configurations = 0;
+
+ solve_parameters_t(){};
 
 };

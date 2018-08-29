@@ -132,26 +132,20 @@ class Configuration {
 
  // attributes
  private:
- int method;
- bool nonfixed_op;
+ solve_parameters_t params; // needs to be a non-const value, because of this two-step construction of SolverCore.
  spin_t spin_dvpt; // tells which matrix is to be developped
- std::pair<double, double> singular_thresholds; // for det_manip
  double cofactor_threshold;
  wrapped_forward_list<double> potential_list;
  double potential = 1.;
- int max_order = 0;
- array<double, 1> weight_sum;
- array<long, 1> nb_values;
  int cycles_trapped = 0;
- int cycles_trapped_thresh = 100;
 
  public:
  std::vector<det_manip<g0_keldysh_alpha_t>> matrices;
  int order;
  array<dcomplex, 2> current_kernels;
  array<dcomplex, 2> accepted_kernels; // kernels of the last accepted config
- dcomplex current_weight;
- dcomplex accepted_weight; // weight of the last accepted config
+ double current_weight;
+ double accepted_weight; // weight of the last accepted config
  array<long, 1> nb_cofact;
  array<long, 1> nb_inverse;
 
@@ -167,11 +161,8 @@ class Configuration {
  dcomplex keldysh_sum_cofact(int p); // not used ??
 
  public:
- Configuration(){};
- Configuration(g0_keldysh_alpha_t green_function, std::vector<keldysh_contour_pt> annihila_pts,
-               std::vector<keldysh_contour_pt> creation_pts, int max_order,
-               std::pair<double, double> singular_thresholds, int method,
-               bool nonfixed_op, int cycles_trapped_thresh);
+ Configuration(){}; // needed for the two-step construction of SolverCore
+ Configuration(g0_keldysh_alpha_t green_function, const solve_parameters_t &params);
 
  Configuration(const Configuration&) = delete;  // non construction-copyable
  void operator=(const Configuration&) = delete; // non copyable
@@ -193,9 +184,6 @@ class Configuration {
  void evaluate();
  void accept_config();
  void incr_cycles_trapped();
-
- array<double, 1> get_weight_sum() const { return weight_sum; };
- array<long, 1> get_nb_values() const { return nb_values; };
 
  // utility and debug
  std::vector<double> signature();

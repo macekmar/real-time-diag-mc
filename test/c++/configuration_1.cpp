@@ -42,16 +42,21 @@ dcomplex det_3x3(g0_keldysh_alpha_t g, keldysh_contour_pt a, keldysh_contour_pt 
  */
 int main() {
 
- auto g_less = gf<retime, matrix_valued>{{-10., 10., 1001}, {2, 2}};
+ MPI::Init(); // needed to create parameters (because of seed)
+
+ // Green's function
+ auto g_less = gf<retime, matrix_valued>{{-10., 10., 1001}, {1, 1}};
  auto g_less_f = make_gf_from_fourier(g_less);
  triqs::clef::placeholder<0> w_;
- g_less_f(w_) << -0.5_j / (w_ - 1.2 + 2.5_j) * array<dcomplex, 2>{{1, 1}, {1, 1}};
+ g_less_f(w_) << -0.5_j / (w_ - 1.2 + 2.5_j);
  g_less = make_gf_from_inverse_fourier(g_less_f);
  auto g_grea = conj(g_less);
 
+ // Keldysh GF
  auto g0 = g0_keldysh_t{g_less, g_grea};
  std::vector<dcomplex> alphas{0.2};
- g0_keldysh_alpha_t g0_alpha = g0_keldysh_alpha_t{g0, 0.5, alphas};
+ double alpha = 0.5;
+ g0_keldysh_alpha_t g0_alpha = g0_keldysh_alpha_t{g0, alpha, alphas};
 
  // external point
  auto a = keldysh_contour_pt{0, up, 1.5, 0, 0};
@@ -66,14 +71,36 @@ int main() {
  auto e0 = keldysh_contour_pt{0, up, -8.3, 0};
  auto e1 = flip_index(e0);
 
+ const int max_order = 4;
+
+ // parameters
+ solve_parameters_t params;
+
+ params.creation_ops.push_back(std::tuple<orbital_t, spin_t, timec_t, int>(0, up, 1.5, 0)); // = a
+ params.annihilation_ops.push_back(std::tuple<orbital_t, spin_t, timec_t, int>(0, up, 1.5, 0)); // = a
+ params.extern_alphas = alphas;
+ params.nonfixed_op = false;
+ params.interaction_start = 50.;
+ params.alpha = alpha;
+ params.nb_orbitals = 1;
+ std::get<0>(params.potential) = {1.};
+ std::get<1>(params.potential) = {0};
+ std::get<2>(params.potential) = {0};
+
+ params.U = 0.05;
+ params.w_ins_rem = 1.0;
+ params.w_dbl = 0.5;
+ params.w_shift = 0.5;
+ params.max_perturbation_order = max_order;
+ params.min_perturbation_order = 0;
+ params.verbosity = 1;
+ params.method = 1;
+ params.singular_thresholds = std::pair<double, double>{3.5, 3.5};
+
  std::vector<keldysh_contour_pt> an_pts{ a, };
  std::vector<keldysh_contour_pt> cr_pts{ a, };
 
- auto sing_th = std::pair<double, double>{3.5, 3.5};
- //auto sing_th = std::pair<double, double>{-10000, -10000}; // always singular
-
- const int max_order = 4;
- Configuration config(g0_alpha, an_pts, cr_pts, max_order, sing_th, 1, false, 100);
+ Configuration config(g0_alpha, params);
  dcomplex ref_weight = 1;
  auto ref_kernels = array<dcomplex, 2>(max_order+1, 2); // (different points, keldysh index)
 
@@ -185,5 +212,6 @@ int main() {
 
  // ---------------------------------------------------------------------------
  std::cout << "success" << std::endl;
+ MPI::Finalize();
  return 0;
 }

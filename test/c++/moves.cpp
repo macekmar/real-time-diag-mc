@@ -47,15 +47,6 @@ int main() {
  std::vector<dcomplex> alphas{0.2};
  g0_keldysh_alpha_t g0_alpha = g0_keldysh_alpha_t{g0, 0.5, alphas};
 
- // external point
- auto a = keldysh_contour_pt{0, up, 1.5, 0, 0};
-
- std::vector<keldysh_contour_pt> an_pts{ a, };
- std::vector<keldysh_contour_pt> cr_pts{ a, };
-
- auto sing_th = std::pair<double, double>{3.5, 3.5};
- //auto sing_th = std::pair<double, double>{-10000, -10000}; // always singular
-
  solve_parameters_t params;
 
  params.creation_ops.push_back(std::tuple<orbital_t, spin_t, timec_t, int>(0, up, 1.5, 0));
@@ -77,10 +68,9 @@ int main() {
  params.min_perturbation_order = 0;
  params.verbosity = 1;
  params.method = 1;
- params.singular_thresholds = sing_th;
+ params.singular_thresholds = std::pair<double, double>{3.5, 3.5};
 
- const int max_order = params.max_perturbation_order + 1;
- Configuration config(g0_alpha, an_pts, cr_pts, max_order, sing_th, 1, false, 100);
+ Configuration config(g0_alpha, params);
 
  auto rng = triqs::mc_tools::random_generator("", 87235);
  moves::insert insert(config, params, rng);

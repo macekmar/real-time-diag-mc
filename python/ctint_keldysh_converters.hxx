@@ -31,7 +31,6 @@ template <> struct py_converter<solve_parameters_t> {
   PyDict_SetItemString( d, "length_cycle"          , convert_to_python(x.length_cycle));
   PyDict_SetItemString( d, "random_seed"           , convert_to_python(x.random_seed));
   PyDict_SetItemString( d, "random_name"           , convert_to_python(x.random_name));
-  PyDict_SetItemString( d, "max_time"              , convert_to_python(x.max_time));
   PyDict_SetItemString( d, "verbosity"             , convert_to_python(x.verbosity));
   PyDict_SetItemString( d, "method"                , convert_to_python(x.method));
   PyDict_SetItemString( d, "nb_bins"               , convert_to_python(x.nb_bins));
@@ -75,7 +74,6 @@ template <> struct py_converter<solve_parameters_t> {
   _get_optional(dic, "length_cycle"          , res.length_cycle             ,50);
   _get_optional(dic, "random_seed"           , res.random_seed              ,34788+928374*triqs::mpi::communicator().rank());
   _get_optional(dic, "random_name"           , res.random_name              ,"");
-  _get_optional(dic, "max_time"              , res.max_time                 ,-1);
   _get_optional(dic, "verbosity"             , res.verbosity                ,0);
   _get_optional(dic, "method"                , res.method                   ,1);
   _get_optional(dic, "nb_bins"               , res.nb_bins                  ,10000);
@@ -112,7 +110,7 @@ template <> struct py_converter<solve_parameters_t> {
   std::stringstream fs, fs2; int err=0;
 
 #ifndef TRIQS_ALLOW_UNUSED_PARAMETERS
-  std::vector<std::string> ks, all_keys = {"creation_ops","annihilation_ops","extern_alphas","nonfixed_op","interaction_start","alpha","nb_orbitals","potential","U","w_ins_rem","w_dbl","w_shift","max_perturbation_order","min_perturbation_order","forbid_parity_order","length_cycle","random_seed","random_name","max_time","verbosity","method","nb_bins","singular_thresholds","cycles_trapped_thresh","store_configurations"};
+  std::vector<std::string> ks, all_keys = {"creation_ops","annihilation_ops","extern_alphas","nonfixed_op","interaction_start","alpha","nb_orbitals","potential","U","w_ins_rem","w_dbl","w_shift","max_perturbation_order","min_perturbation_order","forbid_parity_order","length_cycle","random_seed","random_name","verbosity","method","nb_bins","singular_thresholds","cycles_trapped_thresh","store_configurations"};
   pyref keys = PyDict_Keys(dic);
   if (!convertible_from_python<std::vector<std::string>>(keys, true)) {
    fs << "\nThe dict keys are not strings";
@@ -142,7 +140,6 @@ template <> struct py_converter<solve_parameters_t> {
   _check_optional <int                                                                             >(dic, fs, err, "length_cycle"          , "int");
   _check_optional <int                                                                             >(dic, fs, err, "random_seed"           , "int");
   _check_optional <std::string                                                                     >(dic, fs, err, "random_name"           , "std::string");
-  _check_optional <int                                                                             >(dic, fs, err, "max_time"              , "int");
   _check_optional <int                                                                             >(dic, fs, err, "verbosity"             , "int");
   _check_optional <int                                                                             >(dic, fs, err, "method"                , "int");
   _check_optional <int                                                                             >(dic, fs, err, "nb_bins"               , "int");

@@ -9,7 +9,8 @@ using triqs::arrays::range;
 // ------------ The main class of the solver ------------------------
 solver_core::solver_core(solve_parameters_t const& params)
    : qmc(params.random_name, params.random_seed, 1.0, params.verbosity, false), // first_sign is not used
-     params(params) {
+     params(params)
+{
 
  if (mpi::communicator().rank() == 0 and params.store_configurations != 0)
   std::cout << "/!\\ Configurations are being stored." << std::endl << std::endl;
@@ -34,11 +35,6 @@ solver_core::solver_core(solve_parameters_t const& params)
  for (size_t k = 0; k < nb_edges; ++k) {
   if (i_list[k] < 0 or i_list[k] >= params.nb_orbitals or j_list[k] < 0 or j_list[k] >= params.nb_orbitals)
    TRIQS_RUNTIME_ERROR << "Potential lists contain unknown orbitals. Maybe nb_orbitals is too small.";
- }
-
- for (int rank = 0; rank < params.creation_ops.size(); ++rank) {
-  creation_pts.push_back(make_keldysh_contour_pt(params.creation_ops[rank], rank));
-  annihila_pts.push_back(make_keldysh_contour_pt(params.annihilation_ops[rank], rank));
  }
 
  // kernel binning
@@ -73,13 +69,11 @@ void solver_core::set_g0(triqs::gfs::gf_view<triqs::gfs::retime, triqs::gfs::mat
    TRIQS_RUNTIME_ERROR << "Greater matrix size should match the number of orbitals";
 
  // non interacting Green function
- green_function = g0_keldysh_t{g0_t{g0_lesser}, g0_t{g0_greater}};
- green_function_alpha = g0_keldysh_alpha_t{green_function, params.alpha, params.extern_alphas};
+ auto green_function = g0_keldysh_t{g0_t{g0_lesser}, g0_t{g0_greater}};
+ auto green_function_alpha = g0_keldysh_alpha_t{green_function, params.alpha, params.extern_alphas};
 
  // configuration
- config = Configuration(green_function_alpha, annihila_pts, creation_pts, params.max_perturbation_order,
-                        params.singular_thresholds, params.method, params.nonfixed_op,
-                        params.cycles_trapped_thresh);
+ config = Configuration(green_function_alpha, params);
 
  // Register moves and measurements
  if (params.w_ins_rem > 0) {
@@ -137,12 +131,6 @@ int solver_core::run(const int nb_cycles, const bool do_measure, const int max_t
  cum_qmc_duration = mpi::mpi_all_reduce(qmc_duration);
  if (world.rank() == 0) std::cout << "done" << std::endl;
 
- array<double, 1> weight_sum = config.get_weight_sum();
- weight_sum = mpi::mpi_all_reduce(weight_sum);
- array<long, 1> nb_values = config.get_nb_values();
- nb_values = mpi::mpi_all_reduce(nb_values);
- array<double, 1> weight_avg = weight_sum / nb_values;
-
  array<long, 1> nb_cofact = mpi::mpi_all_reduce(config.nb_cofact);
  array<long, 1> nb_inverse = mpi::mpi_all_reduce(config.nb_inverse);
 
@@ -172,7 +160,6 @@ int solver_core::run(const int nb_cycles, const bool do_measure, const int max_t
    std::cout << "> " << x.first << " (" << move_weight << "): " << x.second << std::endl;
   }
   std::cout << "> All moves: " << total_rate / total_weight << std::endl;
-  std::cout << "Attempted config weight average (all nodes):" << std::endl << weight_avg << std::endl;
   std::cout << "cofact vs inverse (all nodes): " << nb_cofact << " / " << nb_inverse << std::endl;
   std::cout << "regen ratios (node 0): 0=" << config.matrices[0].get_regen_ratio()
             << ", 1=" << config.matrices[1].get_regen_ratio() << std::endl;
@@ -271,6 +258,6 @@ double solver_core::evaluate_qmc_weight(std::vector<std::tuple<orbital_t, orbita
  config.evaluate();
  config.remove_all();
 
- return config.current_weight.real();
+ return config.current_weight;
 };
 

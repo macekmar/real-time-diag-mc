@@ -400,7 +400,6 @@ PARAMS_CPP_KEYS = {'creation_ops': None,
                    'length_cycle': 50,
                    'random_seed': 34788 + 928374 * MPI.COMM_WORLD.rank,
                    'random_name': '',
-                   'max_time': -1,
                    'verbosity': 0,
                    'method': 1,
                    'nb_bins': 10000,
@@ -430,6 +429,9 @@ def solve(params):
     check_params(params, PARAMS_CPP_KEYS)
     for key in PARAMS_PYTHON_KEYS:
         del params_cpp[key]
+
+    if params['staircase'] and params['store_configurations'] > 0:
+        raise ValueError, 'Cannot store configurations in staircase mode.'
 
     ### manage staircase
     if params['staircase']:

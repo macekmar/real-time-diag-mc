@@ -32,6 +32,18 @@ struct common {
 
  /// Construct random vertex
  inline vertex_t get_random_vertex() { return vrg(); }
+
+ // things to do before any attempt
+ // has to be called at beginning of all moves attempt method
+ inline void before_attempt() {
+  if (params.store_configurations == 1) config.register_accepted_config();
+ };
+
+ // things to do after any attempt (ie before any accept or reject)
+ // has to be called at end of all moves attempt method
+ inline void after_attempt() {
+  if (params.store_configurations == 2) config.register_attempted_config();
+ };
 };
 
 // ------------ QMC insertion move --------------------------------------

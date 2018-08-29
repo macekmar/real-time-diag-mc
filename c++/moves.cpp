@@ -6,7 +6,7 @@ namespace moves {
 // ------------ QMC insertion move --------------------------------------
 
 dcomplex insert::attempt() {
- if (params.store_configurations == 1) config.register_accepted_config();
+ before_attempt();
 
  auto k = config.order; // order before adding a vertex
  quick_exit = is_quick_exit(k+1);
@@ -17,7 +17,7 @@ dcomplex insert::attempt() {
  config.insert(0, vtx);
  config.evaluate();
 
- if (params.store_configurations == 2) config.register_attempted_config();
+ after_attempt();
 
  // The Metropolis ratio;
  return normalization / (k + 1) * config.current_weight / config.accepted_weight;
@@ -36,7 +36,7 @@ void insert::reject() {
 // ------------ QMC double-insertion move --------------------------------------
 
 dcomplex insert2::attempt() {
- if (params.store_configurations == 1) config.register_accepted_config();
+ before_attempt();
 
  auto k = config.order; // order before adding two vertices
  quick_exit = is_quick_exit(k+2);
@@ -49,7 +49,7 @@ dcomplex insert2::attempt() {
 
  config.evaluate();
 
- if (params.store_configurations == 2) config.register_attempted_config();
+ after_attempt();
 
  // The Metropolis ratio
  return normalization * normalization / ((k + 1) * (k + 2)) * config.current_weight / config.accepted_weight;
@@ -69,7 +69,7 @@ void insert2::reject() {
 //// ------------ QMC removal move --------------------------------------
 
 dcomplex remove::attempt() {
- if (params.store_configurations == 1) config.register_accepted_config();
+ before_attempt();
 
  auto k = config.order; // order before removal
  quick_exit = is_quick_exit(k-1);
@@ -81,7 +81,7 @@ dcomplex remove::attempt() {
  config.remove(p);                      // remove the vertex for all matrices
  config.evaluate(); // recompute sum over keldysh indices
 
- if (params.store_configurations == 2) config.register_attempted_config();
+ after_attempt();
 
  // The Metropolis ratio
  return k / normalization * config.current_weight / config.accepted_weight;
@@ -100,7 +100,7 @@ void remove::reject() {
 // ------------ QMC double-removal move --------------------------------------
 
 dcomplex remove2::attempt() {
- if (params.store_configurations == 1) config.register_accepted_config();
+ before_attempt();
 
  auto k = config.order; // order before removal
  quick_exit = is_quick_exit(k-2);
@@ -115,7 +115,7 @@ dcomplex remove2::attempt() {
  config.remove2(p1, p2);
  config.evaluate(); // recompute sum over keldysh indices
 
- if (params.store_configurations == 2) config.register_attempted_config();
+ after_attempt();
 
  // The Metropolis ratio
  return k * (k - 1) / (normalization * normalization) * config.current_weight / config.accepted_weight;
@@ -134,7 +134,7 @@ void remove2::reject() {
 // ------------ QMC vertex shift move --------------------------------------
 
 dcomplex shift::attempt() {
- if (params.store_configurations == 1) config.register_accepted_config();
+ before_attempt();
 
  auto k = config.order; // order
 
@@ -147,7 +147,7 @@ dcomplex shift::attempt() {
  config.change_vertex(p, new_vtx);
  config.evaluate();
 
- if (params.store_configurations == 2) config.register_attempted_config();
+ after_attempt();
 
  // The Metropolis ratio
  return config.current_weight / config.accepted_weight;

@@ -11,36 +11,33 @@
  * configuration and to keep memory of the previously accepted weight and
  * kernels.
  */
-Configuration::Configuration(g0_keldysh_alpha_t green_function, std::vector<keldysh_contour_pt> annihila_pts,
-                             std::vector<keldysh_contour_pt> creation_pts, int max_order,
-                             std::pair<double, double> singular_thresholds, int method,
-                             bool nonfixed_op, int cycles_trapped_thresh)
-   : singular_thresholds(singular_thresholds),
-     cofactor_threshold(2. * singular_thresholds.first),
+Configuration::Configuration(g0_keldysh_alpha_t green_function, const solve_parameters_t &params)
+   : params(params),
+     cofactor_threshold(2. * params.singular_thresholds.first),
      order(0),
-     potential(1.),
-     max_order(max_order),
-     method(method),
-     nonfixed_op(nonfixed_op),
-     spin_dvpt(creation_pts[0].s),
-     cycles_trapped_thresh(cycles_trapped_thresh) {
+     potential(1.) {
 
+ if (not params.cycles_trapped_thresh > 0)
+  TRIQS_RUNTIME_ERROR << "cycles_trapped_treshold must be > 0.";
 
- weight_sum = array<double, 1>(max_order + 1);
- weight_sum() = 0;
- nb_values = array<long, 1>(max_order + 1);
- nb_values() = 0;
- nb_cofact = array<long, 1>(max_order);
+ std::vector<keldysh_contour_pt> creation_pts, annihila_pts;
+ for (int rank = 0; rank < params.creation_ops.size(); ++rank) {
+  creation_pts.push_back(make_keldysh_contour_pt(params.creation_ops[rank], rank));
+  annihila_pts.push_back(make_keldysh_contour_pt(params.annihilation_ops[rank], rank));
+ }
+ spin_dvpt = creation_pts[0].s;
+
+ nb_cofact = array<long, 1>(params.max_perturbation_order);
  nb_cofact() = 0;
- nb_inverse = array<long, 1>(max_order);
+ nb_inverse = array<long, 1>(params.max_perturbation_order);
  nb_inverse() = 0;
 
  // Initialize the M-matrices. 100 is the initial alocated space.
  for (auto spin : {up, down}) matrices.emplace_back(green_function, 100);
  for (auto spin : {up, down}) matrices[spin].set_n_operations_before_check(1000);
 
- matrices[0].set_singular_threshold(singular_thresholds.first);
- matrices[1].set_singular_threshold(singular_thresholds.second);
+ matrices[0].set_singular_threshold(params.singular_thresholds.first);
+ matrices[1].set_singular_threshold(params.singular_thresholds.second);
 
  if (annihila_pts.size() != creation_pts.size())
   TRIQS_RUNTIME_ERROR << "`annihila_pts` and `creation_pts` have different sizes";
@@ -53,9 +50,9 @@ Configuration::Configuration(g0_keldysh_alpha_t green_function, std::vector<keld
   matrices[annihila_pts[i].s].insert_at_end(annihila_pts[i], creation_pts[i]);
  }
 
- current_kernels = array<dcomplex, 2>(max_order + matrices[spin_dvpt].size(), 2);
+ current_kernels = array<dcomplex, 2>(params.max_perturbation_order + matrices[spin_dvpt].size(), 2);
  current_kernels() = 0;
- accepted_kernels = array<dcomplex, 2>(max_order + matrices[spin_dvpt].size(), 2);
+ accepted_kernels = array<dcomplex, 2>(params.max_perturbation_order + matrices[spin_dvpt].size(), 2);
  accepted_kernels() = 0;
 
  // Initialize weight value
@@ -193,11 +190,11 @@ double Configuration::kernels_evaluate() {
   det_fix = sign * matrix_fix.determinant();
   det_dvpt = matrix_dvpt.determinant();
 
-  if (matrix_dvpt.get_cond_nb() > cofactor_threshold or (not std::isnormal(std::abs(det_dvpt))) or method == 2) {
+  if (matrix_dvpt.get_cond_nb() > cofactor_threshold or (not std::isnormal(std::abs(det_dvpt))) or params.method == 2) {
    // matrix is singular, calculate cofactors
    nb_cofact(order - 1)++;
 
-   if (nonfixed_op)
+   if (params.nonfixed_op)
     cofactors = cofactor_col(matrix_dvpt, order, matrix_dvpt.size());
    else
     cofactors = cofactor_row(matrix_dvpt, order, matrix_dvpt.size());
@@ -210,7 +207,7 @@ double Configuration::kernels_evaluate() {
    nb_inverse(order - 1)++;
 
    for (size_t p = 0; p < matrix_dvpt.size(); ++p) {
-    if (nonfixed_op)
+    if (params.nonfixed_op)
      inv_value = matrix_dvpt.inverse_matrix(order, p);
     else
      inv_value = matrix_dvpt.inverse_matrix(p, order);
@@ -235,17 +232,10 @@ double Configuration::kernels_evaluate() {
  * Keldysh sum.
  */
 void Configuration::evaluate() {
- dcomplex value;
- if (method != 0)
-  value = kernels_evaluate();
+ if (params.method != 0)
+  current_weight = kernels_evaluate();
  else
-  value = potential * keldysh_sum();
-
- // TODO: move this into moves
- weight_sum(order) += std::abs(value);
- nb_values(order)++;
-
- current_weight = value;
+  current_weight = potential * std::abs(keldysh_sum());
 }
 
 /**
@@ -270,7 +260,7 @@ void Configuration::accept_config() {
  */
 void Configuration::incr_cycles_trapped() {
  cycles_trapped++;
- if (cycles_trapped % cycles_trapped_thresh == 0) {
+ if (cycles_trapped % params.cycles_trapped_thresh == 0) {
   evaluate();
   accepted_weight = current_weight;
   accepted_kernels() = current_kernels();

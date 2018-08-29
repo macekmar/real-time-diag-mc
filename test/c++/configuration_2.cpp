@@ -44,16 +44,21 @@ dcomplex det_3x3(g0_keldysh_alpha_t g, keldysh_contour_pt a, keldysh_contour_pt 
  */
 int main() {
 
- auto g_less = gf<retime, matrix_valued>{{-10., 10., 1001}, {2, 2}};
+ MPI::Init(); // needed to create parameters (because of seed)
+
+ // Green's function
+ auto g_less = gf<retime, matrix_valued>{{-10., 10., 1001}, {1, 1}};
  auto g_less_f = make_gf_from_fourier(g_less);
  triqs::clef::placeholder<0> w_;
  g_less_f(w_) << -0.5_j / (w_ - 1.2 + 2.5_j);
  g_less = make_gf_from_inverse_fourier(g_less_f);
  auto g_grea = conj(g_less);
 
+ // Keldysh GF
  auto g0 = g0_keldysh_t{g_less, g_grea};
  std::vector<dcomplex> alphas{0., 1.5};
- g0_keldysh_alpha_t g0_alpha = g0_keldysh_alpha_t{g0, 0.5, alphas};
+ double alpha = 0.5;
+ g0_keldysh_alpha_t g0_alpha = g0_keldysh_alpha_t{g0, alpha, alphas};
 
  // external points
  auto a_up = keldysh_contour_pt{0, up, 1.5, 0, 0};
@@ -68,21 +73,48 @@ int main() {
  auto d0 = keldysh_contour_pt{0, up, 0.65, 0};
  auto d1 = flip_index(d0);
 
+ const int max_order = 4;
+
+ // parameters
+ solve_parameters_t params;
+
+ params.annihilation_ops.push_back(std::tuple<orbital_t, spin_t, timec_t, int>(0, up, 1.5, 0)); // = a_up
+ params.annihilation_ops.push_back(std::tuple<orbital_t, spin_t, timec_t, int>(0, down, 0.5, 0)); // = a_up, a_do
+ params.creation_ops.push_back(std::tuple<orbital_t, spin_t, timec_t, int>(0, up, 1.4, 1)); // = a_up_p
+ params.creation_ops.push_back(std::tuple<orbital_t, spin_t, timec_t, int>(0, down, 0.5, 0)); // = a_up_p, a_do
+ params.extern_alphas = alphas;
+ params.nonfixed_op = false;
+ params.interaction_start = 50.;
+ params.alpha = alpha;
+ params.nb_orbitals = 1;
+ std::get<0>(params.potential) = {1.};
+ std::get<1>(params.potential) = {0};
+ std::get<2>(params.potential) = {0};
+
+ params.U = 0.05;
+ params.w_ins_rem = 1.0;
+ params.w_dbl = 0.5;
+ params.w_shift = 0.5;
+ params.max_perturbation_order = max_order;
+ params.min_perturbation_order = 0;
+ params.verbosity = 1;
+ params.method = 1;
+ params.singular_thresholds = std::pair<double, double>{3.5, 3.5};
+
  std::vector<keldysh_contour_pt> an_pts{a_up, a_do};
  std::vector<keldysh_contour_pt> cr_pts{a_up_p, a_do};
 
- auto sing_th = std::pair<double, double>{3.5, 3.5};
- // auto sing_th = std::pair<double, double>{-10000, -10000}; // always singular
-
- Configuration config(g0_alpha, an_pts, cr_pts, 4, sing_th, 1, false, 100);
+ Configuration config(g0_alpha, params);
  dcomplex ref_weight = 1;
- auto ref_kernels = array<dcomplex, 2>(5, 2);
+ auto ref_kernels = array<dcomplex, 2>(max_order+1, 2); // (different points, keldysh index)
 
+ // ---------------------------------------------------------------------------
  // At order 0, weight is an arbitrary 1
  if (config.current_weight != 1.) return 10;
  if (config.accepted_weight != 1.) return 11;
  if (config.order != 0) return 12;
 
+ // ---------------------------------------------------------------------------
  // add a point and accept the config
  config.insert(0, vertex_t{b0.x, b0.x, b0.t, b0.k_index, 1.});
  config.evaluate();
@@ -109,6 +141,7 @@ int main() {
  if (is_not_close_array1(config.accepted_kernels(0, range()), ref_kernels(0, range()))) return 23;
  if (config.order != 1) return 24;
 
+ // ---------------------------------------------------------------------------
  // remove point and do not accept
  config.remove(0);
  config.evaluate();
@@ -119,6 +152,7 @@ int main() {
   return 32; // has not changed
  if (config.order != 0) return 33;
 
+ // ---------------------------------------------------------------------------
  // add two points and accept;
  config.insert2(0, 1, vertex_t{c0.x, c0.x, c0.t, c0.k_index, 1.}, vertex_t{d0.x, d0.x, d0.t, d0.k_index, 1.});
  config.evaluate();
@@ -159,5 +193,6 @@ int main() {
  if (config.order != 2) return 44;
 
  std::cout << "success" << std::endl;
+ MPI::Finalize();
  return 0;
 }

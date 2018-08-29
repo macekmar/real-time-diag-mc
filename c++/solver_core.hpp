@@ -12,16 +12,9 @@ enum Status { aborted, not_ready, ready, running };
 
 class solver_core {
 
- g0_keldysh_alpha_t green_function_alpha;
- g0_keldysh_t green_function;
  Configuration config;
  solve_parameters_t params;
  triqs::mc_tools::mc_generic<dcomplex> qmc;
- std::vector<keldysh_contour_pt> creation_pts;
- std::vector<keldysh_contour_pt> annihila_pts;
- array<keldysh_contour_pt, 2> tau_array;
- array<dcomplex, 2> g0_array;
- double t_max;
  double qmc_duration = 0;
  double cum_qmc_duration = 0;
  Status status = not_ready;
