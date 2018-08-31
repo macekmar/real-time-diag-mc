@@ -11,6 +11,8 @@ from datetime import datetime
 
 """
 This tests the python interface of the solver in the staircase usage and oldway algorithm (determinant), and the accuracy of the calculation at orders 1 and 2. It computes an impurity problem with no orbitals.
+
+It takes ~2 hours for 10000 cycles.
 """
 
 if mpi.world.size < 2:
@@ -35,7 +37,7 @@ p = {}
 
 p["staircase"] = True
 p["nb_warmup_cycles"] = 1000
-p["nb_cycles"] = 1000#0#0
+p["nb_cycles"] = 10000#0
 p["save_period"] = 10*60
 p["filename"] = filename
 p["run_name"] = 'run'
@@ -76,7 +78,7 @@ for k, t in enumerate(times):
     p["run_name"] = 'less_{0}'.format(k)
     p["annihilation_ops"] = [(0, 0, t, 0)]
     p["creation_ops"] = [(0, 0, 0.0, 1)]
-    # solve(p)
+    solve(p)
 
 ### compute greater
 for k, t in enumerate(times):
@@ -86,7 +88,7 @@ for k, t in enumerate(times):
     p["run_name"] = 'grea_{0}'.format(k)
     p["annihilation_ops"] = [(0, 0, t, 1)]
     p["creation_ops"] = [(0, 0, 0.0, 0)]
-    # solve(p)
+    solve(p)
 
 if mpi.world.rank == 0:
 

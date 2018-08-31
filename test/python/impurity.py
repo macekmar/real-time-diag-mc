@@ -5,7 +5,6 @@ from pytriqs.archive import HDFArchive
 import numpy as np
 import os
 from matplotlib import pyplot as plt
-from utility import cpx_interp, cpx_interp_1D
 import warnings
 from copy import deepcopy
 
@@ -32,7 +31,7 @@ p = {}
 
 p["staircase"] = True
 p["nb_warmup_cycles"] = 1000
-p["nb_cycles"] = 1000#0#0
+p["nb_cycles"] = 10000#0
 p["save_period"] = 3*60
 p["filename"] = filename
 p["run_name"] = 'run_1'
@@ -63,7 +62,7 @@ p["singular_thresholds"] = [3.5, 3.3]
 
 p_copy = deepcopy(p) # keep parameters safe
 
-# solve(p)
+solve(p)
 
 if mpi.world.rank == 0:
 
@@ -97,7 +96,7 @@ if mpi.world.rank == 0:
         kernel_part = kernel_GF_from_archive(ar['run_1']['results_part'], p_copy["nonfixed_op"])
 
 
-        if False:
+        if False: # plot kernel order 1
             res = ar['run_1']['results_all']
             error = lambda a : np.sqrt(np.var(a, axis=-1) / float(a.shape[-1]))
             fig, ax = plt.subplots(2, 2)
@@ -118,7 +117,7 @@ if mpi.world.rank == 0:
             plt.tight_layout()
             plt.show()
 
-        if False:
+        if False: # plot kernel order 2
             error = lambda a : np.sqrt(np.var(a, axis=-1) / float(a.shape[-1]))
             fig, ax = plt.subplots(2, 2)
             ax[0, 0].plot(kernel.times, kernel.less.values[1].real, '.b', markersize=1)
@@ -168,9 +167,9 @@ if mpi.world.rank == 0:
             raise RuntimeError, 'FAILED'
 
     ### test number of measures
-    # with HDFArchive(filename, 'r') as ar:
-    #     if not np.array_equal(ar['run_1']['metadata']['nb_measures'], mpi.world.size * p_copy["nb_cycles"] * np.ones(2)):
-    #         raise RuntimeError, 'FAILED'
+    with HDFArchive(filename, 'r') as ar:
+        if not np.array_equal(ar['run_1']['metadata']['nb_measures'], mpi.world.size * p_copy["nb_cycles"] * np.ones(2)):
+            raise RuntimeError, 'FAILED'
 
 
     ### test order 0
@@ -190,119 +189,5 @@ if mpi.world.rank == 0:
     if not np.allclose(GF.grea.values[0], g0_grea(GF.times), rtol=rtol, atol=atol):
         raise RuntimeError, 'FAILED o0 grea'
 
-    ### test order 1
-
-    less_val = cpx_interp_1D(GF_part.times, GF.times, GF.less.values, axis=1)
-    grea_val = cpx_interp_1D(GF_part.times, GF.times, GF.grea.values, axis=1)
-    if True:
-        fig, ax = plt.subplots(2, 2)
-        with HDFArchive('ref_data/order1_params1.ref.h5', 'r') as ref:
-            ax[0, 0].plot(ref['less']['times'], ref['less']['o1'].real, 'g.')
-            ax[0, 0].plot(ref['less']['times'], ref['less']['o1'].imag, 'm.')
-            ax[0, 0].plot(GF.times, GF.less.values[1].real, 'b')
-            ax[0, 0].plot(GF.times, GF.less.values[1].imag, 'r')
-            ax[0, 0].set_xlim(-50, 10)
-            ax[1, 0].plot(less_val[1].real, error(GF_part.less.values[1].real), 'b.', markersize=2)
-            ax[1, 0].plot(less_val[1].imag, error(GF_part.less.values[1].imag), 'r.', markersize=2)
-            ax[0, 1].plot(ref['grea']['times'], ref['grea']['o1'].real, 'g.')
-            ax[0, 1].plot(ref['grea']['times'], ref['grea']['o1'].imag, 'm.')
-            ax[0, 1].plot(GF.times, GF.grea.values[1].real, 'b')
-            ax[0, 1].plot(GF.times, GF.grea.values[1].imag, 'r')
-            ax[0, 1].set_xlim(-50, 10)
-            ax[1, 1].plot(grea_val[1].real, error(GF_part.grea.values[1].real), 'b.', markersize=2)
-            ax[1, 1].plot(grea_val[1].imag, error(GF_part.grea.values[1].imag), 'r.', markersize=2)
-        plt.show()
-
-    rtol = 0.001
-    atol = 0.005
-    # with HDFArchive('ref_data/order1_params1.ref.h5', 'r') as ref:
-    #     g1_less = cpx_interp(ref['less']['times'], GF.times, GF.less.values[1])
-    #     if not np.allclose(g1_less, ref['less']['o1'], rtol=rtol, atol=atol):
-    #         raise RuntimeError, 'FAILED o1 less'
-
-    #     g1_grea = cpx_interp(ref['grea']['times'], GF.times, GF.grea.values[1])
-    #     if not np.allclose(g1_grea, ref['grea']['o1'], rtol=rtol, atol=atol):
-    #         raise RuntimeError, 'FAILED o1 grea'
-
-    ### test order 2
-
-    if True:
-        fig, ax = plt.subplots(2, 2)
-        with HDFArchive('ref_data/order2_params1.ref.h5', 'r') as ref:
-            ax[0, 0].plot(ref['less']['times'], ref['less']['o2'].real, 'g.')
-            ax[0, 0].plot(ref['less']['times'], ref['less']['o2'].imag, 'm.')
-            ax[0, 0].plot(GF.times, GF.less.values[2].real, 'b')
-            ax[0, 0].plot(GF.times, GF.less.values[2].imag, 'r')
-            ax[0, 0].set_xlim(-50, 10)
-            ax[1, 0].plot(less_val[2].real, error(GF_part.less.values[2].real), 'b.', markersize=2)
-            ax[1, 0].plot(less_val[2].imag, error(GF_part.less.values[2].imag), 'r.', markersize=2)
-            ax[0, 1].plot(ref['grea']['times'], ref['grea']['o2'].real, 'g.')
-            ax[0, 1].plot(ref['grea']['times'], ref['grea']['o2'].imag, 'm.')
-            ax[0, 1].plot(GF.times, GF.grea.values[2].real, 'b')
-            ax[0, 1].plot(GF.times, GF.grea.values[2].imag, 'r')
-            ax[0, 1].set_xlim(-50, 10)
-            ax[1, 1].plot(grea_val[2].real, error(GF_part.grea.values[2].real), 'b.', markersize=2)
-            ax[1, 1].plot(grea_val[2].imag, error(GF_part.grea.values[2].imag), 'r.', markersize=2)
-        plt.show()
-
-    rtol = 0.001
-    atol = 0.005
-    # TODO: to be done
-
-    ############# advanced ##############
-    AGF = kernel.advanced().convol_g_left(g0_adva, 100.)
-    AGF.increment_order(g0_adva)
-    AGF_part = kernel_part.advanced().convol_g_left(g0_adva, 100.)
-    AGF_part.increment_order(g0_adva)
-
-    ### test order 1
-
-    adva_val = cpx_interp_1D(AGF_part.times, AGF.times, AGF.values, axis=1)
-    if True:
-        fig, ax = plt.subplots(2, 1)
-        with HDFArchive('ref_data/order1_params1.ref.h5', 'r') as ref:
-            times_ref = ref['less']['times']
-            o1_adva_ref = ref['less']['o1'] - ref['grea']['o1']
-            ax[0].plot(times_ref, o1_adva_ref.real, 'g.')
-            ax[0].plot(times_ref, o1_adva_ref.imag, 'm.')
-        ax[0].plot(AGF.times, AGF.values[1].real, 'b')
-        ax[0].plot(AGF.times, AGF.values[1].imag, 'r')
-        ax[0].set_xlim(-50, 10)
-        ax[1].plot(adva_val[1].real, error(AGF_part.values[1].real), 'b.', markersize=2)
-        ax[1].plot(adva_val[1].imag, error(AGF_part.values[1].imag), 'r.', markersize=2)
-        plt.show()
-
-    rtol = 0.001
-    atol = 0.005
-    with HDFArchive('ref_data/order1_params1.ref.h5', 'r') as ref:
-        o1_adva_ref = ref['less']['o1'] - ref['grea']['o1']
-        g1_adva = cpx_interp(ref['less']['times'], AGF.times, AGF.values[1])
-        # if not np.allclose(g1_adva, o1_adva_ref, rtol=rtol, atol=atol):
-        #     raise RuntimeError, 'FAILED o1 adva'
-
-
-    ### test order 2
-
-    if True:
-        fig, ax = plt.subplots(2, 1)
-        with HDFArchive('ref_data/order2_params1.ref.h5', 'r') as ref:
-            times_ref = ref['less']['times']
-            o2_adva_ref = ref['less']['o2'] - ref['grea']['o2']
-            ax[0].plot(times_ref, o2_adva_ref.real, 'g.')
-            ax[0].plot(times_ref, o2_adva_ref.imag, 'm.')
-        ax[0].plot(AGF.times, AGF.values[2].real, 'b')
-        ax[0].plot(AGF.times, AGF.values[2].imag, 'r')
-        ax[0].set_xlim(-50, 10)
-        ax[1].plot(adva_val[2].real, error(AGF_part.values[2].real), 'b.', markersize=2)
-        ax[1].plot(adva_val[2].imag, error(AGF_part.values[2].imag), 'r.', markersize=2)
-        plt.show()
-
-    rtol = 0.001
-    atol = 0.005
-    with HDFArchive('ref_data/order2_params1.ref.h5', 'r') as ref:
-        o2_adva_ref = ref['less']['o2'] - ref['grea']['o2']
-        g2_adva = cpx_interp(ref['less']['times'], AGF.times, AGF.values[2])
-        if not np.allclose(g2_adva, o2_adva_ref, rtol=rtol, atol=atol):
-            raise RuntimeError, 'FAILED o2 adva'
 
     print 'SUCCESS !'

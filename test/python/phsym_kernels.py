@@ -1,12 +1,11 @@
 from pytriqs.utility import mpi
-from ctint_keldysh import *
-from pytriqs.archive import *
+from ctint_keldysh import SolverCore
 import numpy as np
-import os
 import matplotlib.pyplot as plt
 
 """
 Test the symmetry of the kernels in the particle-hole symmetric case (epsilon_d=0, alpha=0.5)
+Double moves needed as odd orders are zero.
 
 """
 
@@ -30,54 +29,58 @@ g0_less_ana_v = np.vectorize(g0_less_ana)
 
 Nt_gf0 = 10000
 tmax_gf0 = 110.
-g0_less = GfReTime(indices=['d', 's'], window=(-tmax_gf0, tmax_gf0), n_points=2*Nt_gf0+1, name='lesser')
-g0_grea = GfReTime(indices=['d', 's'], window=(-tmax_gf0, tmax_gf0), n_points=2*Nt_gf0+1, name='greater')
+g0_less = GfReTime(indices=[0], window=(-tmax_gf0, tmax_gf0), n_points=2*Nt_gf0+1, name='lesser')
+g0_grea = GfReTime(indices=[0], window=(-tmax_gf0, tmax_gf0), n_points=2*Nt_gf0+1, name='greater')
 
 Gamma = 0.2
 g0_less.data[:, 0, 0] = g0_less_ana_v(Gamma, np.linspace(-tmax_gf0, tmax_gf0, 2*Nt_gf0+1))
 g0_grea.data[:, 0, 0] = np.conjugate(g0_less.data[:, 0, 0])
 
 
-times = np.linspace(-40.0, 0.0, 101)
 p = {}
-p["creation_ops"] = [(0, 0.0, 0)]
-p["annihilation_ops"] = []
+p["creation_ops"] = [(0, 0, 0.0, 0)]
+p["annihilation_ops"] = [(0, 0, 0.0, 0)]
 p["extern_alphas"] = [0.]
+p["nonfixed_op"] = False # annihilation
 p["interaction_start"] = 40.0
-p["measure_state"] = 0
-p["measure_keldysh_indices"] = [0, 1]
-p["measure_times"] = times
-p["U"] = 0.5 # U_qmc
-p["min_perturbation_order"] = 0
-p["max_perturbation_order"] = 4
 p["alpha"] = 0.5
-p["length_cycle"] = 50
+p["nb_orbitals"] = 1
+p["potential"] = ([1.], [0], [0])
+
+p["U"] = 0.5 # U_qmc
 p["w_ins_rem"] = 0
 p["w_dbl"] = 1
 p["w_shift"] = 0
-p["method"] = 5
+p["max_perturbation_order"] = 4
+p["min_perturbation_order"] = 0
+p["forbid_parity_order"] = 1
+p["length_cycle"] = 50
+p["verbosity"] = 1 if mpi.world.rank == 0 else 0
+p["method"] = 1
 p["singular_thresholds"] = [3.0, 3.3]
 
 S = SolverCore(**p)
 S.set_g0(g0_less, g0_grea)
 
-S.run(1000, False) # warmup
-S.run(10000, True)
+S.run(100, False) # warmup
+S.run(1000, True)
 
-kernels = S.kernels
+if mpi.world.rank == 0:
+    kernels = S.kernels
 
-nb_measures = S.nb_measures
-if nb_measures != 10000:
-    raise RuntimeError, 'FAILED: Solver reported having completed {0} measures instead of 10000'.format(nb_measures)
-
-
-for k in range(1, len(kernels), 2):
-
-    # plt.plot(np.abs(kernels[k, :, 0] - np.conjugate(kernels[k, :, 1])))
-    # plt.semilogy()
-    # plt.show()
-    if not np.allclose(kernels[k, :, 0], np.conjugate(kernels[k, :, 1]), atol=1e-12):
-        raise RuntimeError, 'FAILED kernels not symmetric for k={0}'.format(k)
+    nb_measures = S.nb_measures
+    ref_nb_measures = 1000 * mpi.world.size
+    if nb_measures != ref_nb_measures:
+        raise RuntimeError, 'FAILED: Solver reported having completed {0} measures instead of {1}'.format(nb_measures, ref_nb_measures)
 
 
-print 'SUCCESS !'
+    for k in range(1, len(kernels), 2):
+
+        # plt.plot(np.abs(kernels[k, :, 0] - np.conjugate(kernels[k, :, 1])))
+        # plt.semilogy()
+        # plt.show()
+        if not np.allclose(kernels[k, :, 0], np.conjugate(kernels[k, :, 1]), atol=1e-12):
+            raise RuntimeError, 'FAILED kernels not symmetric for k={0}'.format(k)
+
+
+    print 'SUCCESS !'
