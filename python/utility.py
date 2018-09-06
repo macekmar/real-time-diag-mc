@@ -1,4 +1,5 @@
 import numpy as np
+from scipy import signal
 
 def expand_axis(a, val, end=False, axis=0):
     """
@@ -73,9 +74,14 @@ def convolve(a, b, mode, axis):
     """
     Convolves a ND array `a` with an 1D array `b` along one axis.
     """
-    return np.apply_along_axis(lambda m: np.convolve(m, b, mode=mode), axis=axis, arr=a)
+    if a.shape[axis] < len(b):
+        return np.apply_along_axis(lambda m: signal.fftconvolve(b, m, mode=mode), axis=axis, arr=a)
+    else:
+        return np.apply_along_axis(lambda m: signal.fftconvolve(m, b, mode=mode), axis=axis, arr=a)
 
 def convolve_coord(coord_a, coord_b, mode='full'):
+    """
+    """
 
     ### order inputs so that a is larger than b
     if len(coord_a) < len(coord_b):
@@ -103,6 +109,25 @@ def convolve_coord(coord_a, coord_b, mode='full'):
         return conv_coord[n:-n]
     else:
         raise ValueError
+
+def vcut(coord, values, left=None, right=None, axis=-1):
+    """
+    Cut the coordinate and values arrays of a sampled function so as to reduce its coordinate range to [`left`, `right`].
+
+    None means infinity.
+    """
+    coord_out = coord.copy()
+    values_out = np.swapaxes(values.copy(), 0, axis)
+    if left is not None:
+        left_i = np.argmin(np.abs(coord_out - left))
+        coord_out = coord_out[left_i:]
+        values_out = values_out[left_i:]
+    if right is not None:
+        right_i = np.argmin(np.abs(coord_out - right)) + 1
+        coord_out = coord_out[:right_i]
+        values_out = values_out[:right_i]
+    return coord_out, np.swapaxes(values_out, 0, axis)
+
 
 if __name__ == '__main__':
     print 'Start tests'
@@ -140,20 +165,25 @@ if __name__ == '__main__':
                     [[5., 6., 7., 8.], [5., 6., 7., 8.], [5., 6., 7., 8.]]])
     assert np.array_equal(mult_by_2darray(a, b, 0, 2), res)
 
+    def convolve_to_test(*args, **kwargs):
+        kwargs['axis'] = 0
+        return convolve(*args, **kwargs)
+        # return np.convolve(*args, **kwargs)
+
     ### test convolve_coord
     ta = np.arange(0., 5. + 0.1, 0.5) # +0.1 to include 5.
     tb = np.arange(-2.2, 1.8 + 0.1, 0.5)
     a = np.linspace(0, 1, len(ta))
     b = np.linspace(0, 1, len(tb))
     tab = convolve_coord(ta, tb, mode='full')
-    ab = np.convolve(a, b, mode='full')
+    ab = convolve_to_test(a, b, mode='full')
     assert len(tab) == len(ab)
     assert np.array_equal(tab, np.arange(-2.2, 6.8 + 0.1, 0.5))
     tab = convolve_coord(ta, tb, mode='same')
-    ab = np.convolve(a, b, mode='same')
+    ab = convolve_to_test(a, b, mode='same')
     assert len(tab) == len(ab)
     tab = convolve_coord(ta, tb, mode='valid')
-    ab = np.convolve(a, b, mode='valid')
+    ab = convolve_to_test(a, b, mode='valid')
     assert len(tab) == len(ab)
 
     ### test convolve_coord
@@ -177,25 +207,25 @@ if __name__ == '__main__':
         # print mode
         tol = 1e-10
 
-        aa = np.convolve(a, a, mode=mode)
+        aa = convolve_to_test(a, a, mode=mode)
         taa = convolve_coord(ta, ta, mode=mode)
-        assert len(taa) == len(np.convolve(ta, ta, mode=mode))
+        assert len(taa) == len(convolve_to_test(ta, ta, mode=mode))
         assert np.abs(taa[np.where(aa == 1.)[0]]) < tol
 
         if mode != 'valid': # peak is not visible in valid mode here
-            bb = np.convolve(b, b, mode=mode)
+            bb = convolve_to_test(b, b, mode=mode)
             tbb = convolve_coord(tb, tb, mode=mode)
-            assert len(tbb) == len(np.convolve(tb, tb, mode=mode))
+            assert len(tbb) == len(convolve_to_test(tb, tb, mode=mode))
             assert np.abs(tbb[np.where(bb == 1.)[0]]) < tol
 
-        ab = np.convolve(a, b, mode=mode)
+        ab = convolve_to_test(a, b, mode=mode)
         tab = convolve_coord(ta, tb, mode=mode)
-        assert len(tab) == len(np.convolve(ta, tb, mode=mode))
+        assert len(tab) == len(convolve_to_test(ta, tb, mode=mode))
         assert np.abs(tab[np.where(ab == 1.)[0]]) < tol
 
-        cb = np.convolve(c, b, mode=mode)
+        cb = convolve_to_test(c, b, mode=mode)
         tcb = convolve_coord(tc, tb, mode=mode)
-        assert len(tcb) == len(np.convolve(tc, tb, mode=mode))
+        assert len(tcb) == len(convolve_to_test(tc, tb, mode=mode))
         assert np.abs(tcb[np.where(cb == 1.)[0]]) < tol
 
     print 'Success'

@@ -1,8 +1,8 @@
 import numpy as np
-from toolbox import fourier_transform, vcut, symmetrize #TODO: remove dependence on my toolbox
+from toolbox import fourier_transform, symmetrize #TODO: remove dependence on my toolbox
 import warnings
 from copy import copy
-from utility import expand_axis, mult_by_1darray, mult_by_2darray, is_incr_reg_spaced, convolve, convolve_coord
+from utility import expand_axis, mult_by_1darray, mult_by_2darray, is_incr_reg_spaced, convolve, convolve_coord, vcut
 
 def _fourier_transform_with_diracs(times, values, dirac_times, dirac_values, max_puls, min_data_pts):
     p = np.log2(np.pi*min_data_pts / float((times[1] - times[0]) * max_puls))
@@ -91,6 +91,7 @@ class TimeGF(object):
             raise ValueError
 
     def fourier_transform(self, max_puls, min_data_pts=300):
+        # TODO: can do better for retarded GF
         if self.half != 'both':
             warnings.warn(RuntimeWarning, 'The function is not completely known, Fourier transform is only partial!')
 
@@ -264,7 +265,7 @@ class TimeKeldyshGF(object):
         return PulsKeldyshGF(self.less.fourier_transform(max_puls, min_data_pts),
                              self.grea.fourier_transform(max_puls, min_data_pts))
 
-    def advanced(self):
+    def advanced(self, cut=True):
         """
         Compute the corresponding advanced function:
         adva(t) = theta(-t)*(lesser(t) - greater(t))
@@ -273,32 +274,41 @@ class TimeKeldyshGF(object):
             raise RuntimeError, 'Lesser and greater must be known on the negative half to do this operation.'
 
         adva_values = self.less.values - self.grea.values
-        adva_values[:, self.times > 0.] = 0.
-        adva_values[:, self.times == 0.] *= 0.5
+        times = self.times
+        if cut:
+            times, adva_values = vcut(times, adva_values, left=None, right=5*(self.times[1] - self.times[0]), axis=1)
+        adva_values[:, times > 0.] = 0.
+        adva_values[:, times == 0.] *= 0.5
 
         adva_dirac_values = self.less.dirac_values - self.grea.dirac_values
         adva_dirac_values[:, self.dirac_times > 0.] = 0.
         adva_dirac_values[:, self.dirac_times == 0.] *= 0.5
 
-        return TimeGF(self.times, adva_values, self.dirac_times, adva_dirac_values, 'both')
+        return TimeGF(times, adva_values, self.dirac_times, adva_dirac_values, 'both')
 
-    def retarded(self):
+    def retarded(self, cut=True):
         """
         Compute the corresponding retarded function:
         reta(t) = theta(t)*(greater(t) - lesser(t))
+
+        If `cut` is True the data is reduced to avoid keeping lots of zeros on
+        the negative times part.
         """
         if self.half == 'negative':
             raise RuntimeError, 'Lesser and greater must be known on the positive half to do this operation.'
 
         reta_values = self.grea.values - self.less.values
-        reta_values[:, self.times < 0.] = 0.
-        reta_values[:, self.times == 0.] *= 0.5
+        times = self.times
+        if cut:
+            times, reta_values = vcut(times, reta_values, left=-5*(self.times[1] - self.times[0]), right=None, axis=1)
+        reta_values[:, times < 0.] = 0.
+        reta_values[:, times == 0.] *= 0.5
 
         reta_dirac_values = self.grea.dirac_values - self.less.dirac_values
         reta_dirac_values[:, self.dirac_times < 0.] = 0.
         reta_dirac_values[:, self.dirac_times == 0.] *= 0.5
 
-        return TimeGF(self.times, reta_values, self.dirac_times, reta_dirac_values, 'both')
+        return TimeGF(times, reta_values, self.dirac_times, reta_dirac_values, 'both')
 
     def convol_g_right(self, g0_less, g0_grea, cutoff_g0):
         """
@@ -490,13 +500,17 @@ class PulsKeldyshGF(object):
 
 ###############################################################################
 
-def kernel_GF_from_archive(ar, nonfixed_op):
-    if ar['cn'].ndim <= 1:
+def kernel_GF_from_archive(ar, nonfixed_op, orbital=None):
+    if ar['cn'].ndim <= 1: # no part
         kernels = mult_by_1darray(ar['kernels'], ar['cn'][1:], axis=0)
         kernel_diracs = mult_by_1darray(ar['kernel_diracs'], ar['cn'][1:], axis=0)
-    else:
+    else: # with part
         kernels = mult_by_2darray(ar['kernels'], ar['cn'][1:], 0, -1)
         kernel_diracs = mult_by_2darray(ar['kernel_diracs'], ar['cn'][1:], 0, -1)
+
+    if orbital is not None:
+        kernels = kernels[:, :, :, orbital]
+        kernel_diracs = kernel_diracs[:, :, :, orbital]
 
     a = 1 if nonfixed_op else 0
 
