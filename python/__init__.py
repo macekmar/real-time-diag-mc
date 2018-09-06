@@ -26,6 +26,7 @@ DOC
 from ctint_keldysh import SolverCore
 from g0_semi_circ import make_g0_semi_circular, make_g0c_semi_circular_freq, make_g0_semi_circular_freq
 from g0_flat_band import make_g0_flat_band, make_g0c_flat_band_freq, make_g0_flat_band_freq
+from g0_lattice_1d import make_g0_lattice_1d
 from solver import solve, variance_error
 
 __all__ = ['SolverCore',
@@ -35,5 +36,6 @@ __all__ = ['SolverCore',
            'make_g0_flat_band',
            'make_g0c_flat_band_freq',
            'make_g0_flat_band_freq',
+           'make_g0_lattice_1d',
            'variance_error',
            'solve']
