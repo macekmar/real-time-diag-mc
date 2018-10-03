@@ -6,7 +6,50 @@ namespace mpi = triqs::mpi;
 using triqs::arrays::range;
 
 
-// ------------ The main class of the solver ------------------------
+/* ------------ The main class of the solver ------------------------
+ *
+ * The correlator to be computed, the details of the interaction, the method to
+ * use and other technical parameters are all set in `params` (see
+ * parameters.hpp). The solution of the non-interacting problem in term of
+ * lesser and greater Green's functions must be given through the
+ * `solver_core::set_g0` method.
+ *
+ * This solver aims at computing the following kind of correlator:
+ * G = \frac{1}{i^p} \langle T_{\rm c} c(X_1) c^\dagger(Y_1) \prod_{k=2}^p (c(X_k) c^\dagger(Y_k) - \alpha_k) \rangle
+ * where X_k, Y_k are points of the Keldysh contour (orbital, time, Keldysh
+ * index), \alpha_k are constants and T_{\rm c} is the contour time ordering
+ * operator. Equal time ordering is annihilation < creation (ie c^\dagger c),
+ * it is not a priori the order in the correlator !!! (FIXME ?, this could lead to undefined behavior)
+ * \langle \ldots \rangle means quantum average with respect to the non-interacting density matrix.
+ *
+ * Interactions are restricted to the offseted-density-density type with the following form:
+ * H_{\rm int}(t) = \sum_{i,j\in I} V_{ij}(t) (c_i^\dagger c_i - \alpha) (c_j^\dagger c_j - \alpha)
+ * where I is the subset of interacting orbitals, \alpha is a constant.
+ * V_{ij}(t) is considered zero outside of the time range [-T, 0], called
+ * integration range, and constant inside.
+ * For this computation to make physical sense, it is required that all X_k and
+ * Y_k are made of orbitals in I and times in the integration range. If so,
+ * integrating up to 0 is equivalent to integrating up to +\infty.
+ *
+ * If method = 0, the correlator is directly computed for a fixed set of
+ * contour points X_1, ..., X_p and Y_1, ..., Y_p.
+ * If method > 0, the solver returns the kernel of this correlator, obtained by
+ * developping along c(X_1). This kernel is a function K(A) of a contour point
+ * A = (i, t, a), which depends on X_2, ..., X_p, Y_1, ..., Y_p, and such that:
+ * G = \sum_{i \in I} \int_{-T}^0 dt \sum_{a=0,1} g(X_1|(i, t, a)) K((i, t, a))
+ * where g is the non-interacting one-particle contour Green's function:
+ * g(X|Y) = -i\langle T_{\rm c} c(X) c^\dagger(Y) \rangle
+ * This solver computes K for all interacting orbital, for both Keldysh
+ * indices, and over the range of *negative* times [-T, 0]. K can contain Dirac
+ * deltas.
+ * Note that in method > 0 the specification of X_1 is ignored. It is up to the
+ * post-treatment to use X_1 with an interacting orbital and time within the
+ * integration range. If positive times are needed, possible symmetries of G
+ * should be considered in post-treatment.
+ *
+ * Note: totally forgot about spin... TODO
+ *
+ */
 solver_core::solver_core(solve_parameters_t const& params)
    : qmc(params.random_name, params.random_seed, 1.0, params.verbosity, false), // first_sign is not used
      params(params)
@@ -23,6 +66,10 @@ solver_core::solver_core(solve_parameters_t const& params)
  if (params.creation_ops.size() != params.annihilation_ops.size() or
      params.extern_alphas.size() != params.creation_ops.size())
   TRIQS_RUNTIME_ERROR << "Number of creation operators, of annihilation operators and of external alphas must match";
+
+ // warning for devpt over creation op
+ if (params.nonfixed_op)
+  std::cout << "/!\\ Developement over the creation operator has not been tested. Use at your own risks." << std::endl << std::endl;
 
  // Check potential
  auto nb_edges = std::get<0>(params.potential).size();
@@ -258,6 +305,6 @@ double solver_core::evaluate_qmc_weight(std::vector<std::tuple<orbital_t, orbita
  config.evaluate();
  config.remove_all();
 
- return config.current_weight;
+ return std::abs(config.current_weight);
 };
 

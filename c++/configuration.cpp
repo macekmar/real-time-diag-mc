@@ -235,7 +235,8 @@ void Configuration::evaluate() {
  if (params.method != 0)
   current_weight = kernels_evaluate();
  else
-  current_weight = potential * std::abs(keldysh_sum());
+  // no absolute value as this is used for sn
+  current_weight = potential * keldysh_sum();
 }
 
 /**

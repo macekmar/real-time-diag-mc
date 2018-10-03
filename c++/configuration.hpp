@@ -144,8 +144,8 @@ class Configuration {
  int order;
  array<dcomplex, 2> current_kernels;
  array<dcomplex, 2> accepted_kernels; // kernels of the last accepted config
- double current_weight;
- double accepted_weight; // weight of the last accepted config
+ dcomplex current_weight; // weights have to be complex as they are used for sn measure in the oldway method
+ dcomplex accepted_weight; // weight of the last accepted config
  array<long, 1> nb_cofact;
  array<long, 1> nb_inverse;
 

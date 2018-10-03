@@ -18,9 +18,11 @@ struct solve_parameters_t {
  // ----   Problem definition parameters
 
  /// External Keldysh contour points for the creation operators
+ // times should be within [-interaction_start, 0]]
  std::vector<std::tuple<orbital_t, int, timec_t, int>> creation_ops;
 
  /// External Keldysh contour points for the annihilation operators
+ // times should be within [-interaction_start, 0]]
  std::vector<std::tuple<orbital_t, int, timec_t, int>> annihilation_ops;
 
  /// External alphas

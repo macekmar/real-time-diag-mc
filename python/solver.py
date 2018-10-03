@@ -6,9 +6,9 @@ from datetime import datetime, timedelta
 from time import clock
 import cPickle
 from os.path import splitext
-from scipy.stats import linregress
 from utility import squeeze_except, reduce_binning
 import warnings
+from copy import deepcopy
 
 ### Complex numbers are everywhere in this solver, one should not mess with them
 warnings.filterwarnings('error', '', np.ComplexWarning)
@@ -348,7 +348,9 @@ def refine_and_save_results(results, params, start_time, overwrite=True):
 
         ### parameters
         run.create_group('parameters')
-        run['parameters'].update(params)
+        for key in params:
+            if key not in ['g0_lesser', 'g0_greater']: # too big to put in a file
+                run['parameters'][key] = deepcopy(params[key])
 
         ### data
         run.create_group('results_all')
@@ -435,7 +437,7 @@ def solve(params):
     if params['staircase']:
         orders = np.arange(params['min_perturbation_order'] + 1, params['max_perturbation_order'] + 1)
         if params['forbid_parity_order'] != -1:
-            orders = orders[orders % 2 == params['forbid_parity_order']]
+            orders = orders[orders % 2 != params['forbid_parity_order']]
     else:
         orders = [params['max_perturbation_order']]
 
