@@ -19,7 +19,7 @@ def variance_error(data, comm=MPI.COMM_WORLD, weight=None, unbiased=True):
     the processes of communicator `comm`.
     `weight` can be a number (the weight of this process), an array with same shape as `data`, or None (same
     weights for all).
-    Returns an array of complex with same shape as `data`.
+    Returns an array of floats with same shape as `data`.
     """
     if comm.size == 1:
         return np.zeros_like(data)
@@ -92,6 +92,8 @@ def calc_ideal_U(pn, U, r=2.):
     For example, if pn[-1] and pn[-2] are non zero, this function will return
     r*U*pn[-2]/pn[-1]. If pn[-1] and pn[-3] are non zero but pn[-2] == 0, it
     will return U*sqrt(r*pn[-3]/pn[-1]).
+
+    The result of this function MUST be process-independant.
     """
     nonzero_ind = np.nonzero(pn)[0]
     pn_nonzero = pn[nonzero_ind].astype(np.float32)
@@ -311,7 +313,9 @@ def refine_and_save_results(results, params, start_time, overwrite=True):
      > 'results_all': store results gathered over all processes
      > 'results_part': store results gathered over a partition of processes
      (used for error estimation)
-     > 'metadata': some data about how the run went
+     > 'metadata': some data about how the run went, in particular:
+       > 'run_time' the total run time for one process (not the cpu time)
+       > 'durations' the cpu time of the QMC at each order, in seconds
      > 'parameters': a copy of `params`
 
     """
@@ -414,36 +418,50 @@ def solve(params):
     start_time = datetime.now()
 
     ### manage parameters
-    def check_params(params, reference):
+    def extract_and_check_params(params, reference):
+        output = {}
         for key, default in reference.items():
             if key not in params:
                 if default is None:
                     raise ValueError, "Parameter '{0}' is missing !".format(key)
                 else:
-                    params[key] = default
+                    output[key] = default
                     if world.rank == 0:
                         print "Parameter {0} defaulted to {1}".format(key, str(default))
+            else:
+                output[key] = params[key]
+                del params[key]
+        return output
 
-    check_params(params, PARAMS_PYTHON_KEYS)
-    params_cpp = params.copy()
-    check_params(params, PARAMS_CPP_KEYS)
-    for key in PARAMS_PYTHON_KEYS:
-        del params_cpp[key]
+    # python parameters should not change between subruns
+    params_py = extract_and_check_params(params, PARAMS_PYTHON_KEYS)
+    # cpp parameters are those given to the cpp solvers, they can change between subruns
+    params_cpp = extract_and_check_params(params, PARAMS_CPP_KEYS)
 
-    if params['staircase'] and params['store_configurations'] > 0:
+    if params_py['staircase'] and params_cpp['store_configurations'] > 0:
         raise ValueError, 'Cannot store configurations in staircase mode.'
 
+    ### check seeds are different
+    if world.size > 1:
+        seeds_list = world.gather(params_cpp['random_seed'])
+        if world.rank == 0:
+            seeds_set = set(seeds_list)
+            if len(seeds_list) != len(seeds_set):
+                warnings.warn('Some random seeds are equal!', RuntimeWarning)
+
     ### manage staircase
-    if params['staircase']:
-        orders = np.arange(params['min_perturbation_order'] + 1, params['max_perturbation_order'] + 1)
-        if params['forbid_parity_order'] != -1:
-            orders = orders[orders % 2 != params['forbid_parity_order']]
+    if params_py['staircase']:
+        params_py['max_staircase_order'] = params_cpp['max_perturbation_order'] # for reference
+        params_py['min_staircase_order'] = params_cpp['min_perturbation_order'] # for reference
+        orders = np.arange(params_py['min_staircase_order'] + 1, params_py['max_staircase_order'] + 1)
+        if params_cpp['forbid_parity_order'] != -1:
+            orders = orders[orders % 2 != params_cpp['forbid_parity_order']]
     else:
-        orders = [params['max_perturbation_order']]
+        orders = [params_cpp['max_perturbation_order']]
 
     ### result structure
     results = []
-    if params['method'] != 0:
+    if params_cpp['method'] != 0:
         res_structure = ['pn', ('bin_times', 'kernels'), ('bin_times', 'nb_kernels'),
                 ('dirac_times', 'kernel_diracs')]
     else:
@@ -458,68 +476,87 @@ def solve(params):
         if k == 1: # at order 1, force disable double moves
             params_cpp['w_dbl'] = 0.
         params_cpp['max_perturbation_order'] = k
+        params_cpp['min_perturbation_order'] = 0
         S = SolverCore(**params_cpp)
-        S.set_g0(params['g0_lesser'], params['g0_greater'])
+        S.set_g0(params_py['g0_lesser'], params_py['g0_greater'])
 
-        ### prerun
-        start = clock()
-        if world.rank == 0:
-            print '\n* Pre run'
-        S.run(params['nb_warmup_cycles'], True)
-        prerun_duration = world.allreduce(float(clock() - start)) / float(world.size) # take average
-        if world.rank == 0:
-            print 'pn (node 0):', S.pn
-        new_U = calc_ideal_U(world.allreduce(S.pn), S.U)
+        ### prerun(s)
+        prerun_nb = 0
+        while prerun_nb < 10:
+            start = clock()
+            if world.rank == 0:
+                print '\n* Pre run'
+            S.run(params_py['nb_warmup_cycles'], True)
+            prerun_duration = world.allreduce(float(clock() - start)) / float(world.size) # take average
+            prerun_nb += 1
+
+            new_U_error = variance_error(calc_ideal_U(S.pn, S.U), world) # error on new U
+            pn_all = world.allreduce(S.pn)
+            if world.rank == 0:
+                print 'pn (all nodes):', pn_all
+            new_U = calc_ideal_U(pn_all, S.U) # new U for all process
+
+            ### prepare new solver taking new U into account
+            if world.rank == 0:
+                print 'Changing U: {0} => {1} (+-{2})'.format(S.U, new_U, new_U_error)
+            params_cpp['U'] = new_U # is also used as a first guess U in next order
+            S = SolverCore(**params_cpp)
+            S.set_g0(params_py['g0_lesser'], params_py['g0_greater'])
+
+            ### if new_U badly estimated redo prerun, else go on
+            if new_U_error < 0.5 * new_U:
+                break
+            if world.rank == 0:
+                print r'/!\ Bad U estimation, redo prerun...'
+                print
+
+        if new_U_error >= 0.5 * new_U and world.rank == 0:
+            print r'/!\ Could no find a good U estimation in a reasonnable number of preruns. Using last estimation and go on anyway.'
 
         ### time estimation
-        save_period = params['save_period']
+        save_period = params_py['save_period']
         if save_period > 0:
-            nb_cycles_per_subrun = int(float(params['nb_warmup_cycles'] * save_period) / prerun_duration + 0.5)
+            nb_cycles_per_subrun = int(float(params_py['nb_warmup_cycles'] * save_period) / prerun_duration + 0.5)
             nb_cycles_per_subrun = max(1, nb_cycles_per_subrun) # no empty subrun
         else:
-            nb_cycles_per_subrun = params['nb_cycles']
+            nb_cycles_per_subrun = params_py['nb_cycles']
 
         if world.rank == 0:
             print 'Nb cycles per subrun =', nb_cycles_per_subrun
-            est_run_time = prerun_duration * float(params['nb_cycles'] + params['nb_warmup_cycles']) \
-                            / float(params['nb_warmup_cycles'])
+            est_run_time = prerun_duration * float(params_py['nb_cycles'] + params_py['nb_warmup_cycles']) \
+                            / float(params_py['nb_warmup_cycles'])
             print 'Estimated run time =', timedelta(seconds=est_run_time)
 
-        ### prepare new solver taking prerun into account
-        if world.rank == 0:
-            print 'Changing U:', S.U, '=>', new_U
-        params_cpp['U'] = new_U # is also used as a first guess U in next order
-        S = SolverCore(**params_cpp)
-        S.set_g0(params['g0_lesser'], params['g0_greater'])
+        params_all = dict(params_cpp, **params_py) # merge params, they are not expected to change anymore
 
         ### warmup
         if world.rank == 0:
             print '\n* Warmup'
-        S.run(params['nb_warmup_cycles'], False)
+        S.run(params_py['nb_warmup_cycles'], False)
 
         ### main run
         if world.rank == 0:
             print '\n* Main runs'
 
-        nb_cycles_left = params['nb_cycles']
+        nb_cycles_left = params_py['nb_cycles']
         append = True
         while nb_cycles_left > 0:
             nb_cycles_todo = min(nb_cycles_per_subrun, nb_cycles_left)
             S.run(nb_cycles_todo, True)
             nb_cycles_left -= nb_cycles_todo
 
-            extract_results(S, results, res_structure, params, append)
+            extract_results(S, results, res_structure, params_all, append)
             append = False
 
             if world.rank == 0:
                 print 'pn (all nodes):', S.pn # results have been gathered previously
                 add_cn_to_results(results, 'results_all')
                 add_cn_to_results(results, 'results_part')
-                if params['filename'] is not None:
-                    refine_and_save_results(results, params, start_time)
+                if params_py['filename'] is not None:
+                    refine_and_save_results(results, params_all, start_time)
 
-    if params['store_configurations'] > 0 and not params['staircase']:
-        save_configuration_list(S, splitext(params['filename'])[0])
+    if params_cpp['store_configurations'] > 0 and not params_py['staircase']:
+        save_configuration_list(S, splitext(params_py['filename'])[0])
 
     return results
 

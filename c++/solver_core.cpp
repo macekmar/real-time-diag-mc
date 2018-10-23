@@ -148,7 +148,7 @@ void solver_core::set_g0(triqs::gfs::gf_view<triqs::gfs::retime, triqs::gfs::mat
 };
 
 // --------------------------------
-// Run the Monte-Carlo, gather results of all world processes and print some info (cumulated over all world processes).
+// Run the Monte-Carlo and print some info.
 int solver_core::run(const int nb_cycles, const bool do_measure, const int max_time = -1) {
  if (status < not_ready) TRIQS_RUNTIME_ERROR << "Run aborted";
  if (status < ready) TRIQS_RUNTIME_ERROR << "Unperturbed Green's functions have not been set !";
@@ -157,6 +157,7 @@ int solver_core::run(const int nb_cycles, const bool do_measure, const int max_t
   TRIQS_RUNTIME_ERROR << "Order zero cannot run";
 
  mpi::communicator world;
+ mpi::communicator self = MPI_COMM_SELF;
  world.barrier();
 
  int run_status;
@@ -172,11 +173,9 @@ int solver_core::run(const int nb_cycles, const bool do_measure, const int max_t
  qmc_duration = qmc_duration + qmc.get_duration();
  if (world.rank() == 0) std::cout << "done" << std::endl;
 
- // Collect results
- if (world.rank() == 0) std::cout << "Collecting results... " << std::flush;
- qmc.collect_results(world);
+ // Make data accessible from results arrays, but no gathering happens here
+ qmc.collect_results(self);
  cum_qmc_duration = mpi::mpi_all_reduce(qmc_duration);
- if (world.rank() == 0) std::cout << "done" << std::endl;
 
  array<long, 1> nb_cofact = mpi::mpi_all_reduce(config.nb_cofact);
  array<long, 1> nb_inverse = mpi::mpi_all_reduce(config.nb_inverse);
@@ -184,7 +183,7 @@ int solver_core::run(const int nb_cycles, const bool do_measure, const int max_t
  // print acceptance rates
  if (world.rank() == 0) {
   std::cout << "Duration (all nodes): " << cum_qmc_duration << " seconds" << std::endl;
-  std::cout << "Nb of measures (all nodes): " << get_nb_measures() << std::endl;
+  std::cout << "Nb of measures (node 0): " << get_nb_measures() << std::endl;
   std::cout << "Acceptance rates (node 0):" << std::endl;
   double total_weight = 0;
   double total_rate = 0;

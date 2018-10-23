@@ -64,6 +64,7 @@ S.set_g0(g0_less, g0_grea)
 
 S.run(100, False) # warmup
 S.run(1000, True)
+S.collect_results(1) # gather on all processes
 
 if mpi.world.rank == 0:
     kernels = S.kernels
