@@ -16,4 +16,13 @@ do
     echo
 done
 
+for file in collecting.py
+do
+    echo "------------ TEST $file 4 proc ------------"
+
+    mpirun -np 4 ../../build_pytriqs $file
+
+    echo
+    echo
+done
 exit 0

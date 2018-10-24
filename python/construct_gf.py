@@ -100,33 +100,8 @@ class TimeGF(object):
 
         return PulsGF(puls, spectrum)
 
-    def convol_g_right(self, g0, cutoff_g0):
+    def convol_g0(self, g0, cutoff_g0, side=None):
         """
-        Orbitals not implemented yet
-        """
-        if self.half != 'both':
-            warnings.warn(RuntimeWarning, 'The function is not completely known, convolution is only partial!')
-
-        times = self.times
-        delta_t = times[1] - times[0]
-        times_g0 = np.arange(-(cutoff_g0 // delta_t), cutoff_g0 // delta_t + 0.5, 1.) * delta_t
-        if len(times_g0) < len(times):
-            raise ValueError, 'Need a larger cutoff.'
-        new_times = convolve_coord(times, times_g0, mode='same')
-
-        values = delta_t * convolve(self.values, g0(times_g0), mode='same', axis=1)
-
-        for k, t in enumerate(self.dirac_times):
-            shifted_new_times = new_times - t
-            while shifted_new_times.ndim + 1 < self.dirac_values.ndim:
-                shifted_new_times = shifted_new_times[:, np.newaxis]
-            values += g0(shifted_new_times) * self.dirac_values[:, k:k+1]
-
-        return TimeGF(new_times, values, None, None, half='both')
-
-    def convol_g_left(self, g0, cutoff_g0):
-        """
-        Orbitals not implemented yet
         """
         if self.half != 'both':
             warnings.warn(RuntimeWarning, 'The function is not completely known, convolution is only partial!')
@@ -138,13 +113,45 @@ class TimeGF(object):
             raise ValueError, 'Need a larger cutoff.'
         new_times = convolve_coord(times, times_g0, mode='same')
 
-        values = delta_t * convolve(self.values, g0(times_g0), mode='same', axis=1)
+        g0_values = g0(times_g0)
+        no_orbital = g0_values.ndim == 1
+
+        if no_orbital:
+            values = delta_t * convolve(self.values, g0_values, mode='same', axis=1)
+        else: # with orbitals
+            if g0_values.shape[1] != g0_values.shape[2]:
+                raise ValueError, 'g0 array is not square'
+            if side not in ['right', 'left']:
+                raise ValueError, 'side must be specified: left or right'
+            right = side == 'right'
+            nb_orb = self.values.shape[2]
+            shape = list(self.values.shape)
+            shape[1] = len(new_times)
+            values = np.zeros(shape, dtype=complex)
+            for j in range(nb_orb):
+                for q in range(nb_orb):
+                    if right:
+                        values[:, :, j] += convolve(self.values[:, :, q], g0_values[:, q, j], mode='same', axis=1)
+                    else:
+                        values[:, :, j] += convolve(self.values[:, :, q], g0_values[:, j, q], mode='same', axis=1)
+            values *= delta_t
 
         for k, t in enumerate(self.dirac_times):
             shifted_new_times = new_times - t
-            while shifted_new_times.ndim + 1 < self.dirac_values.ndim:
-                shifted_new_times = shifted_new_times[:, np.newaxis]
-            values += g0(shifted_new_times) * self.dirac_values[:, k:k+1]
+            g0_values = g0(shifted_new_times)
+            while g0_values.ndim + 1 < self.dirac_values.ndim:
+                g0_values = g0_values[:, np.newaxis]
+
+            if no_orbital:
+                values += g0_values * self.dirac_values[:, k:k+1]
+
+            else:
+                for j in range(nb_orb):
+                    for q in range(nb_orb):
+                        if right:
+                            values[:, :, j] += self.dirac_values[:, k:k+1, q] * g0_values[:, q, j]
+                        else:
+                            values[:, :, j] += g0_values[:, j, q] * self.dirac_values[:, k:k+1, q]
 
         return TimeGF(new_times, values, None, None, half='both')
 
@@ -153,10 +160,10 @@ class TimeGF(object):
         Promote the perturbation series to next order. The thus freed order
         zero is filled thanks to the function `new_g0` and the arrays
         `new_dirac_times` and `new_dirac_values`.
-
-        Orbitals not implemented yet
         """
-        new_values = new_g0(self.times)[np.newaxis, :]
+        # new_values are broadcasted to fit the shape of self.values.
+        # It works with orbitals too.
+        new_values = new_g0(self.times)[np.newaxis, ...]
         while new_values.ndim != self.values.ndim:
             new_values = new_values[..., np.newaxis]
         new_values = new_values * np.ones(self.values.shape[1:])
@@ -561,7 +568,7 @@ if __name__ == '__main__':
     assert (f.dirac_values[1:, :, :] == 1.).all() # other orders untouched
 
     ### test TimeGF.increment_order
-    if False:
+    if False: # diracs are not yet implemented
         times = np.linspace(0, 1, 10)
         values = np.zeros((2, 10, 3)) # 2 orders, 10 times, 3 parts
         dirac_times = np.array([0.1])
