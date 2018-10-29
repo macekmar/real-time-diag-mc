@@ -75,7 +75,10 @@ def generalized_fftconvolve(in1, in2, subscripts=r't, t -> t'):
 
     # Speed up FFT by padding to optimal size for FFTPACK
     opt_length = _next_regular(length)
-    ret = ifft(np.einsum(subscripts, fft(in1, opt_length, axis=0), fft(in2, opt_length, axis=0)), axis=0)
+    in1_fft = fft(in1, opt_length, axis=0)
+    in2_fft = fft(in2, opt_length, axis=0)
+    # print np.einsum_path(subscripts, in1_fft, in2_fft, optimize='optimal')[1]
+    ret = ifft(np.einsum(subscripts, in1_fft, in2_fft), axis=0)
 
     return _centered(ret[:length].copy(), len(in1))
 
@@ -121,6 +124,16 @@ def compute_correlator(archive, g0_func):
                 raise ValueError
 
         G = np.empty_like(K)
+
+        # if g0.ndim == 1:
+        #     G = generalized_fftconvolve(K, g0, r'nt...,t->nt...') * delta_t
+        # elif g0.ndim == 3:
+        #     G = generalized_fftconvolve(K, g0, r'ntj...,tij->nti...') * delta_t
+        # elif g0.ndim == 5:
+        #     G = generalized_fftconvolve(K, g0, r'ntjl...,tijkl->ntik...') * delta_t
+        # else:
+        #     raise ValueError
+
         for n in range(len(K)):
             if g0.ndim == 1:
                 G[n] = generalized_fftconvolve(K[n], g0, r't...,t->t...') * delta_t

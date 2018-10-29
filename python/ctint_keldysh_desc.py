@@ -93,7 +93,7 @@ c.add_method("""int run (int nb_cycles, bool do_measure)""",
 c.add_method("""bool collect_results (int size_partition)""",
              doc = """ """)
 
-c.add_method("""double evaluate_qmc_weight (std::vector<std::tuple<orbital_t,orbital_t,timec_t>> vertices)""",
+c.add_method("""dcomplex evaluate_qmc_weight (std::vector<std::tuple<orbital_t,orbital_t,timec_t>> vertices)""",
              doc = """ """)
 
 c.add_property(name = "qmc_duration",

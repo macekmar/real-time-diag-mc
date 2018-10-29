@@ -279,6 +279,8 @@ int solver_core::finish(const int run_status) {
 
 /**
  * Evaluate and return QMC weight with the given vertices.
+ * For oldway method it returns a complex value. Modulus gives the weight,
+ * value/weight gives the sign.
  *
  * Vertices are added to Configuration, then removed, so that the perturbation
  * order goes back to zero.  Any previous vertex in Configuration is removed
@@ -286,7 +288,7 @@ int solver_core::finish(const int run_status) {
  *
  * This is a utility function, not to be used during a Monte-Carlo run.
  */
-double solver_core::evaluate_qmc_weight(std::vector<std::tuple<orbital_t, orbital_t, timec_t>> vertices) {
+dcomplex solver_core::evaluate_qmc_weight(std::vector<std::tuple<orbital_t, orbital_t, timec_t>> vertices) {
  if (vertices.size() > params.max_perturbation_order)
   TRIQS_RUNTIME_ERROR << "Too many vertices compared to the max perturbation order.";
 
@@ -295,15 +297,23 @@ double solver_core::evaluate_qmc_weight(std::vector<std::tuple<orbital_t, orbita
  config.remove_all();
 
  orbital_t i, j;
+ double pot;
  for (auto it = vertices.rbegin(); it != vertices.rend(); ++it) {
   i = std::get<0>(*it);
   j = std::get<1>(*it);
-  config.insert(0, {i, j, std::get<2>(*it), 0, pot_data.potential_of(i, j)});
+  pot = pot_data.potential_of(i, j);
+
+  if (i < 0 or i >= params.nb_orbitals or j < 0 or j >= params.nb_orbitals)
+   TRIQS_RUNTIME_ERROR << "Orbital not recognized";
+  if (pot == 0.)
+   TRIQS_RUNTIME_ERROR << "These orbitals have no potential"; // Configuration should never be fed with a zero potential vertex, or it breaks down.
+
+  config.insert(0, {i, j, std::get<2>(*it), 0, pot});
  }
 
  config.evaluate();
  config.remove_all();
 
- return std::abs(config.current_weight);
+ return config.current_weight;
 };
 
