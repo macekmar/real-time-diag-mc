@@ -79,20 +79,6 @@ struct potential_data_t {
 
 inline potential_data_t make_potential_data(int nb_orbital, std::tuple<std::vector<double>, std::vector<orbital_t>, std::vector<orbital_t>> tuple) { return {nb_orbital, std::get<0>(tuple), std::get<1>(tuple), std::get<2>(tuple)}; };
 
-/// Vertex random generator
-struct vertex_rand_gen {
- potential_data_t potential_data;
- timec_t t_max;
- triqs::mc_tools::random_generator &rng;
-
- vertex_t operator()() {
-  int k = rng(potential_data.values.size());
-  return {potential_data.i_list[k], potential_data.j_list[k], -rng(t_max), 0, potential_data.values[k]};
- };
-
- double size() { return potential_data.values.size() * t_max; };
-};
-
 // --------------   G0 adaptor   --------------------------------------
 
 

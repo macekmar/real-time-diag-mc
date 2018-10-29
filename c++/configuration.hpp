@@ -3,6 +3,7 @@
 #include <triqs/det_manip.hpp>
 
 #include <forward_list>
+#include <set>
 #include <iterator>
 #include <utility>
 
@@ -148,6 +149,7 @@ class Configuration {
  dcomplex accepted_weight; // weight of the last accepted config
  array<long, 1> nb_cofact;
  array<long, 1> nb_inverse;
+ std::set<timec_t> times_list; // sorted container
 
  // registered configurations
  std::vector<std::vector<double>> config_list;
@@ -178,6 +180,7 @@ class Configuration {
  void remove2(int k1, int k2);
  void change_vertex(int k, vertex_t vtx);
  vertex_t get_vertex(int p) const;
+ inline timec_t get_time(int k) const;
 
  void remove_all() { while (order > 0) remove(0); };
 

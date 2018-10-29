@@ -48,6 +48,8 @@ Configuration::Configuration(g0_keldysh_alpha_t green_function, const solve_para
    TRIQS_RUNTIME_ERROR << "Pairs of annihilation and creation points must have the same spin";
 
   matrices[annihila_pts[i].s].insert_at_end(annihila_pts[i], creation_pts[i]);
+  times_list.insert(annihila_pts[i].t);
+  times_list.insert(creation_pts[i].t);
  }
 
  current_kernels = array<dcomplex, 2>(params.max_perturbation_order + matrices[spin_dvpt].size(), 2);
@@ -64,6 +66,8 @@ Configuration::Configuration(g0_keldysh_alpha_t green_function, const solve_para
  * Insert a vertex at position k (before index k).
  */
 void Configuration::insert(int k, vertex_t vtx) {
+ times_list.insert(vtx.t);
+
  auto pt = vtx.get_up_pt();
  matrices[up].insert(k, k, pt, pt);
  pt = vtx.get_down_pt();
@@ -79,6 +83,9 @@ void Configuration::insert(int k, vertex_t vtx) {
  * Insert two vertices such that `vtx1` is now at position k1 and `vtx2` at position k2.
  */
 void Configuration::insert2(int k1, int k2, vertex_t vtx1, vertex_t vtx2) {
+ times_list.insert(vtx1.t);
+ times_list.insert(vtx2.t);
+
  auto pt1 = vtx1.get_up_pt();
  auto pt2 = vtx2.get_up_pt();
  matrices[up].insert2(k1, k2, k1, k2, pt1, pt2, pt1, pt2);
@@ -96,6 +103,8 @@ void Configuration::insert2(int k1, int k2, vertex_t vtx1, vertex_t vtx2) {
  * Remove the vertex at position `k`.
  */
 void Configuration::remove(int k) {
+ times_list.erase(get_time(k)); // before matrix removal
+
  for (auto& m : matrices) m.remove(k, k);
 
  potential /= potential_list[k];
@@ -108,6 +117,9 @@ void Configuration::remove(int k) {
  * Remove the vertices at positions `k1` and `k2`.
  */
 void Configuration::remove2(int k1, int k2) {
+ times_list.erase(get_time(k1));
+ times_list.erase(get_time(k2));
+
  for (auto& m : matrices) m.remove2(k1, k2, k1, k2);
 
  potential /= potential_list[k1] * potential_list[k2];
@@ -120,6 +132,9 @@ void Configuration::remove2(int k1, int k2) {
  * Change vertex at position `k` into `vtx`.
  */
 void Configuration::change_vertex(int k, vertex_t vtx) {
+ times_list.erase(get_time(k));
+ times_list.insert(vtx.t);
+
  auto pt = vtx.get_up_pt();
  matrices[up].change_row(k, pt);
  matrices[up].change_col(k, pt);
@@ -141,6 +156,10 @@ vertex_t Configuration::get_vertex(int k) const {
  auto pt_up = matrices[up].get_x(k);
  auto pt_down = matrices[down].get_x(k);
  return {pt_up.x, pt_down.x, pt_up.t, pt_up.k_index, potential_list[k]}; // no consistency check is done
+};
+
+inline timec_t Configuration::get_time(int k) const {
+ return matrices[up].get_x(k).t;
 };
 
 /**

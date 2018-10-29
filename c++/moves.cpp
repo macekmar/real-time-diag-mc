@@ -13,14 +13,15 @@ dcomplex insert::attempt() {
  if (quick_exit) return 0;
 
  // insert the new line and col.
- auto vtx = get_random_vertex();
+ auto vtx = rvg(); // vertex random generator
+ double proba = rvg.probability(vtx);
  config.insert(0, vtx);
  config.evaluate();
 
  after_attempt();
 
  // The Metropolis ratio;
- return normalization / (k + 1) * config.current_weight / config.accepted_weight;
+ return normalization / proba / (k + 1) * config.current_weight / config.accepted_weight;
 }
 
 dcomplex insert::accept() {
@@ -43,8 +44,9 @@ dcomplex insert2::attempt() {
  if (quick_exit) return 0;
 
  // insert the new lines and cols.
- auto vtx1 = get_random_vertex();
- auto vtx2 = get_random_vertex();
+ auto vtx1 = rvg();
+ auto vtx2 = rvg();
+ double proba = rvg.probability(vtx1) * rvg.probability(vtx2);
  config.insert2(0, 1, vtx1, vtx2);
 
  config.evaluate();
@@ -52,7 +54,7 @@ dcomplex insert2::attempt() {
  after_attempt();
 
  // The Metropolis ratio
- return normalization * normalization / ((k + 1) * (k + 2)) * config.current_weight / config.accepted_weight;
+ return normalization * normalization / (proba * (k + 1) * (k + 2)) * config.current_weight / config.accepted_weight;
 }
 
 dcomplex insert2::accept() {
@@ -84,7 +86,7 @@ dcomplex remove::attempt() {
  after_attempt();
 
  // The Metropolis ratio
- return k / normalization * config.current_weight / config.accepted_weight;
+ return rvg.probability(removed_vtx) * k / normalization * config.current_weight / config.accepted_weight;
 }
 
 dcomplex remove::accept() {
@@ -118,7 +120,7 @@ dcomplex remove2::attempt() {
  after_attempt();
 
  // The Metropolis ratio
- return k * (k - 1) / (normalization * normalization) * config.current_weight / config.accepted_weight;
+ return rvg.probability(removed_vtx1) * rvg.probability(removed_vtx2) * k * (k - 1) / (normalization * normalization) * config.current_weight / config.accepted_weight;
 }
 
 dcomplex remove2::accept() {
@@ -143,14 +145,15 @@ dcomplex shift::attempt() {
  p = rng(k);                        // Choose one of the vertices
  removed_vtx = config.get_vertex(p); // old vertex, to be saved for the removal case
 
- auto new_vtx = get_random_vertex(); // new vertex
+ auto new_vtx = rvg(); // new vertex
+ double proba = rvg.probability(new_vtx);
  config.change_vertex(p, new_vtx);
  config.evaluate();
 
  after_attempt();
 
  // The Metropolis ratio
- return config.current_weight / config.accepted_weight;
+ return rvg.probability(removed_vtx) / proba * config.current_weight / config.accepted_weight;
 }
 
 dcomplex shift::accept() {
