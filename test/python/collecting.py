@@ -35,7 +35,7 @@ p["alpha"] = 0.5
 p["nb_orbitals"] = 1
 p["potential"] = ([1.], [0], [0])
 
-p["U"] = 3. # U_qmc
+p["U"] = [3.] * 4 # U_qmc
 p["w_ins_rem"] = 1
 p["w_dbl"] = 0
 p["w_shift"] = 0

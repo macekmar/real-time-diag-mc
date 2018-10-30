@@ -91,7 +91,7 @@ int main() {
  std::get<1>(params.potential) = {0};
  std::get<2>(params.potential) = {0};
 
- params.U = 0.05;
+ params.U = {0.05, 0.05, 0.05};
  params.w_ins_rem = 1.0;
  params.w_dbl = 0.5;
  params.w_shift = 0.5;

@@ -1,7 +1,6 @@
 from pytriqs.utility import mpi
 from ctint_keldysh import SolverCore
 import numpy as np
-import matplotlib.pyplot as plt
 
 """
 Test the symmetry of the kernels in the particle-hole symmetric case (epsilon_d=0, alpha=0.5)
@@ -47,7 +46,7 @@ p["alpha"] = 0.5
 p["nb_orbitals"] = 1
 p["potential"] = ([1.], [0], [0])
 
-p["U"] = 0.5 # U_qmc
+p["U"] = [0.5] * 4 # U_qmc
 p["w_ins_rem"] = 0
 p["w_dbl"] = 1
 p["w_shift"] = 0

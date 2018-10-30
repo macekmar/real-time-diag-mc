@@ -13,12 +13,12 @@ struct common {
  const solve_parameters_t &params;
  const RandomVertexGenerator& rvg;
  triqs::mc_tools::random_generator &rng;
- const double normalization;
+ const std::vector<double> U;
  bool quick_exit = false;
 
  common(Configuration &config, const solve_parameters_t &params,
         triqs::mc_tools::random_generator &rng, const RandomVertexGenerator &rvg)
-    : config(config), params(params), rng(rng), rvg(rvg), normalization(params.U) {}
+    : config(config), params(params), rng(rng), rvg(rvg), U(params.U) {}
 
  /// Tell if `k` is an allowed order
  bool is_quick_exit(int const &k) {

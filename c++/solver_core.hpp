@@ -57,6 +57,6 @@ class solver_core {
  array<long, 4> get_nb_kernels() const { return nb_kernels; }
  array<double, 1> get_bin_times() const { return kernels_binning.get_bin_times(); }
  array<double, 1> get_dirac_times() const { return kernels_binning.get_dirac_times(); }
- double get_U() const { return params.U; }
+ std::vector<double> get_U() const { return params.U; }
  int get_max_order() const { return params.max_perturbation_order; }
 };

@@ -66,7 +66,7 @@ template <> struct py_converter<solve_parameters_t> {
   res.alpha = convert_from_python<double>(PyDict_GetItemString(dic, "alpha"));
   res.nb_orbitals = convert_from_python<int>(PyDict_GetItemString(dic, "nb_orbitals"));
   res.potential = convert_from_python<std::tuple<std::vector<double>, std::vector<orbital_t>, std::vector<orbital_t> >>(PyDict_GetItemString(dic, "potential"));
-  res.U = convert_from_python<double>(PyDict_GetItemString(dic, "U"));
+  res.U = convert_from_python<std::vector<double>>(PyDict_GetItemString(dic, "U"));
   _get_optional(dic, "w_ins_rem"             , res.w_ins_rem                ,1.0);
   _get_optional(dic, "w_dbl"                 , res.w_dbl                    ,0.5);
   _get_optional(dic, "w_shift"               , res.w_shift                  ,0.0);
@@ -134,7 +134,7 @@ template <> struct py_converter<solve_parameters_t> {
   _check_mandatory<double                                                                          >(dic, fs, err, "alpha"                 , "double");
   _check_mandatory<int                                                                             >(dic, fs, err, "nb_orbitals"           , "int");
   _check_mandatory<std::tuple<std::vector<double>, std::vector<orbital_t>, std::vector<orbital_t> >>(dic, fs, err, "potential"             , "std::tuple<std::vector<double>, std::vector<orbital_t>, std::vector<orbital_t> >");
-  _check_mandatory<double                                                                          >(dic, fs, err, "U"                     , "double");
+  _check_mandatory<std::vector<double>                                                             >(dic, fs, err, "U"                     , "std::vector<double>");
   _check_optional <double                                                                          >(dic, fs, err, "w_ins_rem"             , "double");
   _check_optional <double                                                                          >(dic, fs, err, "w_dbl"                 , "double");
   _check_optional <double                                                                          >(dic, fs, err, "w_shift"               , "double");

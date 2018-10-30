@@ -4,6 +4,8 @@ from pytriqs.archive import *
 import numpy as np
 import os
 
+### TODO: Quite old test, to upgrade
+
 p = {}
 p["beta"] = 100.0
 p["Gamma"] = 0.5*0.5 # gamma = 0.5

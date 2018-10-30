@@ -168,7 +168,7 @@ def extract_results(solver, results, res_structure, params, append):
     ### metadata that are different in each subrun
     res['metadata'] = {}
     res['metadata']['max_order'] = solver.max_order
-    res['metadata']['U'] = solver.U
+    res['metadata']['U'] = solver.U[-1]
     res['metadata']['durations'] = solver.qmc_duration
     res['metadata']['nb_measures'] = solver.nb_measures
 
@@ -479,6 +479,7 @@ def solve(params):
             params_cpp['w_dbl'] = 0.
         params_cpp['max_perturbation_order'] = k
         params_cpp['min_perturbation_order'] = 0
+        params_cpp['U'] = [params_cpp['U']] * k
         S = SolverCore(**params_cpp)
         S.set_g0(params_py['g0_lesser'], params_py['g0_greater'])
 
@@ -492,16 +493,16 @@ def solve(params):
             prerun_duration = world.allreduce(float(clock() - start)) / float(world.size) # take average
             prerun_nb += 1
 
-            new_U_error = variance_error(calc_ideal_U(S.pn, S.U), world) # error on new U
+            new_U_error = variance_error(calc_ideal_U(S.pn, S.U[-1]), world) # error on new U
             pn_all = world.allreduce(S.pn)
             if world.rank == 0:
                 print 'pn (all nodes):', pn_all
-            new_U = calc_ideal_U(pn_all, S.U) # new U for all process
+            new_U = calc_ideal_U(pn_all, S.U[-1]) # new U for all process
 
             ### prepare new solver taking new U into account
             if world.rank == 0:
-                print 'Changing U: {0} => {1} (+-{2})'.format(S.U, new_U, new_U_error)
-            params_cpp['U'] = new_U # is also used as a first guess U in next order
+                print 'Changing U: {0} => {1} (+-{2})'.format(S.U[-1], new_U, new_U_error)
+            params_cpp['U'] = [new_U] * k # is also used as a first guess U in next order
             S = SolverCore(**params_cpp)
             S.set_g0(params_py['g0_lesser'], params_py['g0_greater'])
 

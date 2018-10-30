@@ -50,8 +50,8 @@ struct solve_parameters_t {
 
  // ----   QMC parameters
 
- /// U
- double U;
+ /// U list, one for each order (including forbidden ones)
+ std::vector<double> U;
 
  /// weight of insert and remove
  double w_ins_rem = 1.0;
