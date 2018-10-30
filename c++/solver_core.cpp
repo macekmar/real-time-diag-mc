@@ -52,7 +52,8 @@ using triqs::arrays::range;
  */
 solver_core::solver_core(solve_parameters_t const& params)
    : qmc(params.random_name, params.random_seed, 1.0, params.verbosity, false), // first_sign is not used
-     params(params)
+     params(params),
+     rvg(std::unique_ptr<RandomVertexGenerator>(new uniform_rvg(qmc.get_rng(), params)))
 {
 
  if (mpi::communicator().rank() == 0 and params.store_configurations != 0)
@@ -122,17 +123,21 @@ void solver_core::set_g0(triqs::gfs::gf_view<triqs::gfs::retime, triqs::gfs::mat
  // configuration
  config = Configuration(green_function_alpha, params);
 
+ // change vertex generator if needed
+ if (params.preferential_sampling)
+  rvg = std::unique_ptr<RandomVertexGenerator>(new piecewise_rvg(qmc.get_rng(), params, config));
+
  // Register moves and measurements
  if (params.w_ins_rem > 0) {
-  qmc.add_move(moves::insert{config, params, qmc.get_rng()}, "insertion", params.w_ins_rem);
-  qmc.add_move(moves::remove{config, params, qmc.get_rng()}, "removal", params.w_ins_rem);
+  qmc.add_move(moves::insert(config, params, qmc.get_rng(), *rvg), "insertion", params.w_ins_rem);
+  qmc.add_move(moves::remove(config, params, qmc.get_rng(), *rvg), "removal", params.w_ins_rem);
  }
  if (params.w_dbl > 0) {
-  qmc.add_move(moves::insert2{config, params, qmc.get_rng()}, "insertion2", params.w_dbl);
-  qmc.add_move(moves::remove2{config, params, qmc.get_rng()}, "removal2", params.w_dbl);
+  qmc.add_move(moves::insert2(config, params, qmc.get_rng(), *rvg), "insertion2", params.w_dbl);
+  qmc.add_move(moves::remove2(config, params, qmc.get_rng(), *rvg), "removal2", params.w_dbl);
  }
  if (params.w_shift > 0) {
-  qmc.add_move(moves::shift{config, params, qmc.get_rng()}, "shift", params.w_shift);
+  qmc.add_move(moves::shift(config, params, qmc.get_rng(), *rvg), "shift", params.w_shift);
  }
 
  if (params.method == 0) {

@@ -1,6 +1,7 @@
 #include "../c++/parameters.hpp"
 #include "../c++/configuration.hpp"
 #include "../c++/moves.hpp"
+#include "../c++/random_vertex_gen.hpp"
 #include <mpi.h>
 
 using namespace triqs::gfs;
@@ -73,11 +74,12 @@ int main() {
  Configuration config(g0_alpha, params);
 
  auto rng = triqs::mc_tools::random_generator("", 87235);
- moves::insert insert(config, params, rng);
- moves::insert2 insert2(config, params, rng);
- moves::remove remove(config, params, rng);
- moves::remove2 remove2(config, params, rng);
- moves::shift shift(config, params, rng);
+ auto rvg = uniform_rvg(rng, params);
+ moves::insert insert(config, params, rng, rvg);
+ moves::insert2 insert2(config, params, rng, rvg);
+ moves::remove remove(config, params, rng, rvg);
+ moves::remove2 remove2(config, params, rng, rvg);
+ moves::shift shift(config, params, rng, rvg);
 
  // test attempt+reject do not change the configuration
 

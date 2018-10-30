@@ -102,6 +102,12 @@ struct solve_parameters_t {
  //  /!\ will use huge amount of memory, use with small number of cycles only !
  int store_configurations = 0;
 
+ /// Do preferential sampling or not
+ bool preferential_sampling = false;
+
+ /// Preferential sampling parameter -- time sampling lorentzian width
+ double ps_gamma = 1.;
+
  solve_parameters_t(){};
 
 };

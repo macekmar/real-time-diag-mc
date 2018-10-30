@@ -137,6 +137,7 @@ class Configuration {
  spin_t spin_dvpt; // tells which matrix is to be developped
  double cofactor_threshold;
  wrapped_forward_list<double> potential_list;
+ std::set<timec_t> times_list_; // sorted container
  double potential = 1.;
  int cycles_trapped = 0;
 
@@ -149,7 +150,6 @@ class Configuration {
  dcomplex accepted_weight; // weight of the last accepted config
  array<long, 1> nb_cofact;
  array<long, 1> nb_inverse;
- std::set<timec_t> times_list; // sorted container
 
  // registered configurations
  std::vector<std::vector<double>> config_list;
@@ -187,6 +187,9 @@ class Configuration {
  void evaluate();
  void accept_config();
  void incr_cycles_trapped();
+
+ // getters
+ const std::set<timec_t>& times_list() const {return times_list_;};
 
  // utility and debug
  std::vector<double> signature();

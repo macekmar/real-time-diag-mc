@@ -1,4 +1,5 @@
 #pragma once
+#include "./random_vertex_gen.hpp"
 #include "./measure.hpp"
 #include "./qmc_data.hpp"
 #include <triqs/mc_tools.hpp>
@@ -15,6 +16,7 @@ class solver_core {
  Configuration config;
  solve_parameters_t params;
  triqs::mc_tools::mc_generic<dcomplex> qmc;
+ std::unique_ptr<RandomVertexGenerator> rvg;
  double qmc_duration = 0;
  double cum_qmc_duration = 0;
  Status status = not_ready;
