@@ -409,7 +409,9 @@ PARAMS_CPP_KEYS = {'creation_ops': None,
                    'nb_bins': 10000,
                    'singular_thresholds': None,
                    'cycles_trapped_thresh': 100,
-                   'store_configurations': 0}
+                   'store_configurations': 0,
+                   'preferential_sampling': False,
+                   'ps_gamma': 1.}
 
 def solve(params):
     world = MPI.COMM_WORLD
