@@ -469,6 +469,7 @@ def solve(params):
     else:
         res_structure = ['sn', 'pn']
 
+    params_cpp['U'] = [params_cpp['U']]
 
     ### loop over orders
     for k in orders:
@@ -479,7 +480,8 @@ def solve(params):
             params_cpp['w_dbl'] = 0.
         params_cpp['max_perturbation_order'] = k
         params_cpp['min_perturbation_order'] = 0
-        params_cpp['U'] = [params_cpp['U']] * k
+        while len(params_cpp['U']) < k:
+            params_cpp['U'].append(params_cpp['U'][-1])
         S = SolverCore(**params_cpp)
         S.set_g0(params_py['g0_lesser'], params_py['g0_greater'])
 

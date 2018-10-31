@@ -1,12 +1,13 @@
 #pragma once
-#include "./measure.hpp"
 #include "./parameters.hpp"
+#include "./configuration.hpp"
 #include "./qmc_data.hpp"
 #include "./random_vertex_gen.hpp"
 #include <triqs/mc_tools.hpp>
 
 namespace moves {
 
+std::vector<double> prepare_U(std::vector<double> U);
 
 struct common {
  Configuration &config;
@@ -18,7 +19,7 @@ struct common {
 
  common(Configuration &config, const solve_parameters_t &params,
         triqs::mc_tools::random_generator &rng, const RandomVertexGenerator &rvg)
-    : config(config), params(params), rng(rng), rvg(rvg), U(params.U) {}
+    : config(config), params(params), rng(rng), rvg(rvg), U(prepare_U(params.U)) {}
 
  /// Tell if `k` is an allowed order
  bool is_quick_exit(int const &k) {

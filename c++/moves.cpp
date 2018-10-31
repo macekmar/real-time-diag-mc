@@ -3,6 +3,12 @@
 
 namespace moves {
 
+std::vector<double> prepare_U(std::vector<double> U) {
+ U.insert(U.begin(), 1.0); // so that U[k] is U at order k
+ return U;
+};
+
+
 // ------------ QMC insertion move --------------------------------------
 
 dcomplex insert::attempt() {
@@ -21,7 +27,7 @@ dcomplex insert::attempt() {
  after_attempt();
 
  // The Metropolis ratio;
- return U[k+1] / (U[k] * proba * (k + 1)) * config.current_weight / config.accepted_weight;
+ return U[k+1] / (proba * (k + 1)) * config.current_weight / config.accepted_weight;
 }
 
 dcomplex insert::accept() {
@@ -54,7 +60,7 @@ dcomplex insert2::attempt() {
  after_attempt();
 
  // The Metropolis ratio
- return U[k+2] / (U[k] * proba * (k + 1) * (k + 2)) * config.current_weight / config.accepted_weight;
+ return U[k+2] * U[k+1] / (proba * (k + 1) * (k + 2)) * config.current_weight / config.accepted_weight;
 }
 
 dcomplex insert2::accept() {
@@ -86,7 +92,7 @@ dcomplex remove::attempt() {
  after_attempt();
 
  // The Metropolis ratio
- return U[k-1] * rvg.probability(removed_vtx) * k / U[k] * config.current_weight / config.accepted_weight;
+ return rvg.probability(removed_vtx) * k / U[k] * config.current_weight / config.accepted_weight;
 }
 
 dcomplex remove::accept() {
@@ -120,7 +126,7 @@ dcomplex remove2::attempt() {
  after_attempt();
 
  // The Metropolis ratio
- return U[k-2] * rvg.probability(removed_vtx1) * rvg.probability(removed_vtx2) * k * (k - 1) / U[k] * config.current_weight / config.accepted_weight;
+ return rvg.probability(removed_vtx1) * rvg.probability(removed_vtx2) * k * (k - 1) / (U[k] * U[k-1]) * config.current_weight / config.accepted_weight;
 }
 
 dcomplex remove2::accept() {
