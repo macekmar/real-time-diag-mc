@@ -138,6 +138,7 @@ class Configuration {
  double cofactor_threshold;
  wrapped_forward_list<double> potential_list;
  std::set<timec_t> times_list_; // sorted container
+ wrapped_forward_list<orbital_t> orbitals_list_;
  double potential = 1.;
  int cycles_trapped = 0;
 
@@ -190,6 +191,7 @@ class Configuration {
 
  // getters
  const std::set<timec_t>& times_list() const {return times_list_;};
+ const wrapped_forward_list<orbital_t>& orbitals_list() const {return orbitals_list_;};
 
  // utility and debug
  std::vector<double> signature();

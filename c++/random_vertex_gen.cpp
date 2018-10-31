@@ -1,7 +1,7 @@
 #include "./random_vertex_gen.hpp"
 
-double lorentzian(timec_t t) { return 1 / (t*t + 1); };
-double sqrt_lorentzian(timec_t t) { return 1 / std::sqrt(t*t + 1); };
+double lorentzian(double x) { return 1.0 / (x*x + 1.0); };
+double sqrt_lorentzian(double x) { return 1.0 / std::sqrt(x*x + 1.0); };
 
 //----------- Uniform sampling --------------
 uniform_rvg::uniform_rvg(triqs::mc_tools::random_generator &rng,
@@ -36,11 +36,21 @@ piecewise_rvg::piecewise_rvg(triqs::mc_tools::random_generator &rng,
    rng(rng),
    config(config),
    gamma(params.ps_gamma),
-   f(&sqrt_lorentzian),
-   F(&std::asinh)
-   //f(&lorentzian),
-   //F(&std::atan)
-{};
+   f_time(&sqrt_lorentzian),
+   F_time(&std::asinh),
+   f_orb(&sqrt_lorentzian),
+   //f_time(&lorentzian),
+   //F_time(&std::atan)
+   N(std::sqrt(potential_data.values.size()))
+{std::cout << N << std::endl;};
+
+inline int piecewise_rvg::orbital_distance(orbital_t x1, orbital_t x2) const {
+ int x1_x = x1 % N;
+ int x1_y = x1 / N;
+ int x2_x = x2 % N;
+ int x2_y = x2 / N;
+ return std::max(std::abs(x1_x - x2_x), std::abs(x1_y - x2_y));
+};
 
  /// sampling distribution with max = 1
 double piecewise_rvg::time_distribution(timec_t t) const {
@@ -57,12 +67,22 @@ double piecewise_rvg::time_distribution(timec_t t) const {
  else
   t0 = *--it;
 
- return (*f)((t - t0) / gamma);
+ return (*f_time)((t - t0) / gamma);
+};
+
+double piecewise_rvg::orbital_distribution(orbital_t x) const {
+ int dist = 2*N;
+ for (auto it = config.orbitals_list().begin(); it != config.orbitals_list().end(); ++it) {
+  dist = std::min(dist, orbital_distance(x, *it));
+ }
+ return (*f_orb)(static_cast<double>(dist) / gamma);
 };
 
 /// return integral (between -t_max and 0) of the sampling distribution
 double piecewise_rvg::distrib_norm() const {
- double norm = 0;
+
+ // time integral
+ double norm_time = 0;
  double lower = -t_max;
  double upper = -t_max;
  for (auto it = config.times_list().begin(); it != config.times_list().end(); ++it) {
@@ -71,10 +91,17 @@ double piecewise_rvg::distrib_norm() const {
    upper = 0.0;
   else
    upper = 0.5 * (*it + *std::next(it));
-  norm += (*F)((upper - *it) / gamma) - (*F)((lower - *it) / gamma);
+  norm_time += (*F_time)((upper - *it) / gamma) - (*F_time)((lower - *it) / gamma);
  }
- norm *= gamma;
- return norm;
+ norm_time *= gamma;
+
+ // orbital sum
+ double norm_orb = 0;
+ for (orbital_t x = 0; x != potential_data.values.size(); ++x) {
+  norm_orb += orbital_distribution(x);
+ }
+
+ return norm_time * norm_orb;
 };
 
 /// generates a random time according to the sampling distribution
@@ -88,13 +115,23 @@ timec_t piecewise_rvg::random_time_generator() const {
  return time;
 };
 
+int piecewise_rvg::random_coupling_generator() const {
+ int k = rng(potential_data.values.size());
+ double proba = orbital_distribution(potential_data.i_list[k]);
+ while (rng(1.0) > proba) {
+  k = rng(potential_data.values.size());
+  proba = orbital_distribution(potential_data.i_list[k]);
+ }
+ return k;
+};
+
 /// return a random vertex
 vertex_t piecewise_rvg::operator()() const {
- int k = rng(potential_data.values.size()); // random orbital pair
+ int k = random_coupling_generator();
  return {potential_data.i_list[k], potential_data.j_list[k], random_time_generator(), 0, potential_data.values[k]};
 };
 
 /// return the probability to have chosen vtx in the *current* configuration
 double piecewise_rvg::probability(const vertex_t& vtx) const {
- return time_distribution(vtx.t) / (distrib_norm() * potential_data.values.size());
+ return time_distribution(vtx.t) * orbital_distribution(vtx.x_up) / distrib_norm();
 };
