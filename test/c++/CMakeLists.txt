@@ -6,7 +6,7 @@ list(APPEND test_names
 	configuration_1
 	configuration_2
 	configuration_3
-	demo
+	run_tests
 	g0_keldysh_alpha
 	kernel_binning_1
 	kernel_binning_2

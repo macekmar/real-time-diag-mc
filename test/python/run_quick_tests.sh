@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for file in single_order.py phsym_kernels.py
+for file in run_tests.py phsym_kernels.py
 do
     echo "------------ TEST $file 1 proc ------------"
 
