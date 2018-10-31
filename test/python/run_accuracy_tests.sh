@@ -1,5 +1,10 @@
 #!/bin/bash
 
+echo "------------ RUN density.py ------------"
+mpirun -np 4 ../../build_pytriqs density.py
+echo
+echo
+
 echo "------------ RUN impurity.py ------------"
 mpirun -np 4 ../../build_pytriqs impurity.py
 echo
