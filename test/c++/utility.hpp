@@ -10,9 +10,9 @@ using dcomplex = std::complex<double>;
  */
 
 template<typename T>
-bool isfinite(T x) {return std::isfinite(x);};
+bool my_isfinite(T x) {return std::isfinite(x);};
 
-bool isfinite(dcomplex z) {return (std::isfinite(z.real()) and std::isfinite(z.imag()));}
+bool my_isfinite(dcomplex z) {return (std::isfinite(z.real()) and std::isfinite(z.imag()));}
 
 template<typename T>
 bool is_close(T a, T b, double rtol, double atol) {
@@ -38,7 +38,7 @@ template <typename T>
 bool all_finite(const T& a) {
  bool res = true;
  for (auto it = a.begin(); it != a.end(); ++it) {
-  res = res and isfinite(*it);
+  res = res and my_isfinite(*it);
  }
  return res;
 };
