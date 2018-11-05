@@ -14,12 +14,14 @@ if mpi.world.size < 2:
     warnings.warn('This test is run on a single process. It is advised to run it on several processes to carry a more thorough test.', RuntimeWarning)
 
 situations = []
-situations.append({'method': 0, 'fpo': -1, 'w_ins_rem': 1., 'w_dbl': 0.})
-situations.append({'method': 0, 'fpo': 1, 'w_ins_rem': 0., 'w_dbl': 1.})
-situations.append({'method': 1, 'fpo': -1, 'w_ins_rem': 1., 'w_dbl': 0.})
-situations.append({'method': 1, 'fpo': 1, 'w_ins_rem': 0., 'w_dbl': 1.})
+situations.append({'method': 0, 'forbid_parity_order': -1, 'w_ins_rem': 1., 'w_dbl': 0.})
+situations.append({'method': 0, 'forbid_parity_order': 1, 'w_ins_rem': 0., 'w_dbl': 1.})
+situations.append({'method': 1, 'forbid_parity_order': -1, 'w_ins_rem': 1., 'w_dbl': 0.})
+situations.append({'method': 1, 'forbid_parity_order': 1, 'w_ins_rem': 0., 'w_dbl': 1.})
 
-for sit in situations:
+nb_tests = len(situations)
+success_list = []
+for k, sit in enumerate(situations):
     if mpi.world.rank == 0:
         print '>>>>>>>>> Trying situation: ', sit
         print
@@ -45,7 +47,7 @@ for sit in situations:
         p["nb_cycles"] = 100
         p["save_period"] = 10
         p["filename"] = filename
-        p["run_name"] = 'run_1'
+        p["run_name"] = 'situation_{0}'.format(k)
         p["g0_lesser"] = g0_less_triqs[0, 0]
         p["g0_greater"] = g0_grea_triqs[0, 0]
         p["size_part"] = 10
@@ -61,32 +63,47 @@ for sit in situations:
         p["potential"] = ([1.], [0], [0])
 
         p["U"] = 2.5 # U_qmc
-        p["w_ins_rem"] = sit['w_ins_rem']
-        p["w_dbl"] = sit['w_dbl']
-        p["w_shift"] = 0
+        p["w_ins_rem"] = 1.
+        p["w_dbl"] = 0.
+        p["w_shift"] = 0.
         p["max_perturbation_order"] = 4
         p["min_perturbation_order"] = 0
-        p["forbid_parity_order"] = sit['fpo']
+        p["forbid_parity_order"] = -1
         p["length_cycle"] = 50
-        p["method"] = sit['method']
+        p["method"] = 0
         p["singular_thresholds"] = [3.5, 3.3]
+
+        for key in p:
+            if key in sit:
+                p[key] = deepcopy(sit.pop(key))
+
+        if len(sit) > 0:
+            raise RuntimeError('Some data in `situation` has not been used')
 
         p_copy = deepcopy(p) # keep parameters safe
 
         results = solve(p)
 
     except Exception as e:
+        success_list.append(False)
         if mpi.world.rank == 0:
             print e
             print 'FAIL'
             print
     except:
+        success_list.append(False)
         if mpi.world.rank == 0:
             print 'unkown error'
             print 'FAIL'
             print
 
     else:
+        success_list.append(True)
         if mpi.world.rank == 0:
             print 'SUCCESS !'
             print
+
+if mpi.world.rank == 0:
+    print 'Results of {0} tests:'.format(nb_tests)
+    for s in success_list:
+        print s

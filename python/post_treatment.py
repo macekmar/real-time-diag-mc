@@ -85,7 +85,7 @@ def generalized_fftconvolve(in1, in2, subscripts=r't, t -> t'):
 
 ######### Post treatment functions #########
 
-def compute_correlator(archive, g0_func):
+def compute_correlator(archive, g0_func, no_cn=False):
     """
     From an archive of QMC results containing kernel data, computes the (perturbation series of the) correlator associated by convolution.
 
@@ -104,12 +104,15 @@ def compute_correlator(archive, g0_func):
     def extract(ar):
         ### K.shape = (orders, times, Keldysh, [orbitals,] [part,])
 
-        if ar['cn'].ndim <= 1:
-            K = np.einsum(r'i...,i->i...', ar['kernels'], ar['cn'][1:])
-        elif ar['cn'].ndim == 2:
-            K = np.einsum(r'i...j,ij->i...j', ar['kernels'], ar['cn'][1:])
+        if no_cn:
+            K = ar['kernels']
         else:
-            raise ValueError
+            if ar['cn'].ndim <= 1:
+                K = np.einsum(r'i...,i->i...', ar['kernels'], ar['cn'][1:])
+            elif ar['cn'].ndim == 2:
+                K = np.einsum(r'i...j,ij->i...j', ar['kernels'], ar['cn'][1:])
+            else:
+                raise ValueError
 
         times = ar['bin_times']
         delta_t = times[1] - times[0]

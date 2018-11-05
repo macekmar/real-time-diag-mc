@@ -272,7 +272,7 @@ void Configuration::evaluate() {
  * `accepted_weight` and `accepted_kernels`.
  */
 void Configuration::accept_config() {
- if (cycles_trapped > 100) std::cout << "Trapped " << cycles_trapped << " cycles" << std::endl;
+ //if (cycles_trapped > 100) std::cout << "Trapped " << cycles_trapped << " cycles" << std::endl;
  cycles_trapped = 0;
  accepted_weight = current_weight;
  accepted_kernels() = current_kernels();
