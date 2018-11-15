@@ -1,6 +1,5 @@
 from pytriqs.utility import mpi
-from ctint_keldysh import make_g0_semi_circular, solve
-from ctint_keldysh.construct_gf import oldway_GF_from_archive
+from ctint_keldysh import make_g0_semi_circular, solve, compute_correlator_oldway
 from pytriqs.archive import HDFArchive
 import numpy as np
 import os
@@ -68,7 +67,8 @@ p["singular_thresholds"] = [3.5, 3.3]
 
 p_copy = deepcopy(p) # keep parameters safe
 
-times = np.linspace(-40, 0, 10)
+times = np.linspace(-40.0, 0.0, 101)[10::10]
+# times = np.linspace(-40, 0, 10)
 
 ### compute lesser
 for k, t in enumerate(times):
@@ -78,7 +78,7 @@ for k, t in enumerate(times):
     p["run_name"] = 'less_{0}'.format(k)
     p["annihilation_ops"] = [(0, 0, t, 0)]
     p["creation_ops"] = [(0, 0, 0.0, 1)]
-    solve(p)
+    solve(**p)
 
 ### compute greater
 for k, t in enumerate(times):
@@ -88,55 +88,64 @@ for k, t in enumerate(times):
     p["run_name"] = 'grea_{0}'.format(k)
     p["annihilation_ops"] = [(0, 0, t, 1)]
     p["creation_ops"] = [(0, 0, 0.0, 0)]
-    solve(p)
+    solve(**p)
 
 if mpi.world.rank == 0:
+    error = lambda a : np.sqrt(np.var(a, ddof=1, axis=-1) / float(a.shape[-1]))
 
     with HDFArchive(filename, 'r') as ar:
 
-        LGF = oldway_GF_from_archive([ar['less_{0}'.format(k)]['results_all'] for k in range(len(times))],
-                                     times, g0_less_triqs[0, 0], 'negative')
+        LGF, LGF_part = [], []
+        GGF, GGF_part = [], []
+        for k, t in enumerate(times):
+            lgf, lgf_part = compute_correlator_oldway(ar['less_{0}'.format(k)], np.abs(g0_less_triqs[0, 0](t)))
+            LGF.append(lgf)
+            LGF_part.append(lgf_part)
 
-        LGF_part = oldway_GF_from_archive([ar['less_{0}'.format(k)]['results_part'] for k in range(len(times))],
-                                     times, g0_less_triqs[0, 0], 'negative')
+            ggf, ggf_part = compute_correlator_oldway(ar['grea_{0}'.format(k)], np.abs(g0_grea_triqs[0, 0](t)))
+            GGF.append(ggf)
+            GGF_part.append(ggf_part)
 
-        GGF = oldway_GF_from_archive([ar['grea_{0}'.format(k)]['results_all'] for k in range(len(times))],
-                                     times, g0_grea_triqs[0, 0], 'negative')
-
-        GGF_part = oldway_GF_from_archive([ar['grea_{0}'.format(k)]['results_part'] for k in range(len(times))],
-                                     times, g0_grea_triqs[0, 0], 'negative')
-
-    error = lambda a : np.sqrt(p_copy['nb_bins_sum'] * np.var(a, axis=-1) / float(a.shape[-1]))
+        LGF = np.array(LGF)
+        LGF_re_err = error(np.real(LGF_part))
+        LGF_im_err = error(np.imag(LGF_part))
+        GGF = np.array(GGF)
+        GGF_re_err = error(np.real(GGF_part))
+        GGF_im_err = error(np.imag(GGF_part))
 
     ### order 1
 
     fig, ax = plt.subplots(2, 2)
     with HDFArchive('ref_data/order1_params1.ref.h5', 'r') as ref:
-        ax[0, 0].errorbar(times, LGF.values[1].real, error(LGF_part.values[1].real), fmt='bo')
+        ax[0, 0].errorbar(times, LGF[:, 1].real, LGF_re_err[:, 1], fmt='bo')
         ax[0, 0].plot(ref['less']['times'], ref['less']['o1'].real, 'g.-')
-        ax[0, 0].errorbar(times, LGF.values[1].imag, error(LGF_part.values[1].imag), fmt='ro')
+        ax[0, 0].errorbar(times, LGF[:, 1].imag, LGF_im_err[:, 1], fmt='ro')
         ax[0, 0].plot(ref['less']['times'], ref['less']['o1'].imag, 'm.-')
         ax[0, 0].set_title('less o1')
 
-        ax[0, 1].errorbar(times, GGF.values[1].real, error(GGF_part.values[1].real), fmt='bo')
+        ax[0, 1].errorbar(times, GGF[:, 1].real, GGF_re_err[:, 1], fmt='bo')
         ax[0, 1].plot(ref['grea']['times'], ref['grea']['o1'].real, 'g.-')
-        ax[0, 1].errorbar(times, GGF.values[1].imag, error(GGF_part.values[1].imag), fmt='ro')
+        ax[0, 1].errorbar(times, GGF[:, 1].imag, GGF_im_err[:, 1], fmt='ro')
         ax[0, 1].plot(ref['grea']['times'], ref['grea']['o1'].imag, 'm.-')
         ax[0, 1].set_title('grea o1')
 
     ### order 2
 
     with HDFArchive('ref_data/order2_params1.ref.h5', 'r') as ref:
-        ax[1, 0].errorbar(times, LGF.values[2].real, error(LGF_part.values[2].real), fmt='bo')
-        ax[1, 0].errorbar(ref['less']['times'], ref['less']['o2'].real, ref['less']['o2_error'].real, fmt='g.-')
-        ax[1, 0].errorbar(times, LGF.values[2].imag, error(LGF_part.values[2].imag), fmt='ro')
-        ax[1, 0].errorbar(ref['less']['times'], ref['less']['o2'].imag, ref['less']['o2_error'].imag, fmt='m.-')
+        ax[1, 0].errorbar(times, LGF[:, 2].real, LGF_re_err[:, 2], fmt='bo')
+        ax[1, 0].errorbar(ref['less']['times'], ref['less']['o2'].real,
+                          ref['less']['o2_error'].real, fmt='g.-')
+        ax[1, 0].errorbar(times, LGF[:, 2].imag, LGF_im_err[:, 2], fmt='ro')
+        ax[1, 0].errorbar(ref['less']['times'], ref['less']['o2'].imag,
+                          ref['less']['o2_error'].imag, fmt='m.-')
         ax[1, 0].set_title('less o2')
 
-        ax[1, 1].errorbar(times, GGF.values[2].real, error(GGF_part.values[2].real), fmt='bo')
-        ax[1, 1].errorbar(ref['grea']['times'], ref['grea']['o2'].real, ref['grea']['o2_error'].real, fmt='g.-')
-        ax[1, 1].errorbar(times, GGF.values[2].imag, error(GGF_part.values[2].imag), fmt='ro')
-        ax[1, 1].errorbar(ref['grea']['times'], ref['grea']['o2'].imag, ref['grea']['o2_error'].imag, fmt='m.-')
+        ax[1, 1].errorbar(times, GGF[:, 2].real, GGF_re_err[:, 2], fmt='bo')
+        ax[1, 1].errorbar(ref['grea']['times'], ref['grea']['o2'].real,
+                          ref['grea']['o2_error'].real, fmt='g.-')
+        ax[1, 1].errorbar(times, GGF[:, 2].imag, GGF_im_err[:, 2], fmt='ro')
+        ax[1, 1].errorbar(ref['grea']['times'], ref['grea']['o2'].imag,
+                          ref['grea']['o2_error'].imag, fmt='m.-')
         ax[1, 1].set_title('grea o2')
 
     plt.show()

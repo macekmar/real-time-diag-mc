@@ -6,12 +6,10 @@ from datetime import datetime, timedelta
 from time import clock
 import cPickle
 from os.path import splitext
-from utility import squeeze_except, reduce_binning
+from utility import reduce_binning
 import warnings
 from copy import deepcopy
-
-### Complex numbers are everywhere in this solver, one should not mess with them
-warnings.filterwarnings('error', '', np.ComplexWarning)
+from results import merge_results, add_cn_to_results
 
 def variance_error(data, comm=MPI.COMM_WORLD, weight=None, unbiased=True):
     """
@@ -65,8 +63,10 @@ def variance_error(data, comm=MPI.COMM_WORLD, weight=None, unbiased=True):
 
 def save_configuration_list(solver, filename, comm=MPI.COMM_WORLD):
     """
-    Pickle stored configuration data from cpp solver as a dictionnary.
-    File is named filename_config_rank.pkl
+    Pickle stored configurations from cpp solver as a dictionnary, in as many
+    files as there are processes.
+
+    File is named {filename}_config_{rank}.pkl, where rank is the process rank.
     """
     filename = filename + '_config_' + str(comm.rank).zfill(len(str(comm.size-1))) + '.pkl'
 
@@ -78,7 +78,6 @@ def save_configuration_list(solver, filename, comm=MPI.COMM_WORLD):
 
     with open(filename, 'wb') as f:
         cPickle.dump(config_dict, f)
-
 
 
 def calc_ideal_U(pn, U, r=2.):
@@ -104,20 +103,21 @@ def calc_ideal_U(pn, U, r=2.):
         U_proposed = U
     return U_proposed
 
-def _collect_results(solver, res_structure, size_part, comm=MPI.COMM_WORLD):
+
+def _collect_results(solver, res_structure, size_part):
     """
     Cumulate results of the cpp solver according to a process partitionning.
-    Results are returned only by `comm` master proc, in a dictionnary.
+    Results are returned only in rank 0 process, in a dictionnary containing
+    the same keys as in `res_structure`.
 
     The partitionning is given by `size_part`, the nb of *equal* parts in the partition.
-    Details of what and how it is collected is given in `res_structure`.
-    The communicator `comm` should be the same as the one with which the cpp
-    solver has been run.
 
     This function can be run several times, but with decreasing partition size
     only, and making sure the old partition is nested in the new one. Indeed
     cumulation of results is not (always) reversible. (#FIXME)
     """
+    comm = MPI.COMM_WORLD
+
     is_part_master = solver.collect_results(size_part)
 
     part_comm = comm.Split(is_part_master, comm.rank)
@@ -126,153 +126,223 @@ def _collect_results(solver, res_structure, size_part, comm=MPI.COMM_WORLD):
     else:
         assert part_comm.size == min(size_part, comm.size)
 
-    output = {}
-    change_axis = lambda x: np.rollaxis(x, 0, x.ndim) # send first axis to last position
+    if comm.rank == 0:
+        output = {}
+        change_axis = lambda x: np.rollaxis(x, 0, x.ndim) # send first axis to last position
+
 
     for key in res_structure:
-        if isinstance(key, tuple):
-            key_coord, key = key
 
+        if key in ['U', 'bin_times', 'dirac_times']:
             if comm.rank == 0:
-                output[key_coord] = getattr(solver, key_coord)
-
-        if is_part_master:
-            data = part_comm.gather(getattr(solver, key), 0)
-        if comm.rank == 0:
-            output[key] = change_axis(np.array(data))
+                output[key] = getattr(solver, key)
+        elif key in ['pn', 'sn', 'kernels', 'nb_kernels', 'kernel_diracs']:
+            if size_part == 1:
+                if comm.rank == 0:
+                    output[key] = np.array(getattr(solver, key))
+            else:
+                if is_part_master:
+                    data = part_comm.gather(getattr(solver, key), 0)
+                if comm.rank == 0:
+                    output[key] = change_axis(np.array(data))
 
     if comm.rank == 0:
+        ### prepare pn and U for merge, add axis for subruns
+        output['U'] = np.array(output['U'], dtype=float)[np.newaxis, ...]
+        output['pn'] = np.array(output['pn'], dtype=int)[np.newaxis, ...]
+
         return output
 
-def extract_results(solver, results, res_structure, params, append):
+
+def _extract_results(solver, res_structure, size_part, nb_bins_sum):
     """
-    Extract results from the cpp solver and place them in the list `results`.
+    Extract results from the cpp solver and return them as a dictionnary in the rank 0 process.
 
     Full results (cumulated over all proc) and partial (over a partition) are
-    extracted, as well as some metadata. These are placed in a dictionnary and
-    appended to `results`, if `append` is True, or replaces `results[-1]`
-    otherwise.  The dictionnary contains three keys: 'results_all',
-    'results_part' and 'metadata'.  Details of what and how it is collected
-    is given in `res_structure`.
+    extracted, as well as some metadata.
+
+    The returned dictionnary has the following structure:
+     > 'results_all':
+       > same keys as in `res_structure`
+     > 'results_part':
+       > same keys as in `res_structure`
+     > 'metadata':
+       > 'duration'
+       > 'durations'
+       > 'nb_measures'
+       > 'nb_proc'
     """
 
     ### extract
-    ### the order of these two lines matters !
-    res_part = _collect_results(solver, res_structure, params['size_part'])
+    ### the order of these two lines matters ! (I think...)
+    res_part = _collect_results(solver, res_structure, size_part)
     res_all = _collect_results(solver, res_structure, 1)
 
-    res = {}
-    res['results_all'] = res_all
-    res['results_part'] = res_part
+    if MPI.COMM_WORLD.rank == 0:
 
-    ### metadata that are different in each subrun
-    res['metadata'] = {}
-    res['metadata']['max_order'] = solver.max_order
-    res['metadata']['U'] = solver.U[-1]
-    res['metadata']['durations'] = solver.qmc_duration
-    res['metadata']['nb_measures'] = solver.nb_measures
+        ### bin reduction
+        if 'kernels' in res_part:
+            res_part['bin_times'] = reduce_binning(res_part['bin_times'], nb_bins_sum) / float(nb_bins_sum)
+            res_part['kernels'] = reduce_binning(res_part['kernels'], nb_bins_sum, axis=1) / float(nb_bins_sum)
+            res_part['nb_kernels'] = reduce_binning(res_part['nb_kernels'], nb_bins_sum, axis=1) # no normalization !
 
-    ### append or replace
-    if append:
-        results.append(res)
-    else:
-        results[-1] = res
+        res = {}
+        res['results_all'] = res_all
+        res['results_part'] = res_part
 
+        ### metadata that are different in each subrun
+        res['metadata'] = {}
+        res['metadata']['duration'] = solver.qmc_duration
+        res['metadata']['durations'] = np.zeros((res_all['pn'].shape[1] - 1,), dtype=float)
+        res['metadata']['durations'][-1] = res['metadata']['duration']
+        res['metadata']['nb_measures'] = solver.nb_measures
+        res['metadata']['nb_proc'] = MPI.COMM_WORLD.size
 
-def add_cn_to_results(results, res_name):
-    """
-    Add cn to `results` last slot.
-
-    cn is calculated using pn and U of the last run, and cn calculated for the
-    previous run if it exists. If not, c0 is taken to be 1.
-
-    Recall the formula:
-    c_n = c_{n-k} p_{n} / (p_{n-k} U^k)
-    where n-k is the largest order of the previous run.
-
-    Note: if runs are separated by more than one non-zero order, it may not be
-    the best formula, statistically speaking.
-    """
-    U = results[-1]['metadata']['U']
-    pn = results[-1][res_name]['pn']
-
-    if len(results) > 1:
-        prev_cn = results[-2][res_name]['cn']
-        cn = np.zeros_like(pn, dtype=float)[:len(pn)-len(prev_cn)]
-        cn = np.concatenate((prev_cn, cn), axis=0)
-        for k in range(len(prev_cn), len(cn)):
-            i = 1
-            while (pn[k-i] == 0.).any() and i < k:
-                i += 1
-            cn[k] = cn[k-i] * pn[k] / (pn[k-i] * U**i)
-
-    else:
-        c0 = 1.
-        cn = np.zeros_like(pn, dtype=float)
-        cn[0] = c0
-        for k in range(1, len(pn)):
-            i = 1
-            while (pn[k-i] == 0).any() and i < k:
-                i += 1
-            cn[k] = cn[k-i] * pn[k] / (pn[k-i] * U**i)
-
-    results[-1][res_name]['cn'] = cn
+        return res
 
 
-def _save_in_archive(results, res_name, archive, bin_reduction=False, nb_bins_sum=None):
-    """
-    Saves a reduced version of the `res_name` data of `results` in `archive`.
+# def _save_in_archive(results, res_name, archive):
+#     """
+#     Saves a reduced version of the `res_name` data of `results` in `archive`.
 
-    `archive` may be any dictionnary-like object, more specifically an open hdf5 archive.
-    If `bin_reduction` is True, time-dependant data is reduced by summing over chunks of size `nb_bins_sum`.
-    Order-dependant data are gathered along the different runs (the different slots of `results`).
-    """
+#     `archive` may be any dictionnary-like object, more specifically an open hdf5 archive.
+#     If `bin_reduction` is True, time-dependant data is reduced by summing over chunks of size `nb_bins_sum`.
+#     Order-dependant data are gathered along the different runs (the different slots of `results`).
+#     """
 
-    for key in results[-1][res_name]:
-        if key in ['pn', 'cn', 'sn']:
-            data = results[0][res_name][key]
-            for res in results[1:]:
-                data = np.concatenate((data, res[res_name][key][len(data):]), axis=0)
-            archive[key] = squeeze_except(data, [0])
+#     for key in results[-1][res_name]:
+#         if key in ['pn', 'cn', 'sn']:
+#             data = results[0][res_name][key]
+#             for res in results[1:]:
+#                 data = np.concatenate((data, res[res_name][key][len(data):]), axis=0)
+#             archive[key] = squeeze_except(data, [0])
 
-        elif key == 'dirac_times':
-            archive[key] = results[-1][res_name][key]
+#         elif key == 'dirac_times':
+#             archive[key] = results[-1][res_name][key]
 
-        elif key == 'bin_times':
-            data = results[-1][res_name][key]
-            if bin_reduction:
-                data = reduce_binning(data, nb_bins_sum) / float(nb_bins_sum)
-            archive[key] = data
+#         elif key == 'bin_times':
+#             data = results[-1][res_name][key]
+#             archive[key] = data
 
-        elif key == 'kernels':
-            data = results[0][res_name][key]
-            for res in results[1:]:
-                data = np.concatenate((data, res[res_name][key][len(data):]), axis=0)
+#         elif key == 'kernels':
+#             data = results[0][res_name][key]
+#             for res in results[1:]:
+#                 data = np.concatenate((data, res[res_name][key][len(data):]), axis=0)
 
-            if bin_reduction:
-                data = reduce_binning(data, nb_bins_sum, axis=1) / float(nb_bins_sum)
+#             archive[key] = squeeze_except(data, [0, 1])
 
-            archive[key] = squeeze_except(data, [0, 1])
+#         elif key == 'nb_kernels':
+#             data = results[0][res_name][key]
+#             for res in results[1:]:
+#                 data = np.concatenate((data, res[res_name][key][len(data):]), axis=0)
 
-        elif key == 'nb_kernels':
-            data = results[0][res_name][key]
-            for res in results[1:]:
-                data = np.concatenate((data, res[res_name][key][len(data):]), axis=0)
+#             archive[key] = squeeze_except(data, [0, 1])
 
-            if bin_reduction:
-                data = reduce_binning(data, nb_bins_sum, axis=1) # no normalization !
+#         elif key == 'kernel_diracs':
+#             data = results[0][res_name][key]
+#             for res in results[1:]:
+#                 data = np.concatenate((data, res[res_name][key][len(data):]), axis=0)
 
-            archive[key] = squeeze_except(data, [0, 1])
+#             archive[key] = squeeze_except(data, [0, 1])
 
-        elif key == 'kernel_diracs':
-            data = results[0][res_name][key]
-            for res in results[1:]:
-                data = np.concatenate((data, res[res_name][key][len(data):]), axis=0)
+#         else:
+#             warnings.warn('An unknown result key has been found. It has not been saved.', RuntimeWarning)
 
-            archive[key] = squeeze_except(data, [0, 1])
+# def refine_and_save_results(results, params, start_time, overwrite=True):
+#     """
+#     Saves a refined version of `results` in an HDF5 archive named
+#     `params['filename']`. Also saves `params` and some metadata.
 
-        else:
-            warnings.warn('An unknown result key has been found. It has not been saved.', RuntimeWarning)
+#     Data is saved in a group named `params['run_name']` created in the archive
+#     or overwritten. The rest of the archive is left untouched. If `overwrite`
+#     is False, a new name is found so that nothing is overwritten in the
+#     archive.
+
+#     In 'run_name' are created four subgroups:
+#      > 'results_all': store results gathered over all processes
+#      > 'results_part': store results gathered over a partition of processes
+#      (used for error estimation)
+#      > 'metadata': some data about how the run went, in particular:
+#        > 'run_time' the total run time for one process (not the cpu time)
+#        > 'durations' the cpu time of the QMC at each order, in seconds
+#      > 'parameters': a copy of `params`
+
+#     """
+
+#     ### create archive and fill it with leading elements and metadata
+#     with HDFArchive(params['filename'], 'a') as ar:
+
+#         ### metadata
+#         run.create_group('metadata')
+#         metadata = run['metadata']
+
+#         for key in ['max_order', 'durations', 'nb_measures']:
+#             metadata[key] = np.array([res['metadata'][key] for res in results])
+
+#         metadata['nb_proc'] = MPI.COMM_WORLD.size
+#         metadata['interaction_start'] = params['interaction_start']
+#         metadata['start_time'] = str(start_time)
+#         metadata['run_time'] = str(datetime.now() - start_time)
+
+#         ### data
+#         run.create_group('results_all')
+#         res_all = run['results_all']
+#         run.create_group('results_part')
+#         res_part = run['results_part']
+
+#         _save_in_archive(results, 'results_all', res_all)
+#         _save_in_archive(results, 'results_part', res_part)
+
+#     print 'Saved in {0}\n'.format(params['filename'])
+
+### deprec
+# def add_cn_to_results(results, res_name):
+#     """
+#     Add cn to `results` last slot.
+
+#     cn is calculated using pn and U of the last run, and cn calculated for the
+#     previous run if it exists. If not, c0 is taken to be 1.
+
+#     Recall the formula:
+#     c_n = c_{n-k} p_{n} / (p_{n-k} U^k)
+#     where n-k is the largest order of the previous run.
+
+#     Note: if runs are separated by more than one non-zero order, it may not be
+#     the best formula, statistically speaking.
+#     """
+#     U = results[-1]['metadata']['U']
+#     pn = results[-1][res_name]['pn']
+
+#     if len(results) > 1:
+#         prev_cn = results[-2][res_name]['cn']
+#         cn = np.zeros_like(pn, dtype=float)[:len(pn)-len(prev_cn)]
+#         cn = np.concatenate((prev_cn, cn), axis=0)
+#         for k in range(len(prev_cn), len(cn)):
+#             i = 1
+#             while (pn[k-i] == 0.).any() and i < k:
+#                 i += 1
+#             cn[k] = cn[k-i] * pn[k] / (pn[k-i] * U**i)
+
+#     else:
+#         c0 = 1.
+#         cn = np.zeros_like(pn, dtype=float)
+#         cn[0] = c0
+#         for k in range(1, len(pn)):
+#             i = 1
+#             while (pn[k-i] == 0).any() and i < k:
+#                 i += 1
+#             cn[k] = cn[k-i] * pn[k] / (pn[k-i] * U**i)
+
+#     results[-1][res_name]['cn'] = cn
+
+
+def _add_params_to_results(results, params):
+    params_dict = {}
+    for key in params:
+        if key not in ['g0_lesser', 'g0_greater']:
+            params_dict[key] = deepcopy(params[key])
+    results['parameters'] = params_dict
+
 
 def _next_name_gen(first_name):
     """
@@ -299,32 +369,28 @@ def _next_name_gen(first_name):
             name = name[:-l] + str(n+1).zfill(l)
         yield name
 
-def refine_and_save_results(results, params, start_time, overwrite=True):
+
+def _save_in_file(results, filename, run_name, overwrite=True):
     """
-    Saves a refined version of `results` in an HDF5 archive named
-    `params['filename']`. Also saves `params` and some metadata.
+    Saves the `results` dictionnary in `filename` as an hdf5 archive under the key `run_name`.
 
-    Data is saved in a group named `params['run_name']` created in the archive
-    or overwritten. The rest of the archive is left untouched. If `overwrite`
-    is False, a new name is found so that nothing is overwritten in the
-    archive.
+    If this key already exists, it is overwritten (default) or a new one is
+    generated (if `overwrite` is False).
 
-    In 'run_name' are created four subgroups:
-     > 'results_all': store results gathered over all processes
-     > 'results_part': store results gathered over a partition of processes
-     (used for error estimation)
-     > 'metadata': some data about how the run went, in particular:
-       > 'run_time' the total run time for one process (not the cpu time)
-       > 'durations' the cpu time of the QMC at each order, in seconds
-     > 'parameters': a copy of `params`
-
+    Four groups are created under this key:
+    > metadata
+    > parameters
+    > results_all
+    > results_part
+    They are filled with content found in `results` under the same names.
     """
+
+    assert MPI.COMM_WORLD.rank == 0 # avoid multiple processes to save
 
     ### create archive and fill it with leading elements and metadata
-    with HDFArchive(params['filename'], 'a') as ar:
+    with HDFArchive(filename, 'a') as ar:
 
-        ### run group
-        run_name = params['run_name']
+        ### run name
         if run_name in ar:
             if overwrite:
                 del ar[run_name]
@@ -335,38 +401,19 @@ def refine_and_save_results(results, params, start_time, overwrite=True):
                 while run_name in ar:
                     run_name = nng(run_name)
 
+        ### new empty group
         ar.create_group(run_name)
         run = ar[run_name]
 
-        ### metadata
-        run.create_group('metadata')
-        metadata = run['metadata']
+        ### fill it with results
+        group_names = ['metadata', 'parameters', 'results_all', 'results_part']
+        for name in group_names:
+            run.create_group(name)
+            group = run[name]
+            for key in results[name]:
+                group[key] = results[name][key]
 
-        for key in ['max_order', 'U', 'durations', 'nb_measures']:
-            metadata[key] = np.array([res['metadata'][key] for res in results])
-
-        metadata['nb_proc'] = MPI.COMM_WORLD.size
-        metadata['interaction_start'] = params['interaction_start']
-        metadata['start_time'] = str(start_time)
-        metadata['run_time'] = str(datetime.now() - start_time)
-
-        ### parameters
-        run.create_group('parameters')
-        for key in params:
-            if key not in ['g0_lesser', 'g0_greater']: # too big to put in a file
-                run['parameters'][key] = deepcopy(params[key])
-
-        ### data
-        run.create_group('results_all')
-        res_all = run['results_all']
-        run.create_group('results_part')
-        res_part = run['results_part']
-
-        _save_in_archive(results, 'results_all', res_all)
-        _save_in_archive(results, 'results_part', res_part,
-                         bin_reduction=True, nb_bins_sum=params['nb_bins_sum'])
-
-    print 'Saved in {0}\n'.format(params['filename'])
+    print 'Saved in {0}\n'.format(filename)
 
 ###############################################################################
 
@@ -413,7 +460,10 @@ PARAMS_CPP_KEYS = {'creation_ops': None,
                    'preferential_sampling': False,
                    'ps_gamma': 1.}
 
-def solve(params):
+def solve(**params):
+    """
+    Execute a full run procedure.
+    """
     world = MPI.COMM_WORLD
 
     ### start time
@@ -462,12 +512,12 @@ def solve(params):
         orders = [params_cpp['max_perturbation_order']]
 
     ### result structure
-    results = []
+    results = {}
     if params_cpp['method'] != 0:
-        res_structure = ['pn', ('bin_times', 'kernels'), ('bin_times', 'nb_kernels'),
-                ('dirac_times', 'kernel_diracs')]
+        res_structure = ['pn', 'U', 'bin_times', 'kernels', 'nb_kernels',
+                'dirac_times', 'kernel_diracs']
     else:
-        res_structure = ['sn', 'pn']
+        res_structure = ['sn', 'pn', 'U']
 
     params_cpp['U'] = [params_cpp['U']]
 
@@ -531,6 +581,7 @@ def solve(params):
             est_run_time = prerun_duration * float(params_py['nb_cycles'] + params_py['nb_warmup_cycles']) \
                             / float(params_py['nb_warmup_cycles'])
             print 'Estimated run time =', timedelta(seconds=est_run_time)
+            print 'date time:', datetime.now()
 
         params_all = dict(params_cpp, **params_py) # merge params, they are not expected to change anymore
 
@@ -544,32 +595,33 @@ def solve(params):
             print '\n* Main runs'
 
         nb_cycles_left = params_py['nb_cycles']
-        append = True
         while nb_cycles_left > 0:
             nb_cycles_todo = min(nb_cycles_per_subrun, nb_cycles_left)
             S.run(nb_cycles_todo, True)
             nb_cycles_left -= nb_cycles_todo
 
-            extract_results(S, results, res_structure, params_all, append)
-            append = False
+            subrun_results = _extract_results(S, res_structure, params_all['size_part'],
+                                              params_all['nb_bins_sum'])
 
             if world.rank == 0:
                 print 'pn (all nodes):', S.pn # results have been gathered previously
-                add_cn_to_results(results, 'results_all')
-                add_cn_to_results(results, 'results_part')
-                if params_py['filename'] is not None:
-                    refine_and_save_results(results, params_all, start_time)
+                print 'run time:', datetime.now() - start_time
+                print 'date time:', datetime.now()
+                results_to_save = merge_results(results, subrun_results)
+                add_cn_to_results(results_to_save)
+                _add_params_to_results(results_to_save, params_all)
+                _save_in_file(results_to_save, params_py['filename'], params_py['run_name'])
+
+        if world.rank == 0:
+            results = results_to_save
 
     if params_cpp['store_configurations'] > 0 and not params_py['staircase']:
         save_configuration_list(S, splitext(params_py['filename'])[0])
-
-    return results
 
 
 
 
 if __name__ == '__main__':
-    import warnings
     print 'Start tests'
 
     world = MPI.COMM_WORLD
@@ -650,138 +702,63 @@ if __name__ == '__main__':
     else:
         warnings.warn("Tests of 'variance_error' must be run with MPI on 4 processes. Some tests have not been run.", RuntimeWarning)
 
-    ### test add_cn_to_results
-    results = [{'Paul': {'pn': np.array([1, 5, 18, 39])}, 'metadata': {'U': 0.8}}]
-    add_cn_to_results(results, 'Paul')
-    assert len(results) == 1
-    assert np.array_equal(results[0]['Paul']['pn'], np.array([1, 5, 18, 39]))
-    assert results[0]['metadata']['U'] == 0.8
-    assert results[0]['Paul']['cn'].shape == (4,)
-    # print results[0]['Paul']['cn']
-    assert np.allclose(results[0]['Paul']['cn'], np.array([1., 6.25, 28.125, 76.171875]))
+    # ### test _save_in_archive
+    # pn = np.array([[3], [12]])
+    # bin_times = np.linspace(0, 10, 5)
+    # kernels = np.linspace(0, 10, 5)*1.j
+    # kernels = np.vstack((kernels, 2*kernels)) # of shape (2, 5)
+    # kernels = kernels.reshape((2, 5, 1))
+    # run1 = {'Paul': {'pn': pn, 'bin_times': bin_times, 'kernels': kernels}, 'Jacques': {'bla': None}}
+    # pn = np.array([[5], [31], [99]])
+    # kernels = np.linspace(1, 4, 5)*1.j
+    # kernels = np.vstack((kernels, 2*kernels, 3*kernels)) # of shape (3, 5)
+    # kernels = kernels.reshape((3, 5, 1))
+    # run2 = {'Paul': {'pn': pn, 'bin_times': bin_times, 'kernels': kernels}, 'Jacques': {'bla': None}}
+    # results = [run1, run2]
 
-    ### test add_cn_to_results
-    ### should work with extra axes
-    results = [{'Paul': {'pn': np.array([[1, 3], [5, 6]])}, 'metadata': {'U': 0.8}}]
-    add_cn_to_results(results, 'Paul')
-    assert len(results) == 1
-    assert np.array_equal(results[0]['Paul']['pn'], np.array([[1, 3], [5, 6]]))
-    assert results[0]['metadata']['U'] == 0.8
-    assert results[0]['Paul']['cn'].shape == (2, 2)
-    # print results[0]['Paul']['cn']
-    assert np.allclose(results[0]['Paul']['cn'], np.array([[1., 1.], [6.25, 2.5]]))
+    # archive = {} # simulate an archive with a dict
+    # _save_in_archive(results, 'Paul', archive)
 
-    ### test add_cn_to_results
-    ### should work with extra axes
-    results = [{'Paul': {'pn': np.array([[1, 3], [5, 6], [10, 8]])}, 'metadata': {'U': 0.8}}]
-    add_cn_to_results(results, 'Paul')
-    assert len(results) == 1
-    assert np.array_equal(results[0]['Paul']['pn'], np.array([[1, 3], [5, 6], [10, 8]]))
-    assert results[0]['metadata']['U'] == 0.8
-    assert results[0]['Paul']['cn'].shape == (3, 2)
-    # print results[0]['Paul']['cn']
-    assert np.allclose(results[0]['Paul']['cn'], np.array([[1., 1.], [6.25, 2.5], [15.625, 4.166666666666667]]))
-
-    ### test add_cn_to_results
-    run1 = {'Paul': {'pn': np.array([10, 32]), 'cn': np.array([1., 6.4])}, 'metadata': {'U': 0.5}}
-    run2 = {'Paul': {'pn': np.array([4, 27, 56]), 'cn': np.array([1., 6.4, 22.123456790123456])}, 'metadata': {'U': 0.6}}
-    run3 = {'Paul': {'pn': np.array([1, 5, 18, 39])}, 'metadata': {'U': 0.8}}
-    results = [run1, run2, run3]
-    add_cn_to_results(results, 'Paul')
-    assert len(results) == 3
-    assert np.array_equal(results[-1]['Paul']['pn'], np.array([1, 5, 18, 39]))
-    assert results[-1]['metadata']['U'] == 0.8
-    assert results[-1]['Paul']['cn'].shape == (4,)
-    assert np.allclose(results[-1]['Paul']['cn'], np.array([1., 6.4, 22.123456790123456, 59.917695473251015]))
-
-    ### test add_cn_to_results
-    run1 = {'Paul': {'pn': np.array([[10, 12], [32, 28]]),
-                     'cn': np.array([[1., 1.], [6.4, 4.666666666666667]])},
-            'metadata': {'U': 0.5}}
-    run2 = {'Paul': {'pn': np.array([[4, 3], [27, 18], [56, 59]]),
-                     'cn': np.array([[1., 1.], [6.4, 4.666666666666667], [22.123456790123456, 25.49382716049383]])},
-            'metadata': {'U': 0.6}}
-    run3 = {'Paul': {'pn': np.array([[1, 0], [5, 7], [18, 19], [39, 45]])},
-            'metadata': {'U': 0.8}}
-    results = [run1, run2, run3]
-    add_cn_to_results(results, 'Paul')
-    assert len(results) == 3
-    assert np.array_equal(results[-1]['Paul']['pn'], np.array([[1, 0], [5, 7], [18, 19], [39, 45]]))
-    assert results[-1]['metadata']['U'] == 0.8
-    # print results[-1]['Paul']['cn']
-    assert results[-1]['Paul']['cn'].shape == (4, 2)
-    assert np.allclose(results[-1]['Paul']['cn'], np.array([[1., 1.], [6.4, 4.666666666666667], [22.123456790123456, 25.49382716049383], [59.917695473251015, 75.47514619883042]]))
-
-    ### test add_cn_to_results
-    run1 = {'Paul': {'pn': np.array([10, 0, 32]), 'cn': np.array([1., 0, 12.5])}, 'metadata': {'U': 0.5}}
-    run2 = {'Paul': {'pn': np.array([4, 0, 27, 0, 56]), 'cn': np.array([1., 0, 12.5, 0, 73.74485596707818])}, 'metadata': {'U': 0.6}}
-    run3 = {'Paul': {'pn': np.array([1, 0, 5, 0, 18, 0, 39])}, 'metadata': {'U': 0.8}}
-    results = [run1, run2, run3]
-    add_cn_to_results(results, 'Paul')
-    assert len(results) == 3
-    assert np.array_equal(results[-1]['Paul']['pn'], np.array([1, 0, 5, 0, 18, 0, 39]))
-    assert results[-1]['metadata']['U'] == 0.8
-    assert results[-1]['Paul']['cn'].shape == (7,)
-    # print results[-1]['Paul']['cn']
-    assert np.allclose(results[-1]['Paul']['cn'], np.array([1., 0, 12.5, 0, 73.74485596707818, 0, 249.65706447187918]))
-
-    ### test _save_in_archive
-    pn = np.array([[3], [12]])
-    bin_times = np.linspace(0, 10, 5)
-    kernels = np.linspace(0, 10, 5)*1.j
-    kernels = np.vstack((kernels, 2*kernels)) # of shape (2, 5)
-    kernels = kernels.reshape((2, 5, 1))
-    run1 = {'Paul': {'pn': pn, 'bin_times': bin_times, 'kernels': kernels}, 'Jacques': {'bla': None}}
-    pn = np.array([[5], [31], [99]])
-    kernels = np.linspace(1, 4, 5)*1.j
-    kernels = np.vstack((kernels, 2*kernels, 3*kernels)) # of shape (3, 5)
-    kernels = kernels.reshape((3, 5, 1))
-    run2 = {'Paul': {'pn': pn, 'bin_times': bin_times, 'kernels': kernels}, 'Jacques': {'bla': None}}
-    results = [run1, run2]
-
-    archive = {} # simulate an archive with a dict
-    _save_in_archive(results, 'Paul', archive)
-
-    pn = np.array([3, 12, 99])
-    bin_times = np.linspace(0, 10, 5)
-    v1 = np.linspace(0, 10, 5)*1.j
-    v2 = 2*v1
-    v3 = 3*np.linspace(1, 4, 5)*1.j
-    kernels = np.vstack((v1, v2, v3)) # of shape (3, 5)
-    archive_ref = {'pn': pn, 'bin_times': bin_times, 'kernels': kernels}
-    assert len(archive) == 3
-    assert np.array_equal(archive['pn'], archive_ref['pn'])
-    assert np.array_equal(archive['bin_times'], archive_ref['bin_times'])
-    assert np.array_equal(archive['kernels'], archive_ref['kernels'])
+    # pn = np.array([3, 12, 99])
+    # bin_times = np.linspace(0, 10, 5)
+    # v1 = np.linspace(0, 10, 5)*1.j
+    # v2 = 2*v1
+    # v3 = 3*np.linspace(1, 4, 5)*1.j
+    # kernels = np.vstack((v1, v2, v3)) # of shape (3, 5)
+    # archive_ref = {'pn': pn, 'bin_times': bin_times, 'kernels': kernels}
+    # assert len(archive) == 3
+    # assert np.array_equal(archive['pn'], archive_ref['pn'])
+    # assert np.array_equal(archive['bin_times'], archive_ref['bin_times'])
+    # assert np.array_equal(archive['kernels'], archive_ref['kernels'])
 
 
-    ### test _save_in_archive
-    ### with 2 parts
-    pn = np.array([[3, 4], [12, 17]])
-    bin_times = np.linspace(0, 10, 5)
-    kernels = np.array([[8.7j, 6.2], [7.4, 4.9j], [9.3, 3.9], [1.2j, 1.5j], [1.0, 1.2]]) # of shape (5, 2)
-    kernels = np.array([kernels, 2*kernels]) # of shape (2, 5, 2)
-    run1 = {'Paul': {'pn': pn, 'bin_times': bin_times, 'kernels': kernels}, 'Jacques': {'bla': None}}
-    pn = np.array([[5, 3], [31, 40], [99, 89]])
-    kernels = np.array([[7.5j, 6.1], [6.7, 1.4], [6.4j, 2.1], [9.3j, 0.7j], [6.7, 0.3]]) # of shape (5, 2)
-    kernels = np.array([kernels, 2*kernels, 3*kernels]) # of shape (3, 5, 2)
-    run2 = {'Paul': {'pn': pn, 'bin_times': bin_times, 'kernels': kernels}, 'Jacques': {'bla': None}}
-    results = [run1, run2]
+    # ### test _save_in_archive
+    # ### with 2 parts
+    # pn = np.array([[3, 4], [12, 17]])
+    # bin_times = np.linspace(0, 10, 5)
+    # kernels = np.array([[8.7j, 6.2], [7.4, 4.9j], [9.3, 3.9], [1.2j, 1.5j], [1.0, 1.2]]) # of shape (5, 2)
+    # kernels = np.array([kernels, 2*kernels]) # of shape (2, 5, 2)
+    # run1 = {'Paul': {'pn': pn, 'bin_times': bin_times, 'kernels': kernels}, 'Jacques': {'bla': None}}
+    # pn = np.array([[5, 3], [31, 40], [99, 89]])
+    # kernels = np.array([[7.5j, 6.1], [6.7, 1.4], [6.4j, 2.1], [9.3j, 0.7j], [6.7, 0.3]]) # of shape (5, 2)
+    # kernels = np.array([kernels, 2*kernels, 3*kernels]) # of shape (3, 5, 2)
+    # run2 = {'Paul': {'pn': pn, 'bin_times': bin_times, 'kernels': kernels}, 'Jacques': {'bla': None}}
+    # results = [run1, run2]
 
-    archive = {} # simulate an archive with a dict
-    _save_in_archive(results, 'Paul', archive)
+    # archive = {} # simulate an archive with a dict
+    # _save_in_archive(results, 'Paul', archive)
 
-    pn = np.array([[3, 4], [12, 17], [99, 89]])
-    bin_times = np.linspace(0, 10, 5)
-    v1 = np.array([[8.7j, 6.2], [7.4, 4.9j], [9.3, 3.9], [1.2j, 1.5j], [1.0, 1.2]])
-    v2 = 2*v1
-    v3 = 3*np.array([[7.5j, 6.1], [6.7, 1.4], [6.4j, 2.1], [9.3j, 0.7j], [6.7, 0.3]])
-    kernels = np.array([v1, v2, v3]) # of shape (3, 5, 2)
-    archive_ref = {'pn': pn, 'bin_times': bin_times, 'kernels': kernels}
-    assert len(archive) == 3
-    assert np.array_equal(archive['pn'], archive_ref['pn'])
-    assert np.array_equal(archive['bin_times'], archive_ref['bin_times'])
-    assert np.array_equal(archive['kernels'], archive_ref['kernels'])
+    # pn = np.array([[3, 4], [12, 17], [99, 89]])
+    # bin_times = np.linspace(0, 10, 5)
+    # v1 = np.array([[8.7j, 6.2], [7.4, 4.9j], [9.3, 3.9], [1.2j, 1.5j], [1.0, 1.2]])
+    # v2 = 2*v1
+    # v3 = 3*np.array([[7.5j, 6.1], [6.7, 1.4], [6.4j, 2.1], [9.3j, 0.7j], [6.7, 0.3]])
+    # kernels = np.array([v1, v2, v3]) # of shape (3, 5, 2)
+    # archive_ref = {'pn': pn, 'bin_times': bin_times, 'kernels': kernels}
+    # assert len(archive) == 3
+    # assert np.array_equal(archive['pn'], archive_ref['pn'])
+    # assert np.array_equal(archive['bin_times'], archive_ref['bin_times'])
+    # assert np.array_equal(archive['kernels'], archive_ref['kernels'])
 
     ### test _next_name_gen
     nng = _next_name_gen('blabla_36')

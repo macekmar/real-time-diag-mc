@@ -64,7 +64,7 @@ p["singular_thresholds"] = [3.5, 3.3]
 
 p_copy = deepcopy(p) # keep parameters safe
 
-# solve(p)
+# solve(**p)
 
 if mpi.world.rank == 0:
     g0_less_v = np.vectorize(lambda t: g0_less(t)[0, 0] if np.abs(t) < cutoff_g0 else 0., otypes=[complex])

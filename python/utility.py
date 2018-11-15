@@ -15,6 +15,11 @@ def expand_axis(a, val, end=False, axis=0):
     else:
         return np.append(np.tile(val, shape), a, axis=axis)
 
+def pad_along_axis(a, before, after, axis, mode, **kwargs):
+    pad_width = [(0, 0) for _ in range(a.ndim)]
+    pad_width[axis] = (before, after)
+    return np.pad(a, pad_width, mode, **kwargs)
+
 def squeeze_except(a, except_axes):
     """
     Like np.squeeze but ignoring axes in the list `except_axis`.

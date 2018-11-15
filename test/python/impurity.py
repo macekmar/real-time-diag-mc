@@ -1,6 +1,5 @@
 from pytriqs.utility import mpi
-from ctint_keldysh import make_g0_semi_circular, solve
-from ctint_keldysh.construct_gf import kernel_GF_from_archive
+from ctint_keldysh import make_g0_semi_circular, solve, compute_correlator, make_g0_contour
 from pytriqs.archive import HDFArchive
 import numpy as np
 import os
@@ -8,8 +7,12 @@ from matplotlib import pyplot as plt
 import warnings
 from copy import deepcopy
 
+from toolbox import cpx_plot_error
+
 """
 This tests the python interface of the solver in the staircase usage, and the accuracy of the calculation at orders 1 and 2. It computes an impurity problem with no orbitals.
+
+Takes about 5 min for 10000 cycles
 """
 
 if mpi.world.size < 2:
@@ -32,7 +35,7 @@ p = {}
 p["staircase"] = True
 p["nb_warmup_cycles"] = 1000
 p["nb_cycles"] = 10000#0
-p["save_period"] = 3*60
+p["save_period"] = 60*60
 p["filename"] = filename
 p["run_name"] = 'run_1'
 p["g0_lesser"] = g0_less_triqs[0, 0]
@@ -40,7 +43,8 @@ p["g0_greater"] = g0_grea_triqs[0, 0]
 p["size_part"] = 10
 p["nb_bins_sum"] = 10
 
-p["creation_ops"] = [(0, 0, 0.0, 0)]
+### computes G^<(t) and G^\bar{T}(t) = G^>(t) for t<0
+p["creation_ops"] = [(0, 0, 0.0, 1)]
 p["annihilation_ops"] = [(0, 0, 0.0, 0)]
 p["extern_alphas"] = [0.]
 p["nonfixed_op"] = False
@@ -62,132 +66,58 @@ p["singular_thresholds"] = [3.5, 3.3]
 
 p_copy = deepcopy(p) # keep parameters safe
 
-solve(p)
+solve(**p)
 
 if mpi.world.rank == 0:
 
+    error = lambda a: np.sqrt(p_copy["nb_bins_sum"] * np.var(a, ddof=1, axis=-1) / float(a.shape[-1]))
+    g0_contour = make_g0_contour(g0_less_triqs[0, 0], g0_grea_triqs[0, 0])
+
     with HDFArchive(filename, 'r') as ar:
+        times, GF, times_part, GF_part = compute_correlator(ar['run_1'], g0_contour)
 
-        ### check nb_kernels agrees with pn
-        res = ar['run_1']['results_all']
-        if (res['nb_kernels'][0, :, 0].sum(axis=0) != res['pn'][1] or
-            res['nb_kernels'][0, :, 1].sum(axis=0) != res['pn'][1]):
-            raise RuntimeError
-        if (res['nb_kernels'][1, :, 0].sum(axis=0) != 2*res['pn'][2] or
-            res['nb_kernels'][1, :, 1].sum(axis=0) != 2*res['pn'][2]):
-            raise RuntimeError
-        res = ar['run_1']['results_part']
-        if mpi.world.size >= 2:
-            if ((res['nb_kernels'][0, :, 0].sum(axis=0) != res['pn'][1]).any() or
-                (res['nb_kernels'][0, :, 1].sum(axis=0) != res['pn'][1]).any()):
-                raise RuntimeError
-            if ((res['nb_kernels'][1, :, 0].sum(axis=0) != 2*res['pn'][2]).any() or
-                (res['nb_kernels'][1, :, 1].sum(axis=0) != 2*res['pn'][2]).any()):
-                raise RuntimeError
-        else:
-            if (res['nb_kernels'][0, :, 0].sum(axis=0) != res['pn'][1] or
-                res['nb_kernels'][0, :, 1].sum(axis=0) != res['pn'][1]):
-                raise RuntimeError
-            if (res['nb_kernels'][1, :, 0].sum(axis=0) != 2*res['pn'][2] or
-                res['nb_kernels'][1, :, 1].sum(axis=0) != 2*res['pn'][2]):
-                raise RuntimeError
+    ### remove orbital axis
+    GF = GF[:, :, :, 0]
+    GF_part = GF_part[:, :, :, 0]
 
-        kernel = kernel_GF_from_archive(ar['run_1']['results_all'], p_copy["nonfixed_op"])
-        kernel_part = kernel_GF_from_archive(ar['run_1']['results_part'], p_copy["nonfixed_op"])
+    ### compute error
+    GF_re_err = error(GF_part.real)
+    GF_im_err = error(GF_part.imag)
 
+    ### order 1
 
-        if False: # plot kernel order 1
-            res = ar['run_1']['results_all']
-            error = lambda a : np.sqrt(np.var(a, axis=-1) / float(a.shape[-1]))
-            fig, ax = plt.subplots(2, 2)
-            ax[0, 0].plot(kernel.times, kernel.less.values[0].real, '.b', markersize=1)
-            ax[0, 0].plot(kernel.times, kernel.less.values[0].imag, '.r', markersize=1)
-            ax[0, 0].set_xlim(-50, 10)
-            # ax[1, 0].plot(kernel_part.times, error(kernel_part.less.values[0].real), 'b')
-            # ax[1, 0].plot(kernel_part.times, error(kernel_part.less.values[0].imag), 'r')
-            ax[1, 0].plot(res['bin_times'], res['nb_kernels'][0, :, 0], 'k')
-            ax[1, 0].set_xlim(-50, 10)
-            ax[0, 1].plot(kernel.times, kernel.grea.values[0].real, '.b', markersize=1)
-            ax[0, 1].plot(kernel.times, kernel.grea.values[0].imag, '.r', markersize=1)
-            ax[0, 1].set_xlim(-50, 10)
-            # ax[1, 1].plot(kernel_part.times, error(kernel_part.grea.values[0].real), 'b')
-            # ax[1, 1].plot(kernel_part.times, error(kernel_part.grea.values[0].imag), 'r')
-            ax[1, 1].plot(res['bin_times'], res['nb_kernels'][0, :, 1], 'k')
-            ax[1, 1].set_xlim(-50, 10)
-            plt.tight_layout()
-            plt.show()
+    fig, ax = plt.subplots(2, 2)
+    with HDFArchive('ref_data/order1_params1.ref.h5', 'r') as ref:
+        cpx_plot_error(ax[0, 0], times, GF[0, :, 0], times_part,
+                       (GF_re_err[0, :, 0], GF_im_err[0, :, 0]), c=('b', 'r'))
+        ax[0, 0].plot(ref['less']['times'], ref['less']['o1'].real, 'g.-')
+        ax[0, 0].plot(ref['less']['times'], ref['less']['o1'].imag, 'm.-')
+        ax[0, 0].set_title('less o1')
 
-        if False: # plot kernel order 2
-            error = lambda a : np.sqrt(np.var(a, axis=-1) / float(a.shape[-1]))
-            fig, ax = plt.subplots(2, 2)
-            ax[0, 0].plot(kernel.times, kernel.less.values[1].real, '.b', markersize=1)
-            ax[0, 0].plot(kernel.times, kernel.less.values[1].imag, '.r', markersize=1)
-            ax[0, 0].set_xlim(-50, 10)
-            ax[1, 0].plot(kernel_part.times, error(kernel_part.less.values[1].real), 'b')
-            ax[1, 0].plot(kernel_part.times, error(kernel_part.less.values[1].imag), 'r')
-            ax[1, 0].set_xlim(-50, 10)
-            ax[0, 1].plot(kernel.times, kernel.grea.values[1].real, '.b', markersize=1)
-            ax[0, 1].plot(kernel.times, kernel.grea.values[1].imag, '.r', markersize=1)
-            ax[0, 1].set_xlim(-50, 10)
-            ax[1, 1].plot(kernel_part.times, error(kernel_part.grea.values[1].real), 'b')
-            ax[1, 1].plot(kernel_part.times, error(kernel_part.grea.values[1].imag), 'r')
-            ax[1, 1].set_xlim(-50, 10)
-            plt.show()
+        cpx_plot_error(ax[0, 1], times, GF[0, :, 1], times_part,
+                       (GF_re_err[0, :, 1], GF_im_err[0, :, 1]), c=('b', 'r'))
+        ax[0, 1].plot(ref['grea']['times'], ref['grea']['o1'].real, 'g.-')
+        ax[0, 1].plot(ref['grea']['times'], ref['grea']['o1'].imag, 'm.-')
+        ax[0, 1].set_title('grea o1')
 
-    g0_less = np.vectorize(lambda t: g0_less_triqs(t)[0, 0] if np.abs(t) < 100. else 0., otypes=[complex])
-    g0_grea = np.vectorize(lambda t: g0_grea_triqs(t)[0, 0] if np.abs(t) < 100. else 0., otypes=[complex])
-    g0_reta = np.vectorize(lambda t: 0. if (t >= 100. or t < 0.) else g0_grea_triqs(t)[0, 0] - g0_less_triqs(t)[0, 0], otypes=[complex])
-    g0_adva = np.vectorize(lambda t: 0. if (t <= -100. or t > 0.) else g0_less_triqs(t)[0, 0] - g0_grea_triqs(t)[0, 0], otypes=[complex])
+    ### order 2
 
-    exit()
-    ############# lesser and greater ##############
-    GF = kernel.convol_g_left(g0_less, g0_grea, 100.)
-    GF.apply_gf_sym()
-    GF.increment_order(g0_less, g0_grea)
+    with HDFArchive('ref_data/order2_params1.ref.h5', 'r') as ref:
+        cpx_plot_error(ax[1, 0], times, GF[1, :, 0], times_part,
+                       (GF_re_err[1, :, 0], GF_im_err[1, :, 0]), c=('b', 'r'))
+        ax[1, 0].errorbar(ref['less']['times'], ref['less']['o2'].real,
+                       ref['less']['o2_error'].real, fmt='g.-')
+        ax[1, 0].errorbar(ref['less']['times'], ref['less']['o2'].imag,
+                       ref['less']['o2_error'].imag, fmt='m.-')
+        ax[1, 0].set_title('less o2')
 
-    if GF.less.values.ndim != 2 or GF.grea.values.ndim != 2:
-        raise RuntimeError, 'FAILED'
+        cpx_plot_error(ax[1, 1], times, GF[1, :, 1], times_part,
+                       (GF_re_err[1, :, 1], GF_im_err[1, :, 1]), c=('b', 'r'))
+        ax[1, 1].errorbar(ref['grea']['times'], ref['grea']['o2'].real,
+                       ref['grea']['o2_error'].real, fmt='g.-')
+        ax[1, 1].errorbar(ref['grea']['times'], ref['grea']['o2'].imag,
+                       ref['grea']['o2_error'].imag, fmt='m.-')
+        ax[1, 1].set_title('grea o2')
 
-    ### test calculation of error (not compared to anything)
-    GF_part = kernel_part.convol_g_left(g0_less, g0_grea, 100.)
-    GF_part.apply_gf_sym()
-    GF_part.increment_order(g0_less, g0_grea)
-    error = lambda a : np.sqrt(np.var(a, axis=-1) / float(a.shape[-1]))
+    plt.show()
 
-    if mpi.world.size < 2:
-        if GF_part.less.values.ndim != 2 or GF_part.grea.values.ndim != 2:
-            raise RuntimeError, 'FAILED'
-    else:
-        if GF_part.less.values.ndim != 3 or GF_part.grea.values.ndim != 3:
-            raise RuntimeError, 'FAILED'
-        if error(GF_part.less.values).ndim != 2 or error(GF_part.grea.values).ndim != 2:
-            raise RuntimeError, 'FAILED'
-        nb_part = min(mpi.world.size, p_copy["size_part"])
-        if GF_part.less.values.shape[-1] != nb_part or GF_part.grea.values.shape[-1] != nb_part:
-            raise RuntimeError, 'FAILED'
-
-    ### test number of measures
-    with HDFArchive(filename, 'r') as ar:
-        if not np.array_equal(ar['run_1']['metadata']['nb_measures'], mpi.world.size * p_copy["nb_cycles"] * np.ones(2)):
-            raise RuntimeError, 'FAILED'
-
-
-    ### test order 0
-
-    if False:
-        plt.plot(GF.times, GF.less.values[0].real, 'b')
-        plt.plot(GF.times, GF.less.values[0].imag, 'r')
-        plt.plot(GF.times, g0_less(GF.times).real, 'g')
-        plt.plot(GF.times, g0_less(GF.times).imag, 'm')
-        plt.show()
-
-    rtol = 0.001
-    atol = 0.0001
-    if not np.allclose(GF.less.values[0], g0_less(GF.times), rtol=rtol, atol=atol):
-        raise RuntimeError, 'FAILED o0 less'
-
-    if not np.allclose(GF.grea.values[0], g0_grea(GF.times), rtol=rtol, atol=atol):
-        raise RuntimeError, 'FAILED o0 grea'
-
-
-    print 'SUCCESS !'

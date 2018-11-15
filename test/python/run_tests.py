@@ -1,8 +1,10 @@
-from pytriqs.utility import mpi
+from mpi4py import MPI
 from ctint_keldysh import make_g0_semi_circular, solve
 import warnings
 import os
+import traceback
 from copy import deepcopy
+from time import sleep
 
 """
 This tests the python interface of the solver in the staircase scheme
@@ -10,7 +12,47 @@ for different situations. It does not compare to any reference
 data. The test succeed if the code runs without trouble.
 """
 
-if mpi.world.size < 2:
+def print_traceback():
+    if MPI.COMM_WORLD.size < 2:
+        traceback.print_exc()
+    else:
+        print '>>> rank {0} failed, traceback:'.format(MPI.COMM_WORLD.rank)
+        traceback.print_exc()
+        print
+
+class TracebackPrinter(object):
+
+    def __init__(self):
+        self.lockfile = '.run_tests.lock'
+        self._is_locked = False
+
+    def __del__(self):
+        self._unlock()
+
+    def _lock(self):
+        while True:
+            try:
+                with open(self.lockfile, 'wx'):
+                    pass
+                self._is_locked = True
+                break
+            except IOError:
+                sleep(0.5)
+
+    def _unlock(self):
+        if self._is_locked:
+            os.remove(self.lockfile)
+            self._is_locked = False
+
+    def __call__(self):
+        self._lock()
+        print_traceback()
+        self._unlock()
+
+traceback_printer = TracebackPrinter()
+
+
+if MPI.COMM_WORLD.size < 2:
     warnings.warn('This test is run on a single process. It is advised to run it on several processes to carry a more thorough test.', RuntimeWarning)
 
 situations = []
@@ -22,7 +64,7 @@ situations.append({'method': 1, 'forbid_parity_order': 1, 'w_ins_rem': 0., 'w_db
 nb_tests = len(situations)
 success_list = []
 for k, sit in enumerate(situations):
-    if mpi.world.rank == 0:
+    if MPI.COMM_WORLD.rank == 0:
         print '>>>>>>>>> Trying situation: ', sit
         print
 
@@ -82,28 +124,22 @@ for k, sit in enumerate(situations):
 
         p_copy = deepcopy(p) # keep parameters safe
 
-        results = solve(p)
+        results = solve(**p)
 
-    except Exception as e:
-        success_list.append(False)
-        if mpi.world.rank == 0:
-            print e
-            print 'FAIL'
-            print
     except:
-        success_list.append(False)
-        if mpi.world.rank == 0:
-            print 'unkown error'
-            print 'FAIL'
-            print
+        success = False
+        traceback_printer()
 
     else:
-        success_list.append(True)
-        if mpi.world.rank == 0:
-            print 'SUCCESS !'
-            print
+        success = True
 
-if mpi.world.rank == 0:
-    print 'Results of {0} tests:'.format(nb_tests)
+    success_all = MPI.COMM_WORLD.allreduce(success, op=MPI.PROD)
+    if MPI.COMM_WORLD.rank == 0:
+        success_list.append(success_all)
+        print '>>> ', 'SUCCESS' if success_all else 'FAIL'
+        print
+
+if MPI.COMM_WORLD.rank == 0:
+    print '>>> Results of {0} tests:'.format(nb_tests)
     for s in success_list:
-        print s
+        print bool(s)

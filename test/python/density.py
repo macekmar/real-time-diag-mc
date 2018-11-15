@@ -3,8 +3,6 @@ from ctint_keldysh import SolverCore, make_g0_semi_circular
 from pytriqs.archive import HDFArchive
 import numpy as np
 
-### TODO: WIP
-
 p = {}
 p["beta"] = 100.0
 p["Gamma"] = 0.5*0.5 # gamma = 0.5

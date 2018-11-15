@@ -27,7 +27,9 @@ from ctint_keldysh import SolverCore
 from g0_semi_circ import make_g0_semi_circular, make_g0c_semi_circular_freq, make_g0_semi_circular_freq
 from g0_flat_band import make_g0_flat_band, make_g0c_flat_band_freq, make_g0_flat_band_freq
 from g0_lattice_1d import make_g0_lattice_1d
-from solver import solve, variance_error
+from solver import solve, save_configuration_list
+from results import merge
+from post_treatment import compute_correlator, compute_correlator_oldway, make_g0_contour
 
 __all__ = ['SolverCore',
            'make_g0_semi_circular',
@@ -37,5 +39,18 @@ __all__ = ['SolverCore',
            'make_g0c_flat_band_freq',
            'make_g0_flat_band_freq',
            'make_g0_lattice_1d',
-           'variance_error',
-           'solve']
+           'solve',
+           'save_configuration_list',
+           'merge',
+           'compute_correlator',
+           'compute_correlator_oldway',
+           'make_g0_contour']
+
+### Do not ignore DeprecationWarning (revert python weird default)
+import warnings
+warnings.simplefilter('default', DeprecationWarning)
+
+### Complex numbers are everywhere in this solver, one should not mess with them
+import numpy as np
+warnings.simplefilter('error', np.ComplexWarning)
+

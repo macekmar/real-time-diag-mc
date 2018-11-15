@@ -82,8 +82,8 @@ def generalized_fftconvolve(in1, in2, subscripts=r't, t -> t'):
 
     return _centered(ret[:length].copy(), len(in1))
 
-
 ######### Post treatment functions #########
+
 
 def compute_correlator(archive, g0_func, no_cn=False):
     """
@@ -93,6 +93,9 @@ def compute_correlator(archive, g0_func, no_cn=False):
     `g0_func` is the unperturbed one-particle Green's function. It is a function of time returning a scalar value (retarded/advanced), a 2D square array (keldysh matrix), or an array of shape (N, N, M, M) (keldysh matrix with orbitals).
 
     Note `g0_func` is NOT in general the unperturbed correlator, convolution has to be done with the *one-particle* unperturbed Green's function.
+
+    TODO: add diracs !!
+    TODO: optimize for big system sizes
     """
 
     if archive['parameters']['method'] == 0:
@@ -166,7 +169,7 @@ def compute_correlator_oldway(archive, abs_g0_value):
     if archive['parameters']['method'] > 0:
         raise ValueError, 'The archive contains kernel method results, cannot proceed.'
 
-    abs_g0_value = np.abs(abs_g0_value)
+    abs_g0_value = np.abs(np.asscalar(abs_g0_value))
 
     def extract(ar):
         return ar['sn'] * ar['cn'] * abs_g0_value

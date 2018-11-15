@@ -4,6 +4,8 @@ import warnings
 from copy import copy
 from utility import expand_axis, mult_by_1darray, mult_by_2darray, is_incr_reg_spaced, convolve, convolve_coord, vcut
 
+warnings.warn('All content of this module (construct_gf.py) is deprecated. Use post_treatment.py instead.', DeprecationWarning)
+
 def _fourier_transform_with_diracs(times, values, dirac_times, dirac_values, max_puls, min_data_pts):
     p = np.log2(np.pi*min_data_pts / float((times[1] - times[0]) * max_puls))
     n = 2**(int(p) + 1)
