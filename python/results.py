@@ -112,8 +112,34 @@ def merge_results(results1, results2):
 
     return output
 
+def _cn_formula(p_list, U_list, ind_low, ind_high):
+    assert p_list[ind_low] != 0
+    return p_list[ind_high] / (p_list[ind_low] * np.prod(U_list[ind_low:ind_high]))
 
-def _compute_cn(pn, Un, c0=1.):
+def _compute_cn_single_run(pn, Un, c0=1.):
+    """
+    computes cn from pn and Un, using the best run for each cn.
+    `pn` is a (nb_runs, nb_orders) array.
+    `Un` is a (nb_runs, nb_orders-1) array.
+    returns a 1D array of size `nb_orders`.
+    """
+    N = pn.shape[1] # nb orders
+
+    cn = np.empty(N, dtype=float)
+    cn[0] = c0
+
+    for n in range(1, N):
+        prod_pn = pn[:, n][:, np.newaxis] * pn[:, :n]
+        if (prod_pn == 0).all():
+            cn[n] = 0.
+        else:
+            run_ind, order_ind = np.unravel_index(np.argmax(prod_pn), prod_pn.shape)
+            cn[n] = cn[order_ind] * _cn_formula(pn[run_ind, :], Un[run_ind, :], order_ind, n)
+
+    return cn
+
+
+def _compute_cn_cum(pn, Un, c0=1.):
     """
     computes cn from pn and Un of several runs.
     `pn` is a (nb_runs, nb_orders) array.
@@ -143,27 +169,32 @@ def _compute_cn(pn, Un, c0=1.):
 
     return cn
 
+def _compute_cn(pn, Un, c0=1., method='single'):
+    if method == 'single':
+        return _compute_cn_single_run(pn, Un, c0=c0)
+    elif method == 'cum':
+        return _compute_cn_cum(pn, Un, c0=c0)
 
-def _compute_cn_v(pn, Un, c0=1.):
+def _compute_cn_v(pn, Un, c0=1., method='single'):
     nb_part = pn.shape[2]
 
     cn = np.empty(pn.shape[1:], dtype=float)
     for i in range(nb_part):
-        cn[:, i] = _compute_cn(pn[:, :, i], Un, c0=c0)
+        cn[:, i] = _compute_cn(pn[:, :, i], Un, c0=c0, method=method)
 
     return cn
 
 
-def add_cn_to_results(results):
+def add_cn_to_results(results, method='single'):
     """
     Computes cn from data in `results` and add it as a new key under
     'results_all' and 'results_part'.
     """
 
     res = results['results_all']
-    res['cn'] = _compute_cn(res['pn'], res['U'])
+    res['cn'] = _compute_cn(res['pn'], res['U'], method=method)
     res = results['results_part']
-    res['cn'] = _compute_cn_v(res['pn'], res['U'])
+    res['cn'] = _compute_cn_v(res['pn'], res['U'], method=method)
 
 def merge(results1, results2):
     """
@@ -189,7 +220,7 @@ def merge(results1, results2):
 if __name__ == '__main__':
 
     ### test merge_results
-    results1 = {'results_all': {}, 'results_part': [], 'metadata': {}}
+    results1 = {'results_all': {}, 'results_part': {}, 'metadata': {}}
     results1['results_all']['pn'] = np.array([[12, 45, 0],
                                               [6, 22, 67]])
     results1['results_all']['U'] = np.array([[0.5, 0.],
@@ -205,7 +236,7 @@ if __name__ == '__main__':
     results1['metadata']['duration'] = 7835
     results1['metadata']['durations'] = np.array([2746, 5089])
 
-    results2 = {'results_all': {}, 'results_part': [], 'metadata': {}}
+    results2 = {'results_all': {}, 'results_part': {}, 'metadata': {}}
     results2['results_all']['pn'] = np.array([[3, 17, 38, 56]])
     results2['results_all']['U'] = np.array([[0.9, 0.9, 0.9]])
     results2['results_all']['sn'] = np.array([-0.3, 0.73, -0.825, 1.2])
@@ -239,15 +270,33 @@ if __name__ == '__main__':
     pn = np.array([[1, 5, 18, 39]]) # shape = (1, 4)
     Un = np.array([[0.8, 0.8, 0.8]]) # shape = (1, 3)
     cn_ref = np.array([1., 6.25, 28.125, 76.171875])
-    assert _compute_cn(pn, Un).shape == (4,)
-    assert np.allclose(_compute_cn(pn, Un), cn_ref)
+    cn = _compute_cn(pn, Un, method='single')
+    assert cn.shape == (4,)
+    assert np.allclose(cn, cn_ref)
+
+    pn = np.array([[1, 5, 18, 39]]) # shape = (1, 4)
+    Un = np.array([[0.8, 0.8, 0.8]]) # shape = (1, 3)
+    cn_ref = np.array([1., 6.25, 28.125, 76.171875])
+    cn = _compute_cn(pn, Un, method='cum')
+    assert cn.shape == (4,)
+    assert np.allclose(cn, cn_ref)
 
     ### test _compute_cn
     pn = np.array([[1, 0, 18, 0, 39]])
     Un = np.array([[0.8, 0.8, 0.8, 0.8]])
     cn_ref = np.array([1., 0., 28.125, 0, 95.21484375])
-    assert _compute_cn(pn, Un).shape == (5,)
-    assert np.allclose(_compute_cn(pn, Un), cn_ref)
+    cn = _compute_cn(pn, Un, method='single')
+    print cn
+    assert cn.shape == (5,)
+    assert np.allclose(cn, cn_ref)
+
+    ### test _compute_cn
+    pn = np.array([[1, 0, 18, 0, 39]])
+    Un = np.array([[0.8, 0.8, 0.8, 0.8]])
+    cn_ref = np.array([1., 0., 28.125, 0, 95.21484375])
+    cn = _compute_cn(pn, Un, method='cum')
+    assert cn.shape == (5,)
+    assert np.allclose(cn, cn_ref)
 
     ### test _compute_cn
     pn = np.array([[10, 32,  0,  0],  # subrun 1
@@ -257,22 +306,41 @@ if __name__ == '__main__':
                    [0.6, 0.6,  0.],  # subrun 2
                    [0.8, 0.8, 0.8]]) # subrun 3
     cn_ref = np.array([1., 7.804878048780487, 28.592127505433467, 77.43701199388231])
-    assert _compute_cn(pn, Un).shape == (4,)
-    assert np.allclose(_compute_cn(pn, Un), cn_ref)
+    cn = _compute_cn(pn, Un, method='cum')
+    assert cn.shape == (4,)
+    assert np.allclose(cn, cn_ref)
 
     ### test _compute_cn_v
     pn = np.array([[[1, 3], [5, 6]]]) # shape = (1, 2, 2)
     Un = np.array([[0.8]]) # shape = (1, 1)
     cn_ref = np.array([[1., 1.], [6.25, 2.5]]) # shape = (2, 2)
-    assert _compute_cn_v(pn, Un).shape == (2, 2)
-    assert np.allclose(_compute_cn_v(pn, Un), cn_ref)
+    cn = _compute_cn_v(pn, Un, method='single')
+    assert cn.shape == (2, 2)
+    assert np.allclose(cn, cn_ref)
+
+    ### test _compute_cn_v
+    pn = np.array([[[1, 3], [5, 6]]]) # shape = (1, 2, 2)
+    Un = np.array([[0.8]]) # shape = (1, 1)
+    cn_ref = np.array([[1., 1.], [6.25, 2.5]]) # shape = (2, 2)
+    cn = _compute_cn_v(pn, Un, method='cum')
+    assert cn.shape == (2, 2)
+    assert np.allclose(cn, cn_ref)
 
     ### test _compute_cn_v
     pn = np.array([[[1, 3], [5, 6], [10, 8]]]) # shape = (1, 3, 2)
     Un = np.array([[0.8, 0.8]]) # shape = (1, 2)
     cn_ref = np.array([[1., 1.], [6.25, 2.5], [15.625, 4.166666666666667]]) # shape = (3, 2)
-    assert _compute_cn_v(pn, Un).shape == (3, 2)
-    assert np.allclose(_compute_cn_v(pn, Un), cn_ref)
+    cn = _compute_cn_v(pn, Un, method='single')
+    assert cn.shape == (3, 2)
+    assert np.allclose(cn, cn_ref)
+
+    ### test _compute_cn_v
+    pn = np.array([[[1, 3], [5, 6], [10, 8]]]) # shape = (1, 3, 2)
+    Un = np.array([[0.8, 0.8]]) # shape = (1, 2)
+    cn_ref = np.array([[1., 1.], [6.25, 2.5], [15.625, 4.166666666666667]]) # shape = (3, 2)
+    cn = _compute_cn_v(pn, Un, method='cum')
+    assert cn.shape == (3, 2)
+    assert np.allclose(cn, cn_ref)
 
 
     # results = [{'Paul': {'pn': np.array([1, 5, 18, 39])}, 'metadata': {'U': 0.8}}]

@@ -13,9 +13,11 @@ struct situation {
  const int fpo;
  const double w_ins_rem;
  const double w_dbl;
+ const bool pref_spl;
 
- situation(int method, int fpo, double w_ins_rem, double w_dbl)
-  : ID(nb), method(method), fpo(fpo), w_ins_rem(w_ins_rem), w_dbl(w_dbl) {++nb;};
+ situation(int method, int fpo, double w_ins_rem, double w_dbl, bool pref_spl=false)
+  : ID(nb), method(method), fpo(fpo), w_ins_rem(w_ins_rem), w_dbl(w_dbl), pref_spl(pref_spl)
+ {++nb;};
 
  private:
   static size_t nb;
@@ -33,6 +35,7 @@ int main() {
  situations.emplace_back(0, -1, 1.0, 0.5);
  situations.emplace_back(0, 1, 0.0, 1.0);
  situations.emplace_back(1, -1, 1.0, 0.5);
+ situations.emplace_back(1, -1, 1.0, 0.5, true);
  situations.emplace_back(1, 1, 0.0, 1.0);
  situations.emplace_back(2, -1, 1.0, 0.5);
  situations.emplace_back(2, 1, 0.0, 1.0);
@@ -85,6 +88,7 @@ int main() {
    params.method = it->method;
    params.singular_thresholds = std::pair<double, double>{4.5, 3.3};
    params.nb_bins = 20;
+   params.preferential_sampling = it->pref_spl;
 
    solver_core S(params);
    S.set_g0(g_less, g_grea);

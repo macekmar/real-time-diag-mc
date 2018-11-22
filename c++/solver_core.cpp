@@ -15,21 +15,26 @@ using triqs::arrays::range;
  * `solver_core::set_g0` method.
  *
  * This solver aims at computing the following kind of correlator:
- * G = \frac{1}{i^p} \langle T_{\rm c} c(X_1) c^\dagger(Y_1) \prod_{k=2}^p (c(X_k) c^\dagger(Y_k) - \alpha_k) \rangle
+ * G = \frac{1}{i^p} \langle T_{\rm c} c_{\sigma_1}(X_1) c_{\sigma_1}^\dagger(Y_1) \prod_{k=2}^p (c_{\sigma_k}(X_k) c_{\sigma_k}^\dagger(Y_k) - \alpha_k) \rangle
  * where X_k, Y_k are points of the Keldysh contour (orbital, time, Keldysh
  * index), \alpha_k are constants and T_{\rm c} is the contour time ordering
- * operator. Equal time ordering is annihilation < creation (ie c^\dagger c),
+ * operator, and \sigma_k are spin up or down. Equal time ordering is annihilation < creation (ie c^\dagger c),
  * it is not a priori the order in the correlator !!! (FIXME ?, this could lead to undefined behavior)
  * \langle \ldots \rangle means quantum average with respect to the non-interacting density matrix.
  *
- * Interactions are restricted to the offseted-density-density type with the following form:
- * H_{\rm int}(t) = \sum_{i,j\in I} V_{ij}(t) (c_i^\dagger c_i - \alpha) (c_j^\dagger c_j - \alpha)
+ * Interactions are restricted to the shifted density-density type between up and down electrons, with the following form:
+ * H_{\rm int}(t) = \sum_{i,j\in I} V_{ij}(t) (c_{\uparrow,i}^\dagger c_{\uparrow,i} - \alpha) (c_{\downarrow,j}^\dagger c_{\downarrow,j} - \alpha)
  * where I is the subset of interacting orbitals, \alpha is a constant.
  * V_{ij}(t) is considered zero outside of the time range [-T, 0], called
- * integration range, and constant inside.
+ * integration range, and constant inside. V_{ij} must be symmetric in i,j (up down symmetry)
  * For this computation to make physical sense, it is required that all X_k and
  * Y_k are made of orbitals in I and times in the integration range. If so,
  * integrating up to 0 is equivalent to integrating up to +\infty.
+ *
+ * The non-interacting problem has to be spin up down symmetric and the
+ * non-interacting Green's function g must be such that g_{\uparrow\uparrow} =
+ * g_{\downarrow\downarrow} = g and g_{\uparrow\downarrow} = g_{\downarrow\uparrow}
+ * = 0. This property is kept in the interacting G.
  *
  * If method = 0, the correlator is directly computed for a fixed set of
  * contour points X_1, ..., X_p and Y_1, ..., Y_p.
@@ -46,8 +51,6 @@ using triqs::arrays::range;
  * post-treatment to use X_1 with an interacting orbital and time within the
  * integration range. If positive times are needed, possible symmetries of G
  * should be considered in post-treatment.
- *
- * Note: totally forgot about spin... TODO
  *
  */
 solver_core::solver_core(solve_parameters_t const& params)
