@@ -7,25 +7,31 @@
 
 namespace moves {
 
-std::vector<double> prepare_U(std::vector<double> U);
-
 struct common {
  Configuration &config;
  const solve_parameters_t &params;
  const RandomVertexGenerator& rvg;
  triqs::mc_tools::random_generator &rng;
- const std::vector<double> U;
+ std::map<int, double> U;
  bool quick_exit = false;
 
  common(Configuration &config, const solve_parameters_t &params,
         triqs::mc_tools::random_generator &rng, const RandomVertexGenerator &rvg)
-    : config(config), params(params), rng(rng), rvg(rvg), U(prepare_U(params.U)) {}
+    : config(config), params(params), rng(rng), rvg(rvg)
+ {
+  // Initialize U map
+  for (int i = 0; i <= params.max_perturbation_order; ++i) {
+   if (i <= params.min_perturbation_order)
+    U[i] = 1.0;
+   else
+    U[i] = params.U[i - params.min_perturbation_order - 1];
+  }
+ }
 
- /// Tell if `k` is an allowed order
+ /// Tell if `k` is a forbidden order
  bool is_quick_exit(int const &k) {
   return k < params.min_perturbation_order or params.max_perturbation_order < k or
-         (params.forbid_parity_order != -1 and k % 2 == params.forbid_parity_order and
-          k != params.min_perturbation_order);
+         (params.forbid_parity_order >= 0 and (k % 2) == (params.forbid_parity_order % 2));
  }
 
  // things to do before any attempt

@@ -133,6 +133,12 @@ void solver_core::set_g0(triqs::gfs::gf_view<triqs::gfs::retime, triqs::gfs::mat
  if (params.preferential_sampling)
   rvg = std::unique_ptr<RandomVertexGenerator>(new piecewise_rvg(qmc.get_rng(), params, config));
 
+ // Bring configuration to minimal order
+ while (config.order < params.min_perturbation_order)
+  config.insert(0, (*rvg)());
+ if (params.forbid_parity_order >= 0 and (params.min_perturbation_order % 2 == params.forbid_parity_order % 2))
+  config.insert(0, (*rvg)()); // min order parity is forbidden, so go up once more
+
  // Register moves and measurements
  if (params.w_ins_rem > 0) {
   qmc.add_move(moves::insert(config, params, qmc.get_rng(), *rvg), "insertion", params.w_ins_rem);

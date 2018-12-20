@@ -69,7 +69,6 @@ struct solve_parameters_t {
  int min_perturbation_order = 0;
 
  /// Parity of the orders automatically rejected. -1 (default) to reject no order.
- // In any case min_perturbation_order is never rejected.
  int forbid_parity_order = -1;
 
  /// Length of a single QMC cycle

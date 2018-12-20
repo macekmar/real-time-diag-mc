@@ -3,12 +3,6 @@
 
 namespace moves {
 
-std::vector<double> prepare_U(std::vector<double> U) {
- U.insert(U.begin(), 1.0); // so that U[k] is U at order k
- return U;
-};
-
-
 // ------------ QMC insertion move --------------------------------------
 
 dcomplex insert::attempt() {

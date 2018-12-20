@@ -176,13 +176,16 @@ def _compute_cn(pn, Un, c0=1., method='single'):
         return _compute_cn_cum(pn, Un, c0=c0)
 
 def _compute_cn_v(pn, Un, c0=1., method='single'):
-    nb_part = pn.shape[2]
+    if pn.ndim > 2:
+        nb_part = pn.shape[2]
 
-    cn = np.empty(pn.shape[1:], dtype=float)
-    for i in range(nb_part):
-        cn[:, i] = _compute_cn(pn[:, :, i], Un, c0=c0, method=method)
+        cn = np.empty(pn.shape[1:], dtype=float)
+        for i in range(nb_part):
+            cn[:, i] = _compute_cn(pn[:, :, i], Un, c0=c0, method=method)
 
-    return cn
+        return cn
+    else:
+        return _compute_cn(pn, Un, c0=c0, method=method)
 
 
 def add_cn_to_results(results, method='single'):

@@ -13,17 +13,46 @@ struct situation {
  const int fpo;
  const double w_ins_rem;
  const double w_dbl;
+ const int min_order;
  const bool pref_spl;
 
- situation(int method, int fpo, double w_ins_rem, double w_dbl, bool pref_spl=false)
-  : ID(nb), method(method), fpo(fpo), w_ins_rem(w_ins_rem), w_dbl(w_dbl), pref_spl(pref_spl)
+ situation(int method, int fpo, double w_ins_rem, double w_dbl, int min_order=0, bool pref_spl=false)
+  : ID(nb), method(method), fpo(fpo), w_ins_rem(w_ins_rem), w_dbl(w_dbl), min_order(min_order),
+    pref_spl(pref_spl)
  {++nb;};
 
  private:
   static size_t nb;
+
+ public:
+  static size_t get_nb() {return nb;};
 };
 
 size_t situation::nb = 0;
+
+/* Check if array(k) is non zero for k >= `start` with a different parity than `parity`
+ * (ignored if `parity` < 0), and if other elements are zeros.
+ */
+template<typename T>
+bool check_non_zero(const T &array, size_t start, int parity=-1) {
+ bool output = true;
+ bool good_parity;
+ for (size_t k = 0; k < first_dim(array); ++k) {
+
+  if (parity < 0)
+   good_parity = true;
+  else
+   good_parity = (k % 2) != (parity % 2);
+
+  if (((start <= k) and good_parity)) // orders that should be visited
+   output = output and (array(k) != 0.0);
+  else // orders that should NOT be visited
+   output = output and (array(k) == 0.0);
+
+ }
+ return output;
+}
+
 
 /// Integrated test. Test no error occurs for different use cases.
 // Also test number of measures reported and if results are not trash.
@@ -33,16 +62,22 @@ int main() {
 
  std::vector<situation> situations;
  situations.emplace_back(0, -1, 1.0, 0.5);
+ situations.emplace_back(0, -1, 1.0, 0.5, 1);
  situations.emplace_back(0, 1, 0.0, 1.0);
+ situations.emplace_back(0, 0, 0.0, 1.0);
  situations.emplace_back(1, -1, 1.0, 0.5);
- situations.emplace_back(1, -1, 1.0, 0.5, true);
+ situations.emplace_back(1, -1, 1.0, 0.5, 1);
+ situations.emplace_back(1, -1, 1.0, 0.5, 0, true);
  situations.emplace_back(1, 1, 0.0, 1.0);
  situations.emplace_back(2, -1, 1.0, 0.5);
  situations.emplace_back(2, 1, 0.0, 1.0);
 
- bool success = true;
+ std::map<size_t, bool> success_map;
+ bool all_success = true;
+ bool success;
  for (auto it = situations.begin(); it != situations.end(); ++it) {
   std::cout << "Trying situation number " << it->ID << std::endl << std::endl;
+  success = true;
 
   try {
    auto g_less = gf<retime, matrix_valued>{{-100., 100., 1001}, {3, 3}};
@@ -77,13 +112,13 @@ int main() {
    std::get<1>(params.potential) = {0, 1, 1, 2};
    std::get<2>(params.potential) = {0, 1, 2, 1};
 
-   params.U = {0.05, 0.05, 0.05, 0.05};
+   params.U = std::vector<double>(4 - it->min_order, 0.05);
    params.w_ins_rem = it->w_ins_rem;
    params.w_dbl = it->w_dbl;
    params.w_shift = 0.5;
    params.forbid_parity_order = it->fpo;
    params.max_perturbation_order = 4;
-   params.min_perturbation_order = 0;
+   params.min_perturbation_order = it->min_order;
    params.verbosity = 1;
    params.method = it->method;
    params.singular_thresholds = std::pair<double, double>{4.5, 3.3};
@@ -110,26 +145,16 @@ int main() {
    auto pn = S.get_pn();
    if (not all_positive(pn)) throw 10;
    if (not all_finite(pn)) throw 11;
-   if (it->fpo == -1 and min_element(pn) == 0) throw 12; // all orders must have been visited
-   if (it->fpo == 1 and ((pn(0) == 0) or (pn(1) != 0) or (pn(2) == 0)
-                                      or (pn(3) != 0) or (pn(4) == 0)))
-    throw 13; // even orders must have been visited, not the odd ones
-   if (it->fpo == 0 and ((pn(0) == 0) or (pn(1) == 0) or (pn(2) != 0)
-                                      or (pn(3) == 0) or (pn(4) != 0)))
-    throw 14; // odd orders must have been visited, not the even ones except order zero
+
+   if (not check_non_zero(pn, it->min_order, it->fpo)) throw 12;
 
    /// check sn
    if (it->method == 0) {
     auto sn = S.get_sn();
     std::cout << "sn: " << sn << std::endl;
     if (not all_finite(sn)) throw 20;
-    if (it->fpo == -1 and min_element(abs(sn)) == 0) throw 21;
-    if (it->fpo == 1 and ((sn(0) == 0.0) or (sn(1) != 0.0) or (sn(2) == 0.0)
-                                         or (sn(3) != 0.0) or (sn(4) == 0.0)))
-     throw 22;
-    if (it->fpo == 0 and ((sn(0) == 0.0) or (sn(1) == 0.0) or (sn(2) != 0.0)
-                                         or (sn(3) == 0.0) or (sn(4) != 0.0)))
-     throw 23;
+
+    if (not check_non_zero(sn, it->min_order, it->fpo)) throw 21;
    }
 
    /// check kernels
@@ -156,10 +181,22 @@ int main() {
    std::cout << "Unknown error" << std::endl;
   }
   std::cout << std::endl;
+  success_map[it->ID] = success;
+  if (not success) all_success = false;
 
  }
 
+ std::cout << "Summary:" << std::endl;
+ for (auto it = success_map.begin(); it != success_map.end(); ++it)
+  std::cout << it->first << " : " << (it->second ? "success" : "fail") << std::endl;
+
+ if (success_map.size() != situation::get_nb()) {
+  std::cout << "All situations have not been tested!" << std::endl;
+  all_success = false;
+ }
+
+
  MPI::Finalize();
 
- return success ? 0 : 1;
+ return all_success ? 0 : 1;
 };

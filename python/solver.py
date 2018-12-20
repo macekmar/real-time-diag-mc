@@ -529,7 +529,6 @@ def solve(**params):
         if k == 1: # at order 1, force disable double moves
             params_cpp['w_dbl'] = 0.
         params_cpp['max_perturbation_order'] = k
-        params_cpp['min_perturbation_order'] = 0
         while len(params_cpp['U']) < k:
             params_cpp['U'].append(params_cpp['U'][-1])
         S = SolverCore(**params_cpp)
