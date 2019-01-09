@@ -67,7 +67,7 @@ solver_core::solver_core(solve_parameters_t const& params)
   TRIQS_RUNTIME_ERROR << "The range of perturbation orders must cover at least 2 orders";
 
  if (params.U.size() != params.max_perturbation_order - params.min_perturbation_order)
-  TRIQS_RUNTIME_ERROR << "Number of U should match number of orders";
+  TRIQS_RUNTIME_ERROR << "Number of U (" << params.U.size() << ") should match number of orders (" << params.max_perturbation_order - params.min_perturbation_order << ")";
 
  // Check creation and annihilation operators
  if (params.creation_ops.size() != params.annihilation_ops.size() or

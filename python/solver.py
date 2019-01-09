@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from time import clock
 import cPickle
 from os.path import splitext
-from utility import reduce_binning
+from utility import reduce_binning, pad_along_axis
 import warnings
 from copy import deepcopy
 from results import merge_results, add_cn_to_results
@@ -150,6 +150,10 @@ def _collect_results(solver, res_structure, size_part):
         ### prepare pn and U for merge, add axis for subruns
         output['U'] = np.array(output['U'], dtype=float)[np.newaxis, ...]
         output['pn'] = np.array(output['pn'], dtype=int)[np.newaxis, ...]
+
+        submin_orders = output['pn'].shape[1] - output['U'].shape[1] - 1
+        output['U'] = pad_along_axis(output['U'], submin_orders, 0, axis=1,
+                                     mode='constant', constant_values=1.)
 
         return output
 
@@ -529,7 +533,7 @@ def solve(**params):
         if k == 1: # at order 1, force disable double moves
             params_cpp['w_dbl'] = 0.
         params_cpp['max_perturbation_order'] = k
-        while len(params_cpp['U']) < k:
+        while len(params_cpp['U']) < k - params_cpp['min_perturbation_order']:
             params_cpp['U'].append(params_cpp['U'][-1])
         S = SolverCore(**params_cpp)
         S.set_g0(params_py['g0_lesser'], params_py['g0_greater'])
@@ -553,7 +557,7 @@ def solve(**params):
             ### prepare new solver taking new U into account
             if world.rank == 0:
                 print 'Changing U: {0} => {1} (+-{2})'.format(S.U[-1], new_U, new_U_error)
-            params_cpp['U'] = [new_U] * k # is also used as a first guess U in next order
+            params_cpp['U'] = [new_U] * (k - params_cpp['min_perturbation_order']) # is also used as a first guess U in next order
             S = SolverCore(**params_cpp)
             S.set_g0(params_py['g0_lesser'], params_py['g0_greater'])
 
