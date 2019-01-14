@@ -4,6 +4,7 @@
 #include "./qmc_data.hpp"
 #include "./random_vertex_gen.hpp"
 #include <triqs/mc_tools.hpp>
+#include <list>
 
 namespace moves {
 
@@ -92,6 +93,23 @@ struct shift : common {
  int p;
 
  using common::common;
+ dcomplex attempt();
+ dcomplex accept();
+ void reject();
+};
+
+// ------------ QMC Auxillary MC move --------------------------------------
+
+struct auxmc : public common {
+ using common::common;
+  
+//  ConfigurationAuxMC* aux_config;
+ Configuration* aux_config;
+ triqs::mc_tools::mc_generic<dcomplex>* aux_mc;
+
+ std::list<vertex_t> vertices;
+ std::list<vertex_t> old_vertices;
+
  dcomplex attempt();
  dcomplex accept();
  void reject();

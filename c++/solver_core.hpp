@@ -13,9 +13,15 @@ enum Status { aborted, not_ready, ready, running };
 
 class solver_core {
 
- Configuration config;
+ // config is used in non aux_mc case
+ // main config is as config but with an aux_conf attribute
+ // aux_config is the different one (really ?)
+
+ Configuration config, *conf;
+ Configuration aux_config;
  solve_parameters_t params;
- triqs::mc_tools::mc_generic<dcomplex> qmc;
+ triqs::mc_tools::mc_generic<dcomplex> qmc, aux_mc;
+ triqs::mc_tools::mc_generic<dcomplex> *mc;
  std::unique_ptr<RandomVertexGenerator> rvg;
  double qmc_duration = 0;
  double cum_qmc_duration = 0;

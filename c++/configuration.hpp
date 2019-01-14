@@ -6,6 +6,7 @@
 #include <set>
 #include <iterator>
 #include <utility>
+#include <list>
 
 using triqs::det_manip::det_manip;
 
@@ -167,13 +168,16 @@ class Configuration {
  Configuration(){}; // needed for the two-step construction of SolverCore
  Configuration(g0_keldysh_alpha_t green_function, const solve_parameters_t &params);
 
+ /*
  Configuration(const Configuration&) = delete;  // non construction-copyable
  void operator=(const Configuration&) = delete; // non copyable
  Configuration(Configuration&&) = default; // construction-movable
  Configuration& operator=(Configuration&&) = default; // movable
+ */
  // For some weird reason, `Configuration` needs to be movable to be
  // non-copyable. If not, compilation fails saying that we tried to copy
  // `det_manip` which is non-copyable ??!!
+ // Marjan: Compiles and passes tests without these lines just fine!
 
  void insert(int k, vertex_t vtx);
  void insert2(int k1, int k2, vertex_t vtx1, vertex_t vtx2);
@@ -184,6 +188,8 @@ class Configuration {
  inline timec_t get_time(int k) const;
 
  void remove_all() { while (order > 0) remove(0); };
+ void insert_vertices(std::list<vertex_t> vertices);
+ void reset_to_vertices(std::list<vertex_t> vertices) {remove_all(); insert_vertices(vertices);};
 
  void evaluate();
  void accept_config();
@@ -192,6 +198,7 @@ class Configuration {
  // getters
  const std::set<timec_t>& times_list() const {return times_list_;};
  const wrapped_forward_list<orbital_t>& orbitals_list() const {return orbitals_list_;};
+ std::list<vertex_t> vertices_list();
 
  // utility and debug
  std::vector<double> signature();
@@ -202,3 +209,27 @@ class Configuration {
 
 // -----------------------
 void nice_print(det_manip<g0_keldysh_alpha_t> det, int p);
+
+
+// ------------ QMC Auxillary MC ----------------------------------------------
+
+// class ConfigurationAuxMC : public Configuration {
+
+//  public:
+//  ConfigurationAuxMC(const Configuration &config): Configuration(config) {};
+//  ConfigurationAuxMC(){};
+// };
+
+// class ConfigurationMainMC : public Configuration {
+//  public:
+//  ConfigurationAuxMC aux_config;
+//  triqs::mc_tools::mc_generic<dcomplex>* aux_mc;
+ 
+//  ConfigurationMainMC(){};
+//  ConfigurationMainMC(
+//   const Configuration& config,
+//   ConfigurationAuxMC& aux_config,
+//   triqs::mc_tools::mc_generic<dcomplex>& aux_mc_
+//  ): Configuration(config), aux_config(aux_config) { aux_mc = &aux_mc_; };
+// };
+

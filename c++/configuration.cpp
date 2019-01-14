@@ -1,5 +1,6 @@
 #include "./configuration.hpp"
 
+
 //#define REGENERATE_MATRIX_BEFORE_EACH_GRAY_CODE
 
 /**
@@ -165,8 +166,34 @@ vertex_t Configuration::get_vertex(int k) const {
  return {pt_up.x, pt_down.x, pt_up.t, pt_up.k_index, potential_list[k]}; // no consistency check is done
 };
 
+/**
+ * Insert vertices consequently
+ */
+void Configuration::insert_vertices(std::list<vertex_t> vertices) {
+  int i = 0;
+  int begin_order = order;
+  while (!vertices.empty()){
+    insert(begin_order + i, vertices.front());
+    vertices.pop_front();
+    ++i;
+  }
+};
+
 inline timec_t Configuration::get_time(int k) const {
  return matrices[up].get_x(k).t;
+};
+
+/**
+ * Returns a list of all vertices in the configuration
+ */
+ 
+std::list<vertex_t> Configuration::vertices_list() {
+ std::list<vertex_t> vertices;
+ for (int i = 0; i < order; i++){
+  //std::cout << "works" << i << std::endl;
+  vertices.push_back(get_vertex(i));
+ };
+ return vertices;
 };
 
 /**

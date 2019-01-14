@@ -172,4 +172,56 @@ void shift::reject() {
  config.change_vertex(p, removed_vtx);
 }
 
+// ------------ QMC Auxillary MC move --------------------------------------
+
+dcomplex auxmc::attempt() {
+ before_attempt();
+
+ int i;
+//std::cout << mc->get_current_cycle_number() << std::endl; 
+ // Set aux_config state to main config state
+ auto k_current = config.order;
+ vertices = config.vertices_list();
+ aux_config->reset_to_vertices(vertices);
+ aux_config->evaluate();
+ auto aux_accepted_weight = aux_config->current_weight;
+ // Also save the current config
+ old_vertices = vertices;
+
+ // Do auxiliary MC run
+ // TODO: in solver_core.cpp as clock_callback argument is 
+ //       max_time instead of -1 (which is the default value of max_time)
+ aux_mc->run(params.aux_nb_cycles, 1, triqs::utility::clock_callback(-1), false);
+ 
+ auto aux_current_weight = aux_config->accepted_weight;
+
+ // Set main config state to final aux_config state
+ auto k_attempted = aux_config->order;
+ vertices = aux_config->vertices_list();
+ config.reset_to_vertices(vertices);
+ config.evaluate();
+ after_attempt();
+
+ double U_prod = 1;
+ int sgn = k_attempted > k_current ? 1 : -1;
+ for (i = 0; i < abs(k_attempted - k_current); i++) {
+  U_prod *= U[k_current + sgn*i];
+ };
+
+ // The Metropolis ratio;
+ U_prod = 1.0;
+ //std::cout << aux_accepted_weight << aux_current_weight << config.current_weight << config.accepted_weight << std::endl;
+ return U_prod * aux_accepted_weight/aux_current_weight * config.current_weight / config.accepted_weight;
+}
+
+dcomplex auxmc::accept() {
+ config.accept_config();
+ return 1.0;
+}
+
+void auxmc::reject() {
+ if (quick_exit) return;
+ config.reset_to_vertices(old_vertices);
+}
+
 }

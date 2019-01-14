@@ -53,8 +53,12 @@ using triqs::arrays::range;
  * should be considered in post-treatment.
  *
  */
+
+// Marjan: TODO description of aux_mc
+
 solver_core::solver_core(solve_parameters_t const& params)
    : qmc(params.random_name, params.random_seed, 1.0, params.verbosity, false), // first_sign is not used
+     aux_mc(params.random_name, params.random_seed, 1.0, 0, false), // first_sign is not used
      params(params),
      rvg(std::unique_ptr<RandomVertexGenerator>(new uniform_rvg(qmc.get_rng(), params)))
 {
@@ -103,6 +107,12 @@ solver_core::solver_core(solve_parameters_t const& params)
  // to store old method results
  sn = array<dcomplex, 1>(params.max_perturbation_order + 1);
  sn() = 0;
+
+ if (params.do_aux_mc) {
+  // modify aux_mc if necessary
+ }
+
+ 
 };
 
 // --------------------------------
@@ -129,23 +139,58 @@ void solver_core::set_g0(triqs::gfs::gf_view<triqs::gfs::retime, triqs::gfs::mat
  // configuration
  config = Configuration(green_function_alpha, params);
 
+ if (params.do_aux_mc) {
+  // aux_config = ConfigurationAuxMC(config);
+  aux_config = Configuration(config);
+  //main_config = ConfigurationMainMC(config, aux_config, aux_mc);
+ }
+ 
+ // assign moves to the Monte Carlo classes
+ 
+ if (params.do_aux_mc) {
+  //TODO: conf is a Configuration pointer so config.evaluate will call Configuration evaluate and not ConfigurationAuxMC???
+  //???
+  // Solution: https://stackoverflow.com/questions/3640017/two-really-similar-classes-in-c-with-only-one-different-method-how-to-impleme
+   conf = &aux_config;
+   mc = &aux_mc;
+ }
+ else {
+   conf = &config;
+   mc = &qmc;
+ }
+ 
+ // In the case of ordinary MCMC, we assign moves to the qmc with the default
+ // Configuration
+ // else we assign these same moves to the auxiliary Monte Carlo, but with
+ // the different Configuration object!
+
  // change vertex generator if needed
  if (params.preferential_sampling)
-  rvg = std::unique_ptr<RandomVertexGenerator>(new piecewise_rvg(qmc.get_rng(), params, config));
+  rvg = std::unique_ptr<RandomVertexGenerator>(new piecewise_rvg(mc->get_rng(), params, *conf));
 
  // Register moves and measurements
  if (params.w_ins_rem > 0) {
-  qmc.add_move(moves::insert(config, params, qmc.get_rng(), *rvg), "insertion", params.w_ins_rem);
-  qmc.add_move(moves::remove(config, params, qmc.get_rng(), *rvg), "removal", params.w_ins_rem);
+  mc->add_move(moves::insert(*conf, params, mc->get_rng(), *rvg), "insertion", params.w_ins_rem);
+  mc->add_move(moves::remove(*conf, params, mc->get_rng(), *rvg), "removal", params.w_ins_rem);
  }
  if (params.w_dbl > 0) {
-  qmc.add_move(moves::insert2(config, params, qmc.get_rng(), *rvg), "insertion2", params.w_dbl);
-  qmc.add_move(moves::remove2(config, params, qmc.get_rng(), *rvg), "removal2", params.w_dbl);
+  mc->add_move(moves::insert2(*conf, params, mc->get_rng(), *rvg), "insertion2", params.w_dbl);
+  mc->add_move(moves::remove2(*conf, params, mc->get_rng(), *rvg), "removal2", params.w_dbl);
  }
  if (params.w_shift > 0) {
-  qmc.add_move(moves::shift(config, params, qmc.get_rng(), *rvg), "shift", params.w_shift);
+  mc->add_move(moves::shift(*conf, params, mc->get_rng(), *rvg), "shift", params.w_shift);
  }
 
+// There is only one move for the auxiliary Monte Carlo
+ if (params.do_aux_mc) {
+  moves::auxmc move = moves::auxmc(config, params, qmc.get_rng(), *rvg);
+  move.aux_mc = &aux_mc;
+  //move.mc = &qmc;
+  move.aux_config = &aux_config;
+  qmc.add_move(move, "aux MC", 1.0);
+ }
+
+// The measure does not depend on the type of qmc moves...
  if (params.method == 0) {
   qmc.add_measure(WeightSignMeasure(&config, &pn, &sn), "Weight sign measure");
  } else if (params.method == 1 or params.method == 2) {
