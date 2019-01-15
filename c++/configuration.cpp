@@ -179,6 +179,41 @@ void Configuration::insert_vertices(std::list<vertex_t> vertices) {
   }
 };
 
+
+void Configuration::reset_to_vertices(std::list<vertex_t> vertices) {
+  // Instead of 
+  // remove_all();
+  // which removes vertices one after another and recalculates the determinant
+  // each time, we can clear all values and set back the default ones.
+
+  times_list_.clear();
+  orbitals_list_.clear(); 
+  for (auto& m : matrices) m.clear();
+  potential_list.clear();
+  order = 0;
+  potential = 1.0;
+    
+  std::vector<keldysh_contour_pt> creation_pts, annihila_pts;
+  for (int rank = 0; rank < params.creation_ops.size(); ++rank) {
+    creation_pts.push_back(make_keldysh_contour_pt(params.creation_ops[rank], rank));
+    annihila_pts.push_back(make_keldysh_contour_pt(params.annihilation_ops[rank], rank));
+  }
+
+  // inserting external Keldysh contour points
+  for (size_t i = 0; i < creation_pts.size(); ++i) {
+    if (annihila_pts[i].s != creation_pts[i].s) // both points assumed to have same spin
+    TRIQS_RUNTIME_ERROR << "Pairs of annihilation and creation points must have the same spin";
+
+    matrices[annihila_pts[i].s].insert_at_end(annihila_pts[i], creation_pts[i]);
+    times_list_.insert(annihila_pts[i].t);
+    times_list_.insert(creation_pts[i].t);
+    orbitals_list_.insert(0, annihila_pts[i].x);
+    orbitals_list_.insert(0, creation_pts[i].x);
+  }
+
+  insert_vertices(vertices);
+};
+
 inline timec_t Configuration::get_time(int k) const {
  return matrices[up].get_x(k).t;
 };

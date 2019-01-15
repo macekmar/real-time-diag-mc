@@ -103,6 +103,7 @@ struct shift : common {
 struct auxmc : public common {
  using common::common;
   
+ bool move_accepted = false; 
 //  ConfigurationAuxMC* aux_config;
  Configuration* aux_config;
  triqs::mc_tools::mc_generic<dcomplex>* aux_mc;

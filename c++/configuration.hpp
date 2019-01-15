@@ -189,7 +189,7 @@ class Configuration {
 
  void remove_all() { while (order > 0) remove(0); };
  void insert_vertices(std::list<vertex_t> vertices);
- void reset_to_vertices(std::list<vertex_t> vertices) {remove_all(); insert_vertices(vertices);};
+ void reset_to_vertices(std::list<vertex_t> vertices);
 
  void evaluate();
  void accept_config();

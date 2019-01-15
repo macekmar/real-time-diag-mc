@@ -178,21 +178,36 @@ dcomplex auxmc::attempt() {
  before_attempt();
 
  int i;
-//std::cout << mc->get_current_cycle_number() << std::endl; 
  // Set aux_config state to main config state
+ // If the previous move was accepted, we do not have to reset aux_config
+ 
+ // Print times_list()
+ // const std::set<timec_t>& tl1 = config.times_list();
+ // const std::set<timec_t>& tl2 = aux_config->times_list();
+ // std::set<timec_t>::iterator t;
+ 
+ // std::cout << "Accepted?: " << move_accepted << std::endl;
+ // std::cout << "   QMC: ";
+ // for (t = tl1.begin(); t != tl1.end(); ++t) {std::cout << *t << " ";}
+ // std::cout << std::endl;
+ // std::cout << "Aux MC: ";
+ // for (t = tl2.begin(); t != tl2.end(); ++t) {std::cout << *t << " ";}
+ // std::cout << std::endl;
+ 
  auto k_current = config.order;
- vertices = config.vertices_list();
- aux_config->reset_to_vertices(vertices);
- aux_config->evaluate();
- auto aux_accepted_weight = aux_config->current_weight;
+ if (!move_accepted) {
+  vertices = config.vertices_list();
+  aux_config->reset_to_vertices(vertices);
+  aux_config->evaluate();
+ }
+ auto aux_accepted_weight = aux_config->accepted_weight;
  // Also save the current config
  old_vertices = vertices;
 
  // Do auxiliary MC run
- // TODO: in solver_core.cpp as clock_callback argument is 
- //       max_time instead of -1 (which is the default value of max_time)
+ // TODO: in `solver_core.cpp` in `clock_callback` the argument is variable
+ //       `max_time instead` of -1 (which is the default value of `max_time`)
  aux_mc->run(params.aux_nb_cycles, 1, triqs::utility::clock_callback(-1), false);
- 
  auto aux_current_weight = aux_config->accepted_weight;
 
  // Set main config state to final aux_config state
@@ -202,26 +217,33 @@ dcomplex auxmc::attempt() {
  config.evaluate();
  after_attempt();
 
- double U_prod = 1;
+ double U_prod = 1.0;
+ /**
+  * Marjan: TODO: if both auxMC and QMC have the U_qmc potential, then they
+  * cancel each other. We still have weighted hopping between the levels,
+  * because AuxMC is weighted!
+ */
+ /*
  int sgn = k_attempted > k_current ? 1 : -1;
  for (i = 0; i < abs(k_attempted - k_current); i++) {
   U_prod *= U[k_current + sgn*i];
  };
+ */
 
  // The Metropolis ratio;
- U_prod = 1.0;
- //std::cout << aux_accepted_weight << aux_current_weight << config.current_weight << config.accepted_weight << std::endl;
  return U_prod * aux_accepted_weight/aux_current_weight * config.current_weight / config.accepted_weight;
 }
 
 dcomplex auxmc::accept() {
  config.accept_config();
+ move_accepted = true;
  return 1.0;
 }
 
 void auxmc::reject() {
  if (quick_exit) return;
  config.reset_to_vertices(old_vertices);
+ move_accepted = false;
 }
 
 }
