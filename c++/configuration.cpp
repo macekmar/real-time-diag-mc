@@ -23,7 +23,7 @@ Configuration::Configuration(g0_keldysh_alpha_t green_function, const solve_para
 
 
  set_ops();
- spin_dvpt = creation_pts[0].s;
+ spin_dvpt = creation_pts.front().s;
 
  nb_cofact = array<long, 1>(params.max_perturbation_order);
  nb_cofact() = 0;
@@ -67,19 +67,25 @@ void Configuration::set_ops() {
   TRIQS_RUNTIME_ERROR << "`annihila_pts` and `creation_pts` have different sizes";
 
  // inserting external Keldysh contour points
- for (size_t i = 0; i < creation_pts.size(); ++i) {
-  if (annihila_pts[i].s != creation_pts[i].s) // both points assumed to have same spin
+ std::list<keldysh_contour_pt>::iterator apt, cpt;
+ for (cpt = creation_pts.begin(), apt = annihila_pts.begin(); 
+      cpt != creation_pts.end() && apt != annihila_pts.end(); 
+      ++cpt, ++apt) {
+  if (apt->s != cpt->s) // both points assumed to have same spin
    TRIQS_RUNTIME_ERROR << "Pairs of annihilation and creation points must have the same spin";
  }
 }
 
 void Configuration::set_default_values() {
- for (size_t i = 0; i < creation_pts.size(); ++i) {
-  matrices[annihila_pts[i].s].insert_at_end(annihila_pts[i], creation_pts[i]);
-  times_list_.insert(annihila_pts[i].t);
-  times_list_.insert(creation_pts[i].t);
-  orbitals_list_.insert(0, annihila_pts[i].x);
-  orbitals_list_.insert(0, creation_pts[i].x);
+ std::list<keldysh_contour_pt>::iterator apt, cpt;
+ for (cpt = creation_pts.begin(), apt = annihila_pts.begin(); 
+      cpt != creation_pts.end() && apt != annihila_pts.end(); 
+      ++cpt, ++apt) {
+  matrices[apt->s].insert_at_end(*apt, *cpt);
+  times_list_.insert(apt->t);
+  times_list_.insert(cpt->t);
+  orbitals_list_.insert(0, apt->x);
+  orbitals_list_.insert(0, cpt->x);
 }
 }
 
@@ -188,13 +194,13 @@ vertex_t Configuration::get_vertex(int k) const {
  * Insert vertices consequently
  */
 void Configuration::insert_vertices(std::list<vertex_t> vertices) {
-  int i = 0;
-  int begin_order = order;
-  while (!vertices.empty()){
-    insert(begin_order + i, vertices.front());
-    vertices.pop_front();
-    ++i;
-  }
+ int i = 0;
+ int begin_order = order;
+ while (!vertices.empty()){
+  insert(begin_order + i, vertices.front());
+  vertices.pop_front();
+  ++i;
+ }
 };
 
 

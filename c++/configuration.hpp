@@ -140,7 +140,7 @@ class Configuration {
  wrapped_forward_list<double> potential_list;
  std::set<timec_t> times_list_; // sorted container
  wrapped_forward_list<orbital_t> orbitals_list_;
- std::vector<keldysh_contour_pt> creation_pts, annihila_pts;
+ std::list<keldysh_contour_pt> creation_pts, annihila_pts;
  double potential = 1.;
  int cycles_trapped = 0;
  
