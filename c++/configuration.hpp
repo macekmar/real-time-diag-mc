@@ -140,9 +140,10 @@ class Configuration {
  wrapped_forward_list<double> potential_list;
  std::set<timec_t> times_list_; // sorted container
  wrapped_forward_list<orbital_t> orbitals_list_;
+ std::vector<keldysh_contour_pt> creation_pts, annihila_pts;
  double potential = 1.;
  int cycles_trapped = 0;
-
+ 
  public:
  std::vector<det_manip<g0_keldysh_alpha_t>> matrices;
  int order;
@@ -204,6 +205,8 @@ class Configuration {
  std::vector<double> signature();
  void register_accepted_config();
  void register_attempted_config();
+ void set_ops();
+ void set_default_values();
  void print();
 };
 
