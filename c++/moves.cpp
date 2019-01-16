@@ -207,7 +207,7 @@ dcomplex auxmc::attempt() {
  // Do auxiliary MC run
  // TODO: in `solver_core.cpp` in `clock_callback` the argument is variable
  //       `max_time instead` of -1 (which is the default value of `max_time`)
- aux_mc->run(params.aux_nb_cycles, 1, triqs::utility::clock_callback(-1), false);
+ aux_mc->run(params.nb_aux_mc_cycles, 1, triqs::utility::clock_callback(-1), false);
  auto aux_current_weight = aux_config->accepted_weight;
 
  // Set main config state to final aux_config state

@@ -109,7 +109,7 @@ struct solve_parameters_t {
 
  /// Do auxiliary Monte Carlo
  bool do_aux_mc = false;
- int aux_nb_cycles = 5;
+ int nb_aux_mc_cycles = 5;
 
  solve_parameters_t(){};
 
