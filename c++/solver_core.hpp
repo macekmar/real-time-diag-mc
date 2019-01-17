@@ -17,8 +17,9 @@ class solver_core {
  // main config is as config but with an aux_conf attribute
  // aux_config is the different one (really ?)
 
- Configuration config, *conf;
- Configuration aux_config;
+ Configuration *conf;
+ ConfigurationQMC config;
+ ConfigurationAuxMC aux_config;
  solve_parameters_t params;
  triqs::mc_tools::mc_generic<dcomplex> qmc, aux_mc;
  triqs::mc_tools::mc_generic<dcomplex> *mc;

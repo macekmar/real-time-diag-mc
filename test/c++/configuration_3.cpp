@@ -71,7 +71,7 @@ int main() {
  std::vector<keldysh_contour_pt> an_pts{a_up, a_do};
  std::vector<keldysh_contour_pt> cr_pts{a_up_p, a_do_p};
 
- Configuration config(g0_alpha, params);
+ ConfigurationQMC config(g0_alpha, params);
  dcomplex ref_weight = 1;
  auto ref_kernels = array<dcomplex, 2>(max_order+1, 2); // (different points, keldysh index)
 

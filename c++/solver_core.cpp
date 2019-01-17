@@ -137,12 +137,11 @@ void solver_core::set_g0(triqs::gfs::gf_view<triqs::gfs::retime, triqs::gfs::mat
  auto green_function_alpha = g0_keldysh_alpha_t{green_function, params.alpha, params.extern_alphas};
 
  // configuration
- config = Configuration(green_function_alpha, params);
+ config = ConfigurationQMC(green_function_alpha, params);
+
 
  if (params.do_aux_mc) {
-  // aux_config = ConfigurationAuxMC(config);
-  aux_config = Configuration(config);
-  //main_config = ConfigurationMainMC(config, aux_config, aux_mc);
+  aux_config = ConfigurationAuxMC(green_function_alpha, params);
  }
  
  // assign moves to the Monte Carlo classes

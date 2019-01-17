@@ -133,7 +133,7 @@ class wrapped_forward_list : public std::forward_list<T> {
 class Configuration {
 
  // attributes
- private:
+ protected:
  solve_parameters_t params; // needs to be a non-const value, because of this two-step construction of SolverCore.
  spin_t spin_dvpt; // tells which matrix is to be developped
  double cofactor_threshold;
@@ -160,7 +160,7 @@ class Configuration {
  std::vector<dcomplex> config_weight;
 
  // methods
- private:
+ protected:
  double kernels_evaluate();
  dcomplex keldysh_sum();
  dcomplex keldysh_sum_cofact(int p); // not used ??
@@ -192,7 +192,7 @@ class Configuration {
  void insert_vertices(std::list<vertex_t> vertices);
  void reset_to_vertices(std::list<vertex_t> vertices);
 
- void evaluate();
+ virtual void evaluate() = 0;
  void accept_config();
  void incr_cycles_trapped();
 
@@ -213,26 +213,23 @@ class Configuration {
 // -----------------------
 void nice_print(det_manip<g0_keldysh_alpha_t> det, int p);
 
+// ------------ QMC ------------ ----------------------------------------------
+class ConfigurationQMC : public Configuration {
+  public:
+  ConfigurationQMC(){};
+  ConfigurationQMC(g0_keldysh_alpha_t green_function, const solve_parameters_t &params) : Configuration(green_function, params) {evaluate(); accept_config();};
 
-// ------------ QMC Auxillary MC ----------------------------------------------
+  void evaluate();
+};
 
-// class ConfigurationAuxMC : public Configuration {
+// ------------ Auxillary MC --------------------------------------------------
+class ConfigurationAuxMC : public Configuration {
+  public:
+  ConfigurationQMC config_qmc;
 
-//  public:
-//  ConfigurationAuxMC(const Configuration &config): Configuration(config) {};
-//  ConfigurationAuxMC(){};
-// };
+  ConfigurationAuxMC(){};
+  ConfigurationAuxMC(g0_keldysh_alpha_t green_function, const solve_parameters_t &params) : Configuration(green_function, params), config_qmc(green_function, params) {evaluate(); accept_config();};
 
-// class ConfigurationMainMC : public Configuration {
-//  public:
-//  ConfigurationAuxMC aux_config;
-//  triqs::mc_tools::mc_generic<dcomplex>* aux_mc;
- 
-//  ConfigurationMainMC(){};
-//  ConfigurationMainMC(
-//   const Configuration& config,
-//   ConfigurationAuxMC& aux_config,
-//   triqs::mc_tools::mc_generic<dcomplex>& aux_mc_
-//  ): Configuration(config), aux_config(aux_config) { aux_mc = &aux_mc_; };
-// };
-
+  void evaluate();
+  dcomplex _eval(std::vector<std::tuple<orbital_t, orbital_t, timec_t>> vertices);
+};

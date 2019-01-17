@@ -1,4 +1,5 @@
 #include "./configuration.hpp"
+#include <algorithm>
 
 
 //#define REGENERATE_MATRIX_BEFORE_EACH_GRAY_CODE
@@ -44,10 +45,11 @@ Configuration::Configuration(g0_keldysh_alpha_t green_function, const solve_para
  current_kernels() = 0;
  accepted_kernels = array<dcomplex, 2>(params.max_perturbation_order + matrices[spin_dvpt].size(), 2);
  accepted_kernels() = 0;
-
- // Initialize weight value
- evaluate();
- accept_config();
+/* This is now in each child class
+ * // Initialize weight value
+ * evaluate();
+ * accept_config();
+ */
 }
 
 /**
@@ -321,21 +323,6 @@ double Configuration::kernels_evaluate() {
 };
 
 /**
- * Evaluate the kernels and weight of the current configuration.
- * Store them into `current_kernels` and `current_weight`.
- *
- * If the old method has been chosen, just evaluates the weight by a simple
- * Keldysh sum.
- */
-void Configuration::evaluate() {
- if (params.method != 0)
-  current_weight = kernels_evaluate();
- else
-  // no absolute value as this is used for sn
-  current_weight = potential * keldysh_sum();
-}
-
-/**
  * Accept the current configuration.
  *
  * This simply copy `current_weight` and `current_kernels` into
@@ -434,3 +421,71 @@ void Configuration::print() {
  std::cout << std::endl;
  std::cout << std::endl;
 };
+
+// ------------ QMC ------------ ----------------------------------------------
+void ConfigurationQMC::evaluate() {
+ if (params.method != 0)
+  current_weight = kernels_evaluate();
+ else
+  // no absolute value as this is used for sn
+  current_weight = potential * keldysh_sum();
+ }
+
+
+// ------------ Auxillary MC --------------------------------------------------
+dcomplex ConfigurationAuxMC::_eval(std::vector<std::tuple<orbital_t, orbital_t, timec_t>> vertices) {
+ if (vertices.size() > params.max_perturbation_order)
+  TRIQS_RUNTIME_ERROR << "Too many vertices compared to the max perturbation order.";
+
+ auto pot_data = make_potential_data(params.nb_orbitals, params.potential);
+
+ config_qmc.remove_all();
+
+ orbital_t i, j;
+ double pot;
+ for (auto it = vertices.rbegin(); it != vertices.rend(); ++it) {
+  i = std::get<0>(*it);
+  j = std::get<1>(*it);
+  pot = pot_data.potential_of(i, j);
+
+  if (i < 0 or i >= params.nb_orbitals or j < 0 or j >= params.nb_orbitals)
+  TRIQS_RUNTIME_ERROR << "Orbital not recognized";
+  if (pot == 0.)
+  TRIQS_RUNTIME_ERROR << "These orbitals have no potential"; // Configuration should never be fed with a zero potential vertex, or it breaks down.
+
+  config_qmc.insert(0, {i, j, std::get<2>(*it), 0, pot});
+ }
+
+ config_qmc.evaluate();
+ config_qmc.remove_all();
+
+ return config_qmc.current_weight; //Marjan:TODO: in abs()?
+};
+
+void ConfigurationAuxMC::evaluate() {
+    
+ dcomplex prod;
+ std::list<vertex_t>::iterator vtx;    
+ std::list<vertex_t> vertices = vertices_list();
+
+ timec_t t1, t2;
+
+ if (vertices.size() == 0) { current_weight = 1.0;}
+ else {
+  vertices.sort(compare_vertices);
+
+  prod = _eval({std::make_tuple(0, 0, vertices.begin()->t)});
+  for (vtx = vertices.begin(); vtx != vertices.end(); ++vtx) {
+   if (std::next(vtx, 1) == vertices.end()) break;
+   if (vtx != vertices.end()) {
+     t1 = vtx->t;
+     t2 = std::next(vtx, 1)->t;
+     prod *= _eval({std::make_tuple(0, 0, t2 - t1)});
+    }
+  }
+  current_weight = prod;
+ }
+}
+
+
+

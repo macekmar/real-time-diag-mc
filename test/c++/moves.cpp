@@ -71,7 +71,7 @@ int main() {
  params.method = 1;
  params.singular_thresholds = std::pair<double, double>{3.5, 3.5};
 
- Configuration config(g0_alpha, params);
+ ConfigurationQMC config(g0_alpha, params);
 
  auto rng = triqs::mc_tools::random_generator("", 87235);
  auto rvg = uniform_rvg(rng, params);
