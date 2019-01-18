@@ -26,8 +26,9 @@ double uniform_rvg::probability(const vertex_t& vtx) const {
 
 
 //----------- Piece-wise preferential sampling --------------
-piecewise_rvg::piecewise_rvg(triqs::mc_tools::random_generator &rng,
-                const solve_parameters_t& params, const Configuration& config)
+template <typename Conf>
+piecewise_rvg<Conf>::piecewise_rvg(triqs::mc_tools::random_generator &rng,
+                const solve_parameters_t& params, const Conf& config)
  : potential_data{params.nb_orbitals,
                   std::get<0>(params.potential),
                   std::get<1>(params.potential),
@@ -44,7 +45,8 @@ piecewise_rvg::piecewise_rvg(triqs::mc_tools::random_generator &rng,
    N(std::sqrt(potential_data.values.size()))
 {std::cout << N << std::endl;};
 
-inline int piecewise_rvg::orbital_distance(orbital_t x1, orbital_t x2) const {
+template <typename Conf>
+inline int piecewise_rvg<Conf>::orbital_distance(orbital_t x1, orbital_t x2) const {
  int x1_x = x1 % N;
  int x1_y = x1 / N;
  int x2_x = x2 % N;
@@ -53,7 +55,8 @@ inline int piecewise_rvg::orbital_distance(orbital_t x1, orbital_t x2) const {
 };
 
  /// sampling distribution with max = 1
-double piecewise_rvg::time_distribution(timec_t t) const {
+template <typename Conf>
+double piecewise_rvg<Conf>::time_distribution(timec_t t) const {
  auto it = config.times_list().upper_bound(t);
 
  /// find nearest time
@@ -70,7 +73,8 @@ double piecewise_rvg::time_distribution(timec_t t) const {
  return (*f_time)((t - t0) / gamma);
 };
 
-double piecewise_rvg::orbital_distribution(orbital_t x) const {
+template <typename Conf>
+double piecewise_rvg<Conf>::orbital_distribution(orbital_t x) const {
  int dist = 2*N;
  for (auto it = config.orbitals_list().begin(); it != config.orbitals_list().end(); ++it) {
   dist = std::min(dist, orbital_distance(x, *it));
@@ -79,7 +83,8 @@ double piecewise_rvg::orbital_distribution(orbital_t x) const {
 };
 
 /// return integral (between -t_max and 0) of the sampling distribution
-double piecewise_rvg::distrib_norm() const {
+template <typename Conf>
+double piecewise_rvg<Conf>::distrib_norm() const {
 
  // time integral
  double norm_time = 0;
@@ -105,7 +110,8 @@ double piecewise_rvg::distrib_norm() const {
 };
 
 /// generates a random time according to the sampling distribution
-timec_t piecewise_rvg::random_time_generator() const {
+template <typename Conf>
+timec_t piecewise_rvg<Conf>::random_time_generator() const {
  timec_t time = -rng(t_max);
  double proba = time_distribution(time);
  while (rng(1.0) > proba) {
@@ -115,7 +121,8 @@ timec_t piecewise_rvg::random_time_generator() const {
  return time;
 };
 
-int piecewise_rvg::random_coupling_generator() const {
+template <typename Conf>
+int piecewise_rvg<Conf>::random_coupling_generator() const {
  int k = rng(potential_data.values.size());
  double proba = orbital_distribution(potential_data.i_list[k]);
  while (rng(1.0) > proba) {
@@ -126,12 +133,17 @@ int piecewise_rvg::random_coupling_generator() const {
 };
 
 /// return a random vertex
-vertex_t piecewise_rvg::operator()() const {
+template <typename Conf>
+vertex_t piecewise_rvg<Conf>::operator()() const {
  int k = random_coupling_generator();
  return {potential_data.i_list[k], potential_data.j_list[k], random_time_generator(), 0, potential_data.values[k]};
 };
 
 /// return the probability to have chosen vtx in the *current* configuration
-double piecewise_rvg::probability(const vertex_t& vtx) const {
+template <typename Conf>
+double piecewise_rvg<Conf>::probability(const vertex_t& vtx) const {
  return time_distribution(vtx.t) * orbital_distribution(vtx.x_up) / distrib_norm();
 };
+
+template class piecewise_rvg<ConfigurationQMC>;
+template class piecewise_rvg<ConfigurationAuxMC>;

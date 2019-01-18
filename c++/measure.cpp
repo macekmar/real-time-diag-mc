@@ -5,7 +5,8 @@ namespace mpi = triqs::mpi;
 
 
 // ----------
-WeightSignMeasure::WeightSignMeasure(Configuration* config, array<long, 1>* pn, array<dcomplex, 1>* sn)
+template <typename Conf>
+WeightSignMeasure<Conf>::WeightSignMeasure(Conf* config, array<long, 1>* pn, array<dcomplex, 1>* sn)
    : config(*config), pn(*pn), sn(*sn) {
 
  nb_orders = first_dim(*pn);
@@ -15,14 +16,16 @@ WeightSignMeasure::WeightSignMeasure(Configuration* config, array<long, 1>* pn, 
 }
 
 // ----------
-void WeightSignMeasure::accumulate(dcomplex sign) {
+template <typename Conf>
+void WeightSignMeasure<Conf>::accumulate(dcomplex sign) {
  histogram_pn << config.order;
  dcomplex weight = config.accepted_weight;
  sn_accum(config.order) += weight / std::abs(weight);
 }
 
 // ----------
-void WeightSignMeasure::collect_results(mpi::communicator c) {
+template <typename Conf>
+void WeightSignMeasure<Conf>::collect_results(mpi::communicator c) {
  c.barrier();
 
  // gather pn
@@ -50,7 +53,8 @@ void WeightSignMeasure::collect_results(mpi::communicator c) {
 // -----------------------
 
 // ----------
-TwoDetKernelMeasure::TwoDetKernelMeasure(Configuration* config, KernelBinning* kernels_binning,
+template <typename Conf>
+TwoDetKernelMeasure<Conf>::TwoDetKernelMeasure(Conf* config, KernelBinning* kernels_binning,
                                          array<long, 1>* pn, array<dcomplex, 4>* kernels,
                                          array<dcomplex, 4>* kernel_diracs, array<long, 4>* nb_kernels)
    : config(*config),
@@ -65,7 +69,8 @@ TwoDetKernelMeasure::TwoDetKernelMeasure(Configuration* config, KernelBinning* k
 }
 
 // ----------
-void TwoDetKernelMeasure::accumulate(dcomplex sign) {
+template <typename Conf>
+void TwoDetKernelMeasure<Conf>::accumulate(dcomplex sign) {
 
  config.incr_cycles_trapped();
  histogram_pn << config.order;
@@ -97,7 +102,8 @@ void TwoDetKernelMeasure::accumulate(dcomplex sign) {
 }
 
 // ----------
-void TwoDetKernelMeasure::collect_results(mpi::communicator c) {
+template <typename Conf>
+void TwoDetKernelMeasure<Conf>::collect_results(mpi::communicator c) {
  c.barrier();
 
  // gather pn
@@ -131,3 +137,6 @@ void TwoDetKernelMeasure::collect_results(mpi::communicator c) {
  nb_kernels = kernels_binning.get_nb_values();
  nb_kernels = mpi::mpi_all_reduce(nb_kernels, c);
 }
+
+template class WeightSignMeasure<ConfigurationQMC>;
+template class TwoDetKernelMeasure<ConfigurationQMC>;

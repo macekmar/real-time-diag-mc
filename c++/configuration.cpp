@@ -342,7 +342,7 @@ void Configuration::accept_config() {
  * The weight and kernels are automatically accepted, so this method should be
  * called on accepted configurations only.
  */
-void Configuration::incr_cycles_trapped() {
+void ConfigurationQMC::incr_cycles_trapped() {
  cycles_trapped++;
  if (cycles_trapped % params.cycles_trapped_thresh == 0) {
   evaluate();
@@ -351,6 +351,16 @@ void Configuration::incr_cycles_trapped() {
   // do not reset cycles_trapped to 0, its done after acceptation
  }
 }
+void ConfigurationAuxMC::incr_cycles_trapped() {
+ cycles_trapped++;
+ if (cycles_trapped % params.cycles_trapped_thresh == 0) {
+  evaluate();
+  accepted_weight = current_weight;
+  accepted_kernels() = current_kernels();
+  // do not reset cycles_trapped to 0, its done after acceptation
+ }
+}
+
 
 /**
  * Build configuration signature.

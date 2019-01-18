@@ -192,9 +192,9 @@ class Configuration {
  void insert_vertices(std::list<vertex_t> vertices);
  void reset_to_vertices(std::list<vertex_t> vertices);
 
- virtual void evaluate() = 0;
+ //void evaluate() {};
  void accept_config();
- void incr_cycles_trapped();
+ //void incr_cycles_trapped();
 
  // getters
  const std::set<timec_t>& times_list() const {return times_list_;};
@@ -220,6 +220,8 @@ class ConfigurationQMC : public Configuration {
   ConfigurationQMC(g0_keldysh_alpha_t green_function, const solve_parameters_t &params) : Configuration(green_function, params) {evaluate(); accept_config();};
 
   void evaluate();
+  void incr_cycles_trapped();
+
 };
 
 // ------------ Auxillary MC --------------------------------------------------
@@ -231,5 +233,6 @@ class ConfigurationAuxMC : public Configuration {
   ConfigurationAuxMC(g0_keldysh_alpha_t green_function, const solve_parameters_t &params) : Configuration(green_function, params), config_qmc(green_function, params) {evaluate(); accept_config();};
 
   void evaluate();
+  void incr_cycles_trapped();
   dcomplex _eval(std::vector<std::tuple<orbital_t, orbital_t, timec_t>> vertices);
 };

@@ -6,10 +6,11 @@
 
 // -----------------------
 
+template <typename Conf>
 class WeightSignMeasure {
 
  private:
- Configuration& config;
+ Conf& config;
  array<long, 1>& pn;
  array<dcomplex, 1>& sn;
  array<dcomplex, 1> sn_accum;
@@ -17,7 +18,7 @@ class WeightSignMeasure {
  triqs::statistics::histogram histogram_pn;
 
  public:
- WeightSignMeasure(Configuration* config, array<long, 1>* pn, array<dcomplex, 1>* sn);
+ WeightSignMeasure(Conf* config, array<long, 1>* pn, array<dcomplex, 1>* sn);
 
  void accumulate(dcomplex sign);
 
@@ -25,11 +26,11 @@ class WeightSignMeasure {
 };
 
 // -----------------------
-
+template <typename Conf>
 class TwoDetKernelMeasure {
 
  private:
- Configuration& config;
+ Conf& config;
  KernelBinning& kernels_binning;
  array<long, 1>& pn;
  array<dcomplex, 4>& kernels;
@@ -39,7 +40,7 @@ class TwoDetKernelMeasure {
  triqs::statistics::histogram histogram_pn;
 
  public:
- TwoDetKernelMeasure(Configuration* config, KernelBinning* kernels_binning, array<long, 1>* pn,
+ TwoDetKernelMeasure(Conf* config, KernelBinning* kernels_binning, array<long, 1>* pn,
                      array<dcomplex, 4>* kernels, array<dcomplex, 4>* kernel_diracs,
                      array<long, 4>* nb_kernels);
 

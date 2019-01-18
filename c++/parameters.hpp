@@ -108,7 +108,7 @@ struct solve_parameters_t {
  double ps_gamma = 1.;
 
  /// Do auxiliary Monte Carlo
- bool do_aux_mc = false;
+ bool do_aux_mc = true;
  int nb_aux_mc_cycles = 5;
 
  solve_parameters_t(){};

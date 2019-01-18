@@ -10,8 +10,8 @@ std::vector<double> prepare_U(std::vector<double> U) {
 
 
 // ------------ QMC insertion move --------------------------------------
-
-dcomplex insert::attempt() {
+template <typename Conf>
+dcomplex insert<Conf>::attempt() {
  before_attempt();
 
  auto k = config.order; // order before adding a vertex
@@ -30,19 +30,22 @@ dcomplex insert::attempt() {
  return U[k+1] / (proba * (k + 1)) * config.current_weight / config.accepted_weight;
 }
 
-dcomplex insert::accept() {
+template <typename Conf>
+dcomplex insert<Conf>::accept() {
  config.accept_config();
  return 1.0;
 }
 
-void insert::reject() {
+template <typename Conf>
+void insert<Conf>::reject() {
  if (quick_exit) return;
  config.remove(0);
 }
 
 // ------------ QMC double-insertion move --------------------------------------
 
-dcomplex insert2::attempt() {
+template <typename Conf>
+dcomplex insert2<Conf>::attempt() {
  before_attempt();
 
  auto k = config.order; // order before adding two vertices
@@ -63,12 +66,14 @@ dcomplex insert2::attempt() {
  return U[k+2] * U[k+1] / (proba * (k + 1) * (k + 2)) * config.current_weight / config.accepted_weight;
 }
 
-dcomplex insert2::accept() {
+template <typename Conf>
+dcomplex insert2<Conf>::accept() {
  config.accept_config();
  return 1.0;
 }
 
-void insert2::reject() {
+template <typename Conf>
+void insert2<Conf>::reject() {
  if (quick_exit) return;
  auto k = config.order;
  config.remove2(0, 1);
@@ -76,7 +81,8 @@ void insert2::reject() {
 
 //// ------------ QMC removal move --------------------------------------
 
-dcomplex remove::attempt() {
+template <typename Conf>
+dcomplex remove<Conf>::attempt() {
  before_attempt();
 
  auto k = config.order; // order before removal
@@ -95,19 +101,22 @@ dcomplex remove::attempt() {
  return rvg.probability(removed_vtx) * k / U[k] * config.current_weight / config.accepted_weight;
 }
 
-dcomplex remove::accept() {
+template <typename Conf>
+dcomplex remove<Conf>::accept() {
  config.accept_config();
  return 1.0;
 }
 
-void remove::reject() {
+template <typename Conf>
+void remove<Conf>::reject() {
  if (quick_exit) return;
  config.insert(p, removed_vtx); // position of vertex is irrelevant
 }
 
 // ------------ QMC double-removal move --------------------------------------
 
-dcomplex remove2::attempt() {
+template <typename Conf>
+dcomplex remove2<Conf>::attempt() {
  before_attempt();
 
  auto k = config.order; // order before removal
@@ -129,19 +138,22 @@ dcomplex remove2::attempt() {
  return rvg.probability(removed_vtx1) * rvg.probability(removed_vtx2) * k * (k - 1) / (U[k] * U[k-1]) * config.current_weight / config.accepted_weight;
 }
 
-dcomplex remove2::accept() {
+template <typename Conf>
+dcomplex remove2<Conf>::accept() {
  config.accept_config();
  return 1.0;
 }
 
-void remove2::reject() {
+template <typename Conf>
+void remove2<Conf>::reject() {
  if (quick_exit) return;
  config.insert2(p1, p2, removed_vtx1, removed_vtx2); // position of vertex is irrelevant
 }
 
 // ------------ QMC vertex shift move --------------------------------------
 
-dcomplex shift::attempt() {
+template <typename Conf>
+dcomplex shift<Conf>::attempt() {
  before_attempt();
 
  auto k = config.order; // order
@@ -162,12 +174,14 @@ dcomplex shift::attempt() {
  return rvg.probability(removed_vtx) / proba * config.current_weight / config.accepted_weight;
 }
 
-dcomplex shift::accept() {
+template <typename Conf>
+dcomplex shift<Conf>::accept() {
  config.accept_config();
  return 1.0;
 }
 
-void shift::reject() {
+template <typename Conf>
+void shift<Conf>::reject() {
  if (quick_exit) return;
  config.change_vertex(p, removed_vtx);
 }
@@ -246,4 +260,16 @@ void auxmc::reject() {
  move_accepted = false;
 }
 
+template class insert<ConfigurationQMC>;
+template class insert2<ConfigurationQMC>;
+template class remove<ConfigurationQMC>;
+template class remove2<ConfigurationQMC>;
+template class shift<ConfigurationQMC>;
+
+
+template class insert<ConfigurationAuxMC>;
+template class insert2<ConfigurationAuxMC>;
+template class remove<ConfigurationAuxMC>;
+template class remove2<ConfigurationAuxMC>;
+template class shift<ConfigurationAuxMC>;
 }

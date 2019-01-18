@@ -17,12 +17,10 @@ class solver_core {
  // main config is as config but with an aux_conf attribute
  // aux_config is the different one (really ?)
 
- Configuration *conf;
- ConfigurationQMC config;
+  ConfigurationQMC config;
  ConfigurationAuxMC aux_config;
  solve_parameters_t params;
  triqs::mc_tools::mc_generic<dcomplex> qmc, aux_mc;
- triqs::mc_tools::mc_generic<dcomplex> *mc;
  std::unique_ptr<RandomVertexGenerator> rvg;
  double qmc_duration = 0;
  double cum_qmc_duration = 0;

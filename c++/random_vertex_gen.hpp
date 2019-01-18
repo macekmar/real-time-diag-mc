@@ -25,12 +25,13 @@ struct uniform_rvg : RandomVertexGenerator {
 };
 
 
+template <typename Conf>
 struct piecewise_rvg : RandomVertexGenerator {
  private:
   potential_data_t potential_data;
   const timec_t t_max;
   triqs::mc_tools::random_generator &rng;
-  const Configuration &config;
+  const Conf &config;
   const double gamma;
   const func_t f_time;
   const func_t F_time; // should be a primitive of f_time
@@ -46,7 +47,7 @@ struct piecewise_rvg : RandomVertexGenerator {
   int random_coupling_generator() const;
 
  public:
-  piecewise_rvg(triqs::mc_tools::random_generator &rng, const solve_parameters_t& params, const Configuration& config);
+  piecewise_rvg(triqs::mc_tools::random_generator &rng, const solve_parameters_t& params, const Conf& config);
   vertex_t operator()() const;
   double probability(const vertex_t& vtx) const;
 };

@@ -75,11 +75,11 @@ int main() {
 
  auto rng = triqs::mc_tools::random_generator("", 87235);
  auto rvg = uniform_rvg(rng, params);
- moves::insert insert(config, params, rng, rvg);
- moves::insert2 insert2(config, params, rng, rvg);
- moves::remove remove(config, params, rng, rvg);
- moves::remove2 remove2(config, params, rng, rvg);
- moves::shift shift(config, params, rng, rvg);
+ moves::insert<ConfigurationQMC> insert(config, params, rng, rvg);
+ moves::insert2<ConfigurationQMC> insert2(config, params, rng, rvg);
+ moves::remove<ConfigurationQMC> remove(config, params, rng, rvg);
+ moves::remove2<ConfigurationQMC> remove2(config, params, rng, rvg);
+ moves::shift<ConfigurationQMC> shift(config, params, rng, rvg);
 
  // test attempt+reject do not change the configuration
 

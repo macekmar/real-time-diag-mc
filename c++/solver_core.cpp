@@ -146,54 +146,51 @@ void solver_core::set_g0(triqs::gfs::gf_view<triqs::gfs::retime, triqs::gfs::mat
  
  // assign moves to the Monte Carlo classes
  
- if (params.do_aux_mc) {
-  //TODO: conf is a Configuration pointer so config.evaluate will call Configuration evaluate and not ConfigurationAuxMC???
-  //???
-  // Solution: https://stackoverflow.com/questions/3640017/two-really-similar-classes-in-c-with-only-one-different-method-how-to-impleme
-   conf = &aux_config;
-   mc = &aux_mc;
+ // ------ Ordinary QMC ------
+ if (!params.do_aux_mc) {
+  if (params.preferential_sampling)
+    rvg = std::unique_ptr<RandomVertexGenerator>(new piecewise_rvg<ConfigurationQMC>(qmc.get_rng(), params, config));
+  // Register moves and measurements
+  if (params.w_ins_rem > 0) {
+   qmc.add_move(moves::insert<ConfigurationQMC>(config, params, qmc.get_rng(), *rvg), "insertion", params.w_ins_rem);
+   qmc.add_move(moves::remove<ConfigurationQMC>(config, params, qmc.get_rng(), *rvg), "removal", params.w_ins_rem);
+  }
+  if (params.w_dbl > 0) {
+   qmc.add_move(moves::insert2<ConfigurationQMC>(config, params, qmc.get_rng(), *rvg), "insertion2", params.w_dbl);
+   qmc.add_move(moves::remove2<ConfigurationQMC>(config, params, qmc.get_rng(), *rvg), "removal2", params.w_dbl);
+  }
+  if (params.w_shift > 0) {
+   qmc.add_move(moves::shift<ConfigurationQMC>(config, params, qmc.get_rng(), *rvg), "shift", params.w_shift);
+  }
  }
+ // ------ Auxiliary MC ------
  else {
-   conf = &config;
-   mc = &qmc;
- }
- 
- // In the case of ordinary MCMC, we assign moves to the qmc with the default
- // Configuration
- // else we assign these same moves to the auxiliary Monte Carlo, but with
- // the different Configuration object!
+  if (params.preferential_sampling)
+    rvg = std::unique_ptr<RandomVertexGenerator>(new piecewise_rvg<ConfigurationAuxMC>(aux_mc.get_rng(), params, aux_config));
+  // Register moves and measurements
+  if (params.w_ins_rem > 0) {
+    aux_mc.add_move(moves::insert<ConfigurationAuxMC>(aux_config, params, aux_mc.get_rng(), *rvg), "insertion", params.w_ins_rem);
+    aux_mc.add_move(moves::remove<ConfigurationAuxMC>(aux_config, params, aux_mc.get_rng(), *rvg), "removal", params.w_ins_rem);
+  }
+  if (params.w_dbl > 0) {
+    aux_mc.add_move(moves::insert2<ConfigurationAuxMC>(aux_config, params, aux_mc.get_rng(), *rvg), "insertion2", params.w_dbl);
+    aux_mc.add_move(moves::remove2<ConfigurationAuxMC>(aux_config, params, aux_mc.get_rng(), *rvg), "removal2", params.w_dbl);
+  }
+  if (params.w_shift > 0) {
+    aux_mc.add_move(moves::shift<ConfigurationAuxMC>(aux_config, params, aux_mc.get_rng(), *rvg), "shift", params.w_shift);
+  }
 
- // change vertex generator if needed
- if (params.preferential_sampling)
-  rvg = std::unique_ptr<RandomVertexGenerator>(new piecewise_rvg(mc->get_rng(), params, *conf));
-
- // Register moves and measurements
- if (params.w_ins_rem > 0) {
-  mc->add_move(moves::insert(*conf, params, mc->get_rng(), *rvg), "insertion", params.w_ins_rem);
-  mc->add_move(moves::remove(*conf, params, mc->get_rng(), *rvg), "removal", params.w_ins_rem);
- }
- if (params.w_dbl > 0) {
-  mc->add_move(moves::insert2(*conf, params, mc->get_rng(), *rvg), "insertion2", params.w_dbl);
-  mc->add_move(moves::remove2(*conf, params, mc->get_rng(), *rvg), "removal2", params.w_dbl);
- }
- if (params.w_shift > 0) {
-  mc->add_move(moves::shift(*conf, params, mc->get_rng(), *rvg), "shift", params.w_shift);
- }
-
-// There is only one move for the auxiliary Monte Carlo
- if (params.do_aux_mc) {
   moves::auxmc move = moves::auxmc(config, params, qmc.get_rng(), *rvg);
   move.aux_mc = &aux_mc;
-  //move.mc = &qmc;
   move.aux_config = &aux_config;
   qmc.add_move(move, "aux MC", 1.0);
  }
 
 // The measure does not depend on the type of qmc moves...
  if (params.method == 0) {
-  qmc.add_measure(WeightSignMeasure(&config, &pn, &sn), "Weight sign measure");
+  qmc.add_measure(WeightSignMeasure<ConfigurationQMC>(&config, &pn, &sn), "Weight sign measure");
  } else if (params.method == 1 or params.method == 2) {
-  qmc.add_measure(TwoDetKernelMeasure(&config, &kernels_binning, &pn, &kernels, &kernel_diracs, &nb_kernels),
+  qmc.add_measure(TwoDetKernelMeasure<ConfigurationQMC>(&config, &kernels_binning, &pn, &kernels, &kernel_diracs, &nb_kernels),
                   "Kernel measure");
  } else {
   TRIQS_RUNTIME_ERROR << "Cannot recognise the method ID";
