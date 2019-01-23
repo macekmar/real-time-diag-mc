@@ -107,8 +107,8 @@ struct solve_parameters_t {
  /// Preferential sampling parameter -- time sampling lorentzian width
  double ps_gamma = 1.;
 
- /// Do auxiliary Monte Carlo
- bool do_aux_mc = true;
+ /// Do auxiliary Monte Carlo?
+ bool do_aux_mc = false;
  int nb_aux_mc_cycles = 5;
 
  solve_parameters_t(){};

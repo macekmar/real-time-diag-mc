@@ -52,8 +52,11 @@ struct vertex_t {
  keldysh_contour_pt get_down_pt() { return {x_do, down, t, k_index}; };
 };
 
+/**
+ * Compares two vertices in time (without the Keldysh index)
+ */
 // Marjan: TODO: Why does it not work without inline?
-inline bool compare_vertices(const vertex_t& lhs, const vertex_t& rhs) {
+inline bool compare_vertices_times(const vertex_t& lhs, const vertex_t& rhs) {
   return (abs(lhs.t) < abs(rhs.t));
 }
 

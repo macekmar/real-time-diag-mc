@@ -6,6 +6,18 @@
 #include <triqs/mc_tools.hpp>
 #include <list>
 
+/**
+ * Note on implementation (Marjan)
+ * Without templates `using common::common` suffices. 
+ * Because of the two phase name lookup process, this does not work for 
+ * templated classes.
+ * The solution is to "import" each attribute and method separately, eg:
+ * using common<Conf>::common;
+ * using common<Conf>::config;
+ * ...
+ * or using `this->` in the code? (not sure) 
+*/
+
 namespace moves {
 
 std::vector<double> prepare_U(std::vector<double> U);

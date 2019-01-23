@@ -129,6 +129,7 @@ class wrapped_forward_list : public std::forward_list<T> {
  };
 };
 
+// ------ Configuration -------------------------------------------------------
 template <class T>
 class Configuration {
 
@@ -213,7 +214,7 @@ class Configuration {
 };
 
 
-// ------------ QMC ------------ ----------------------------------------------
+// ------------ QMC -----------------------------------------------------------
 class ConfigurationQMC : public Configuration<ConfigurationQMC> {
 
  public:

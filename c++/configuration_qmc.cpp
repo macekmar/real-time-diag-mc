@@ -2,13 +2,6 @@
 #include "./configuration.hpp"
 #include <triqs/det_manip.hpp>
 
-
-#include <forward_list>
-#include <set>
-#include <iterator>
-#include <utility>
-#include <list>
-
 /**
  * Insert a vertex at position k (before index k).
  */
@@ -61,8 +54,3 @@ void ConfigurationQMC::change_vertex(int k, vertex_t vtx) {
  matrices[down].change_row(k, pt);
  matrices[down].change_col(k, pt);
 };
-
-// void ConfigurationQMC::reset_to_vertices(wrapped_forward_list<vertex_t> vertices) {
-//  for (auto& m : matrices) m.clear();
-//  Configuration::reset_to_vertices(vertices);
-// }

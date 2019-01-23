@@ -54,7 +54,21 @@ using triqs::arrays::range;
  *
  */
 
-// Marjan: TODO description of aux_mc
+/** Auxiliary Monte Carlo
+ * In the case of auxiliary Monte Carlo (AuxMC), the main Monte Carlo has only
+ * one move: `auxmc`. The configuration class for this move is ConfigurationQMC,
+ * thesame as for the ordinary Monte Carlo.
+ * 
+ * The AuxMC used in the move `auxmc` uses the same moves as the main MC would,
+ * but it is based on a different configuration class -- ConfigurationAuxMC,
+ * which ignores the matrix attribute and has a different evaluate() function.
+ * However, because ConfigurationAuxMC::evaluate() needs QMC weights, 
+ * ConfigurationAuxMC has an attribute ConfigurationQMC qmc_config.
+ * 
+ * From the user's point of view, there are two additional parameters:
+ *   - bool do_aux_mc
+ *   - int nb_aux_mc_cycles
+ */
 
 solver_core::solver_core(solve_parameters_t const& params)
    : qmc(params.random_name, params.random_seed, 1.0, params.verbosity, false), // first_sign is not used

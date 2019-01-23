@@ -204,11 +204,11 @@ dcomplex auxmc::attempt() {
  // Also save the current config
  old_vertices = vertices;
  // Do auxiliary MC run
- // TODO: in `solver_core.cpp` in `clock_callback` the argument is variable
+ // TODO: in `solver_core.cpp` in `clock_callback` the argument is the variable
  //       `max_time instead` of -1 (which is the default value of `max_time`)
  aux_mc->run(params.nb_aux_mc_cycles, 1, triqs::utility::clock_callback(-1), false);
  auto aux_current_weight = aux_config->accepted_weight;
- // Set main config state to final aux_config state
+ // Set the main config state to final aux_config state
  auto k_attempted = aux_config->order;
  vertices = aux_config->vertices_list();
  config.reset_to_vertices(vertices);
@@ -249,12 +249,12 @@ void auxmc::reject() {
  move_accepted = false;
 }
 
+
 template class insert<ConfigurationQMC>;
 template class insert2<ConfigurationQMC>;
 template class remove<ConfigurationQMC>;
 template class remove2<ConfigurationQMC>;
 template class shift<ConfigurationQMC>;
-
 
 template class insert<ConfigurationAuxMC>;
 template class insert2<ConfigurationAuxMC>;

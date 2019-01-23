@@ -11,6 +11,25 @@
  * Configuration object allows to evaluate the weight and kernels of a
  * configuration and to keep memory of the previously accepted weight and
  * kernels.
+ * 
+ * 
+ * Note on implementation (Marjan):
+ * I used the "curiously recurring template pattern" - the Configuration base 
+ * class is a template of its own child classes.
+ * This allows that children use parent method which calls the appropriate
+ * children sub-method.
+ * Example: `remove_all` is the same for ConfigurationQMC and 
+ * ConfiguraionAuxMC but it has to call different `remove` methods.
+ * We could achieve the same with an abstrac class and virtual methods, but 
+ * with a performance cost.
+ * 
+ * All cpp files which defines Configuration... methods, have to end with
+ * lines: 
+ *     template class Configuration<Configuration...>;
+ * Otherwise, the compiler won't fine the defined methods.
+ * 
+ * ConfigurationQMC is almost the same as Configuration. The only difference is
+ * insert/remove/... methods, which also change the matrices.
  */
 template <class T>
 Configuration<T>::Configuration(g0_keldysh_alpha_t green_function, const solve_parameters_t &params)
@@ -79,14 +98,15 @@ void Configuration<T>::set_ops() {
 }
 
 /**
- *
+ * Resets the attributes to the starting value
  */
 template <class T>
 void Configuration<T>::set_default_values() {
  std::list<keldysh_contour_pt>::iterator apt, cpt;
  for (cpt = creation_pts.begin(), apt = annihila_pts.begin(); 
       cpt != creation_pts.end() && apt != annihila_pts.end(); 
-      ++cpt, ++apt) {
+      ++cpt, ++apt) 
+ {
   times_list_.insert(apt->t);
   times_list_.insert(cpt->t);
   orbitals_list_.insert(0, apt->x);
@@ -96,7 +116,7 @@ void Configuration<T>::set_default_values() {
 }
 
 /**
- * 
+ * Inserts annigilation and creation points into the empty (should be) matrix
  */
 template <class T>
 void Configuration<T>::set_default_matrix() {
@@ -202,7 +222,7 @@ void Configuration<T>::insert_vertices(wrapped_forward_list<vertex_t> vertices) 
 };
 
 /**
- * 
+ * Resets configuration to the given vertices
  */
 template <class T>
 void Configuration<T>::reset_to_vertices(wrapped_forward_list<vertex_t> vertices) {
