@@ -25,7 +25,8 @@ void nice_print(det_manip<g0_keldysh_t> det, int p) {
 /// Gray code cofactor rotation.
 // TODO: write down the formula this implements
 // FIXME: not used ??
-dcomplex Configuration::keldysh_sum_cofact(int p) {
+template <class T>
+dcomplex Configuration<T>::keldysh_sum_cofact(int p) {
 
  if (order > 63) TRIQS_RUNTIME_ERROR << "order overflow";
  if (order < 1) TRIQS_RUNTIME_ERROR << "order cannot be zero";
@@ -81,7 +82,8 @@ dcomplex Configuration::keldysh_sum_cofact(int p) {
 
 // ---------------- det * det ------------------
 /// Gray code determinant rotation. Returns the sum of prod of det for all keldysh configurations.
-dcomplex Configuration::keldysh_sum() {
+template <class T>
+dcomplex Configuration<T>::keldysh_sum() {
 
  if (order > 63) TRIQS_RUNTIME_ERROR << "order overflow";
 
@@ -213,3 +215,5 @@ dcomplex recompute_sum_keldysh_indices(det_manip<g0_keldysh_t>& matrix, int k) {
 }
 */
 
+template class Configuration<ConfigurationQMC>;
+template class Configuration<ConfigurationAuxMC>;

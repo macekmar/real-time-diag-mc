@@ -149,7 +149,7 @@ struct shift : common<Conf> {
 
 struct auxmc : public common<ConfigurationQMC> {
  using common<ConfigurationQMC>::common;
-using common<ConfigurationQMC>::config;
+ using common<ConfigurationQMC>::config;
  using common<ConfigurationQMC>::rvg;
  using common<ConfigurationQMC>::U;
  using common<ConfigurationQMC>::before_attempt;
@@ -158,12 +158,11 @@ using common<ConfigurationQMC>::config;
  using common<ConfigurationQMC>::quick_exit;
   
  bool move_accepted = false; 
-//  ConfigurationAuxMC* aux_config;
  ConfigurationAuxMC* aux_config;
  triqs::mc_tools::mc_generic<dcomplex>* aux_mc;
 
- std::list<vertex_t> vertices;
- std::list<vertex_t> old_vertices;
+ wrapped_forward_list<vertex_t> vertices;
+ wrapped_forward_list<vertex_t> old_vertices;
 
  dcomplex attempt();
  dcomplex accept();
@@ -171,5 +170,3 @@ using common<ConfigurationQMC>::config;
 };
 
 }
-
-

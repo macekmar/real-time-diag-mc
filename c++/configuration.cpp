@@ -1,7 +1,6 @@
 #include "./configuration.hpp"
 #include <algorithm>
 
-
 //#define REGENERATE_MATRIX_BEFORE_EACH_GRAY_CODE
 
 /**
@@ -13,7 +12,8 @@
  * configuration and to keep memory of the previously accepted weight and
  * kernels.
  */
-Configuration::Configuration(g0_keldysh_alpha_t green_function, const solve_parameters_t &params)
+template <class T>
+Configuration<T>::Configuration(g0_keldysh_alpha_t green_function, const solve_parameters_t &params)
    : params(params),
      cofactor_threshold(2. * params.singular_thresholds.first),
      order(0),
@@ -45,11 +45,10 @@ Configuration::Configuration(g0_keldysh_alpha_t green_function, const solve_para
  current_kernels() = 0;
  accepted_kernels = array<dcomplex, 2>(params.max_perturbation_order + matrices[spin_dvpt].size(), 2);
  accepted_kernels() = 0;
-/* This is now in each child class
- * // Initialize weight value
- * evaluate();
- * accept_config();
- */
+
+ // Initialize weight value
+ static_cast<T*>(this)->evaluate();
+ accept_config();
 }
 
 /**
@@ -59,7 +58,8 @@ Configuration::Configuration(g0_keldysh_alpha_t green_function, const solve_para
  *         need to access them every time I reset the configuration.
  * TODO: Of course, they don't change after the initialization????
  */
-void Configuration::set_ops() {
+template <class T>
+void Configuration<T>::set_ops() {
  for (int rank = 0; rank < params.creation_ops.size(); ++rank) {
   creation_pts.push_back(make_keldysh_contour_pt(params.creation_ops[rank], rank));
   annihila_pts.push_back(make_keldysh_contour_pt(params.annihilation_ops[rank], rank));
@@ -78,31 +78,44 @@ void Configuration::set_ops() {
  }
 }
 
-void Configuration::set_default_values() {
+/**
+ *
+ */
+template <class T>
+void Configuration<T>::set_default_values() {
  std::list<keldysh_contour_pt>::iterator apt, cpt;
  for (cpt = creation_pts.begin(), apt = annihila_pts.begin(); 
       cpt != creation_pts.end() && apt != annihila_pts.end(); 
       ++cpt, ++apt) {
-  matrices[apt->s].insert_at_end(*apt, *cpt);
   times_list_.insert(apt->t);
   times_list_.insert(cpt->t);
   orbitals_list_.insert(0, apt->x);
   orbitals_list_.insert(0, cpt->x);
+ }
+ set_default_matrix();
 }
+
+/**
+ * 
+ */
+template <class T>
+void Configuration<T>::set_default_matrix() {
+ std::list<keldysh_contour_pt>::iterator apt, cpt;
+ for (cpt = creation_pts.begin(), apt = annihila_pts.begin(); 
+      cpt != creation_pts.end() && apt != annihila_pts.end(); 
+      ++cpt, ++apt) {  
+  matrices[apt->s].insert_at_end(*apt, *cpt);
+ }
 }
 
 /**
  * Insert a vertex at position k (before index k).
  */
-void Configuration::insert(int k, vertex_t vtx) {
+template <class T>
+void Configuration<T>::insert(int k, vertex_t vtx) {
  times_list_.insert(vtx.t);
  orbitals_list_.insert(k, vtx.x_up);
-
- auto pt = vtx.get_up_pt();
- matrices[up].insert(k, k, pt, pt);
- pt = vtx.get_down_pt();
- matrices[down].insert(k, k, pt, pt);
-
+ vertices_list_.insert(k, vtx);
  potential_list.insert(k, vtx.potential);
  potential *= vtx.potential;
 
@@ -112,18 +125,12 @@ void Configuration::insert(int k, vertex_t vtx) {
 /**
  * Insert two vertices such that `vtx1` is now at position k1 and `vtx2` at position k2.
  */
-void Configuration::insert2(int k1, int k2, vertex_t vtx1, vertex_t vtx2) {
+template <class T>
+void Configuration<T>::insert2(int k1, int k2, vertex_t vtx1, vertex_t vtx2) {
  times_list_.insert(vtx1.t);
  times_list_.insert(vtx2.t);
  orbitals_list_.insert2(k1, k2, vtx1.x_up, vtx2.x_up);
-
- auto pt1 = vtx1.get_up_pt();
- auto pt2 = vtx2.get_up_pt();
- matrices[up].insert2(k1, k2, k1, k2, pt1, pt2, pt1, pt2);
- pt1 = vtx1.get_down_pt();
- pt2 = vtx2.get_down_pt();
- matrices[down].insert2(k1, k2, k1, k2, pt1, pt2, pt1, pt2);
-
+ vertices_list_.insert2(k1, k2, vtx1, vtx2);
  potential_list.insert2(k1, k2, vtx1.potential, vtx2.potential);
  potential *= vtx1.potential * vtx2.potential;
 
@@ -133,12 +140,11 @@ void Configuration::insert2(int k1, int k2, vertex_t vtx1, vertex_t vtx2) {
 /**
  * Remove the vertex at position `k`.
  */
-void Configuration::remove(int k) {
+template <class T>
+void Configuration<T>::remove(int k) {
  times_list_.erase(get_time(k)); // before matrix removal
  orbitals_list_.erase(k);
-
- for (auto& m : matrices) m.remove(k, k);
-
+ vertices_list_.erase(k);
  potential /= potential_list[k];
  potential_list.erase(k);
 
@@ -148,13 +154,12 @@ void Configuration::remove(int k) {
 /**
  * Remove the vertices at positions `k1` and `k2`.
  */
-void Configuration::remove2(int k1, int k2) {
+template <class T>
+void Configuration<T>::remove2(int k1, int k2) {
  times_list_.erase(get_time(k1));
  times_list_.erase(get_time(k2));
  orbitals_list_.erase2(k1, k2);
-
- for (auto& m : matrices) m.remove2(k1, k2, k1, k2);
-
+ vertices_list_.erase2(k1, k2);
  potential /= potential_list[k1] * potential_list[k2];
  potential_list.erase2(k1, k2);
 
@@ -164,82 +169,61 @@ void Configuration::remove2(int k1, int k2) {
 /**
  * Change vertex at position `k` into `vtx`.
  */
-void Configuration::change_vertex(int k, vertex_t vtx) {
+template <class T>
+void Configuration<T>::change_vertex(int k, vertex_t vtx) {
  times_list_.erase(get_time(k));
  times_list_.insert(vtx.t);
  orbitals_list_[k] = vtx.x_up;
-
- auto pt = vtx.get_up_pt();
- matrices[up].change_row(k, pt);
- matrices[up].change_col(k, pt);
- pt = vtx.get_down_pt();
- matrices[down].change_row(k, pt);
- matrices[down].change_col(k, pt);
-
+ vertices_list_[k] = vtx;
  potential *= vtx.potential / potential_list[k];
  potential_list[k] = vtx.potential;
 };
 
 /**
  * Return a copy of the vertex at position `k`.
- *
- * Vertices are not actually stored, so it is reconstructed from the Keldysh
- * points in the matrices.
  */
-vertex_t Configuration::get_vertex(int k) const {
- auto pt_up = matrices[up].get_x(k);
- auto pt_down = matrices[down].get_x(k);
- return {pt_up.x, pt_down.x, pt_up.t, pt_up.k_index, potential_list[k]}; // no consistency check is done
+template <class T>
+vertex_t Configuration<T>::get_vertex(int k) const {
+ return vertices_list_[k];
 };
 
 /**
  * Insert vertices consequently
  */
-void Configuration::insert_vertices(std::list<vertex_t> vertices) {
+template <class T>
+void Configuration<T>::insert_vertices(wrapped_forward_list<vertex_t> vertices) {
  int i = 0;
  int begin_order = order;
  while (!vertices.empty()){
-  insert(begin_order + i, vertices.front());
+  static_cast<T*>(this)->insert(begin_order + i, vertices.front());
   vertices.pop_front();
   ++i;
  }
 };
 
-
-void Configuration::reset_to_vertices(std::list<vertex_t> vertices) {
- // Instead of 
- // remove_all();
- // which removes vertices one after another and recalculates the determinant
- // each time, we can clear all values and set back the default ones.
-
+/**
+ * 
+ */
+template <class T>
+void Configuration<T>::reset_to_vertices(wrapped_forward_list<vertex_t> vertices) {
  times_list_.clear();
  orbitals_list_.clear(); 
  for (auto& m : matrices) m.clear();
  potential_list.clear();
  order = 0;
  potential = 1.0;
+ vertices_list_.clear();
 
  set_default_values();
 
- insert_vertices(vertices);
+ static_cast<T*>(this)->insert_vertices(vertices);
 };
 
-inline timec_t Configuration::get_time(int k) const {
- return matrices[up].get_x(k).t;
+template <class T>
+inline timec_t Configuration<T>::get_time(int k) const {
+ return vertices_list_[k].t;
 };
 
-/**
- * Returns a list of all vertices in the configuration
- */
- 
-std::list<vertex_t> Configuration::vertices_list() {
- std::list<vertex_t> vertices;
- for (int i = 0; i < order; i++){
-  //std::cout << "works" << i << std::endl;
-  vertices.push_back(get_vertex(i));
- };
- return vertices;
-};
 
 /**
  * Evaluate the kernels for the current configuration.
@@ -252,7 +236,8 @@ std::list<vertex_t> Configuration::vertices_list() {
  *
  * TODO: write down the formula this implements
  */
-double Configuration::kernels_evaluate() {
+template <class T>
+double Configuration<T>::kernels_evaluate() {
  if (order == 0) return 1.; // is this a good value ?
  if (order > 63) TRIQS_RUNTIME_ERROR << "order overflow";
 
@@ -328,7 +313,8 @@ double Configuration::kernels_evaluate() {
  * This simply copy `current_weight` and `current_kernels` into
  * `accepted_weight` and `accepted_kernels`.
  */
-void Configuration::accept_config() {
+template <class T>
+void Configuration<T>::accept_config() {
  //if (cycles_trapped > 100) std::cout << "Trapped " << cycles_trapped << " cycles" << std::endl;
  cycles_trapped = 0;
  accepted_weight = current_weight;
@@ -342,19 +328,11 @@ void Configuration::accept_config() {
  * The weight and kernels are automatically accepted, so this method should be
  * called on accepted configurations only.
  */
-void ConfigurationQMC::incr_cycles_trapped() {
+template <class T>
+void Configuration<T>::incr_cycles_trapped() {
  cycles_trapped++;
  if (cycles_trapped % params.cycles_trapped_thresh == 0) {
-  evaluate();
-  accepted_weight = current_weight;
-  accepted_kernels() = current_kernels();
-  // do not reset cycles_trapped to 0, its done after acceptation
- }
-}
-void ConfigurationAuxMC::incr_cycles_trapped() {
- cycles_trapped++;
- if (cycles_trapped % params.cycles_trapped_thresh == 0) {
-  evaluate();
+  static_cast<T*>(this)->evaluate();
   accepted_weight = current_weight;
   accepted_kernels() = current_kernels();
   // do not reset cycles_trapped to 0, its done after acceptation
@@ -369,10 +347,11 @@ void ConfigurationAuxMC::incr_cycles_trapped() {
  * give exhaustive information.
  * TODO: add orbitals in the signature
  */
-std::vector<double> Configuration::signature() {
+template <class T>
+std::vector<double> Configuration<T>::signature() {
  std::vector<double> signa;
  for (int i = 0; i < order; ++i) {
-  signa.emplace_back(get_vertex(i).t);
+  signa.emplace_back(static_cast<T*>(this)->get_vertex(i).t);
  }
  return signa;
 };
@@ -381,7 +360,8 @@ std::vector<double> Configuration::signature() {
  * Register the configuration as if it has been accepted (accepted weight is stored).
  * Increment multiplicity if it didn't change since last registration.
  */
-void Configuration::register_accepted_config() {
+template <class T>
+void Configuration<T>::register_accepted_config() {
  auto config = signature();
 
  if (config_list.size() > 0 && config == config_list[config_list.size() - 1]) // short-circuit eval
@@ -397,7 +377,8 @@ void Configuration::register_accepted_config() {
  * Register the configuration as if it has been attempted only (current weight is stored).
  * No use of multiplicity here.
  */
-void Configuration::register_attempted_config() {
+template <class T>
+void Configuration<T>::register_attempted_config() {
  auto config = signature();
 
  config_list.emplace_back(config);
@@ -409,8 +390,11 @@ void Configuration::register_attempted_config() {
  *
  * Prints the lists of contour points which composes the matrices, as well as
  * the list of potentials of vertices.
+ * 
+ * Marjan: TODO: this works properly only for ConfigQMC
  */
-void Configuration::print() {
+template <class T>
+void Configuration<T>::print() {
  std::cout << std::endl;
  int n;
  for (auto& m : matrices) {
@@ -432,70 +416,18 @@ void Configuration::print() {
  std::cout << std::endl;
 };
 
-// ------------ QMC ------------ ----------------------------------------------
-void ConfigurationQMC::evaluate() {
+/**
+ * 
+ */
+template <class T>
+void Configuration<T>::evaluate() {
  if (params.method != 0)
   current_weight = kernels_evaluate();
  else
   // no absolute value as this is used for sn
   current_weight = potential * keldysh_sum();
- }
+ };
 
 
-// ------------ Auxillary MC --------------------------------------------------
-dcomplex ConfigurationAuxMC::_eval(std::vector<std::tuple<orbital_t, orbital_t, timec_t>> vertices) {
- if (vertices.size() > params.max_perturbation_order)
-  TRIQS_RUNTIME_ERROR << "Too many vertices compared to the max perturbation order.";
-
- auto pot_data = make_potential_data(params.nb_orbitals, params.potential);
-
- config_qmc.remove_all();
-
- orbital_t i, j;
- double pot;
- for (auto it = vertices.rbegin(); it != vertices.rend(); ++it) {
-  i = std::get<0>(*it);
-  j = std::get<1>(*it);
-  pot = pot_data.potential_of(i, j);
-
-  if (i < 0 or i >= params.nb_orbitals or j < 0 or j >= params.nb_orbitals)
-  TRIQS_RUNTIME_ERROR << "Orbital not recognized";
-  if (pot == 0.)
-  TRIQS_RUNTIME_ERROR << "These orbitals have no potential"; // Configuration should never be fed with a zero potential vertex, or it breaks down.
-
-  config_qmc.insert(0, {i, j, std::get<2>(*it), 0, pot});
- }
-
- config_qmc.evaluate();
- config_qmc.remove_all();
-
- return config_qmc.current_weight; //Marjan:TODO: in abs()?
-};
-
-void ConfigurationAuxMC::evaluate() {
-    
- dcomplex prod;
- std::list<vertex_t>::iterator vtx;    
- std::list<vertex_t> vertices = vertices_list();
-
- timec_t t1, t2;
-
- if (vertices.size() == 0) { current_weight = 1.0;}
- else {
-  vertices.sort(compare_vertices);
-
-  prod = _eval({std::make_tuple(0, 0, vertices.begin()->t)});
-  for (vtx = vertices.begin(); vtx != vertices.end(); ++vtx) {
-   if (std::next(vtx, 1) == vertices.end()) break;
-   if (vtx != vertices.end()) {
-     t1 = vtx->t;
-     t2 = std::next(vtx, 1)->t;
-     prod *= _eval({std::make_tuple(0, 0, t2 - t1)});
-    }
-  }
-  current_weight = prod;
- }
-}
-
-
-
+template class Configuration<ConfigurationQMC>;
+template class Configuration<ConfigurationAuxMC>;

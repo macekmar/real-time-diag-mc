@@ -129,7 +129,7 @@ class wrapped_forward_list : public std::forward_list<T> {
  };
 };
 
-// -----------------------
+template <class T>
 class Configuration {
 
  // attributes
@@ -140,6 +140,7 @@ class Configuration {
  wrapped_forward_list<double> potential_list;
  std::set<timec_t> times_list_; // sorted container
  wrapped_forward_list<orbital_t> orbitals_list_;
+ wrapped_forward_list<vertex_t> vertices_list_;
  std::list<keldysh_contour_pt> creation_pts, annihila_pts;
  double potential = 1.;
  int cycles_trapped = 0;
@@ -188,18 +189,18 @@ class Configuration {
  vertex_t get_vertex(int p) const;
  inline timec_t get_time(int k) const;
 
- void remove_all() { while (order > 0) remove(0); };
- void insert_vertices(std::list<vertex_t> vertices);
- void reset_to_vertices(std::list<vertex_t> vertices);
+ void remove_all() { while (order > 0) static_cast<T*>(this)->remove(0); };
+ void insert_vertices(wrapped_forward_list<vertex_t> vertices);
+ void reset_to_vertices(wrapped_forward_list<vertex_t> vertices);
 
- //void evaluate() {};
+ void evaluate();
  void accept_config();
- //void incr_cycles_trapped();
+ void incr_cycles_trapped();
 
  // getters
  const std::set<timec_t>& times_list() const {return times_list_;};
  const wrapped_forward_list<orbital_t>& orbitals_list() const {return orbitals_list_;};
- std::list<vertex_t> vertices_list();
+ const wrapped_forward_list<vertex_t> vertices_list() const {return vertices_list_;};
 
  // utility and debug
  std::vector<double> signature();
@@ -207,32 +208,35 @@ class Configuration {
  void register_attempted_config();
  void set_ops();
  void set_default_values();
+ void set_default_matrix();
  void print();
 };
 
-// -----------------------
-void nice_print(det_manip<g0_keldysh_alpha_t> det, int p);
 
 // ------------ QMC ------------ ----------------------------------------------
-class ConfigurationQMC : public Configuration {
-  public:
-  ConfigurationQMC(){};
-  ConfigurationQMC(g0_keldysh_alpha_t green_function, const solve_parameters_t &params) : Configuration(green_function, params) {evaluate(); accept_config();};
+class ConfigurationQMC : public Configuration<ConfigurationQMC> {
 
-  void evaluate();
-  void incr_cycles_trapped();
+ public:
+ ConfigurationQMC(){};
+ ConfigurationQMC(g0_keldysh_alpha_t green_function, const solve_parameters_t &params) : Configuration(green_function, params) {};
 
-};
+ void insert(int k, vertex_t vtx);
+ void insert2(int k1, int k2, vertex_t vtx1, vertex_t vtx2);
+ void remove(int k);
+ void remove2(int k1, int k2);
+ void change_vertex(int k, vertex_t vtx);
+ };
 
 // ------------ Auxillary MC --------------------------------------------------
-class ConfigurationAuxMC : public Configuration {
-  public:
-  ConfigurationQMC config_qmc;
+class ConfigurationAuxMC : public Configuration<ConfigurationAuxMC> {
+ public:
+ potential_data_t pot_data = make_potential_data(params.nb_orbitals, params.potential);
+ ConfigurationQMC config_qmc;
+ dcomplex zero_weight;
 
-  ConfigurationAuxMC(){};
-  ConfigurationAuxMC(g0_keldysh_alpha_t green_function, const solve_parameters_t &params) : Configuration(green_function, params), config_qmc(green_function, params) {evaluate(); accept_config();};
-
-  void evaluate();
-  void incr_cycles_trapped();
-  dcomplex _eval(std::vector<std::tuple<orbital_t, orbital_t, timec_t>> vertices);
+ ConfigurationAuxMC(){};
+ ConfigurationAuxMC(g0_keldysh_alpha_t green_function, const solve_parameters_t &params);
+ 
+ void evaluate();
+ void _eval(wrapped_forward_list<vertex_t> vertices);
 };

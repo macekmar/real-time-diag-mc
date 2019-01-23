@@ -194,20 +194,6 @@ dcomplex auxmc::attempt() {
  int i;
  // Set aux_config state to main config state
  // If the previous move was accepted, we do not have to reset aux_config
- 
- // Print times_list()
- // const std::set<timec_t>& tl1 = config.times_list();
- // const std::set<timec_t>& tl2 = aux_config->times_list();
- // std::set<timec_t>::iterator t;
- 
- // std::cout << "Accepted?: " << move_accepted << std::endl;
- // std::cout << "   QMC: ";
- // for (t = tl1.begin(); t != tl1.end(); ++t) {std::cout << *t << " ";}
- // std::cout << std::endl;
- // std::cout << "Aux MC: ";
- // for (t = tl2.begin(); t != tl2.end(); ++t) {std::cout << *t << " ";}
- // std::cout << std::endl;
- 
  auto k_current = config.order;
  if (!move_accepted) {
   vertices = config.vertices_list();
@@ -217,13 +203,11 @@ dcomplex auxmc::attempt() {
  auto aux_accepted_weight = aux_config->accepted_weight;
  // Also save the current config
  old_vertices = vertices;
-
  // Do auxiliary MC run
  // TODO: in `solver_core.cpp` in `clock_callback` the argument is variable
  //       `max_time instead` of -1 (which is the default value of `max_time`)
  aux_mc->run(params.nb_aux_mc_cycles, 1, triqs::utility::clock_callback(-1), false);
  auto aux_current_weight = aux_config->accepted_weight;
-
  // Set main config state to final aux_config state
  auto k_attempted = aux_config->order;
  vertices = aux_config->vertices_list();
@@ -243,6 +227,11 @@ dcomplex auxmc::attempt() {
   U_prod *= U[k_current + sgn*i];
  };
  */
+
+ // std::cout << U_prod 
+ //   << " AA=" << std::abs(aux_accepted_weight) << " AC=" << std::abs(aux_current_weight) 
+ //   << " CA=" << std::abs(config.accepted_weight) << " CC=" << std::abs(config.current_weight) 
+ //   << std::endl;
 
  // The Metropolis ratio;
  return U_prod * aux_accepted_weight/aux_current_weight * config.current_weight / config.accepted_weight;
