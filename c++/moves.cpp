@@ -211,6 +211,7 @@ dcomplex auxmc::attempt() {
   vertices = config.vertices_list();
   aux_config->reset_to_vertices(vertices);
   aux_config->evaluate();
+  aux_config->accept_config();
  }
  auto aux_accepted_weight = aux_config->accepted_weight;
  // Also save the current config
