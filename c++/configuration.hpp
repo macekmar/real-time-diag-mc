@@ -4,6 +4,7 @@
 
 #include <forward_list>
 #include <set>
+#include <vector>
 #include <iterator>
 #include <utility>
 #include <list>
@@ -234,10 +235,12 @@ class ConfigurationAuxMC : public Configuration<ConfigurationAuxMC> {
  potential_data_t pot_data = make_potential_data(params.nb_orbitals, params.potential);
  ConfigurationQMC config_qmc;
  dcomplex zero_weight;
+ std::vector<int> pn = std::vector<int>(params.max_perturbation_order + 1, 0);
 
  ConfigurationAuxMC(){};
  ConfigurationAuxMC(g0_keldysh_alpha_t green_function, const solve_parameters_t &params);
  
  void evaluate();
  void _eval(wrapped_forward_list<vertex_t> vertices);
+ void accept_config();
 };

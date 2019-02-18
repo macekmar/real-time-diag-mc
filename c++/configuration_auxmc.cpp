@@ -17,6 +17,15 @@ ConfigurationAuxMC::ConfigurationAuxMC(g0_keldysh_alpha_t green_function, const 
  accept_config();
 };
 
+
+/**
+ * Count the orders for the accepted moves
+ */
+void ConfigurationAuxMC::accept_config(){
+  Configuration::accept_config();
+  if (params.print_aux_stats) {++pn[order];}
+}
+
 /**
  * Evaluates AuxMC weight by providing list of vertices for _eval
  * 

@@ -111,7 +111,8 @@ struct solve_parameters_t {
  bool do_aux_mc = false;
  int nb_aux_mc_cycles = 5;
  std::vector<double> U_aux = {};
-
+ bool print_aux_stats = false;
+ 
  solve_parameters_t(){};
 
 };

@@ -1,6 +1,7 @@
 #include "./moves.hpp"
 #include <triqs/det_manip.hpp>
 
+namespace mpi = triqs::mpi;
 namespace moves {
 
 std::vector<double> prepare_U(std::vector<double> U) {
@@ -201,6 +202,15 @@ void shift<Conf>::reject() {
 // ------------ QMC Auxillary MC move --------------------------------------
 
 dcomplex auxmc::attempt() {
+
+ if (params.print_aux_stats) {
+  std::cout << std::endl << "AuxMC move" << std::endl;
+ }
+
+ mpi::communicator world;
+ mpi::communicator self = MPI_COMM_SELF;
+ //world.barrier();
+
  before_attempt();
 
  int i;
@@ -220,6 +230,40 @@ dcomplex auxmc::attempt() {
  // TODO: in `solver_core.cpp` in `clock_callback` the argument is the variable
  //       `max_time instead` of -1 (which is the default value of `max_time`)
  aux_mc->run(params.nb_aux_mc_cycles, 1, triqs::utility::clock_callback(-1), false);
+
+ // Aux moves statistics
+ if (params.print_aux_stats) {
+  aux_mc->collect_results(self);
+  auto aux_mc_duration = aux_mc->get_duration();
+  auto cum_aux_mc_duration = mpi::mpi_all_reduce(aux_mc_duration);
+
+  if (world.rank() == 0) {
+   std::cout << "Duration (all nodes): " << cum_aux_mc_duration << " seconds" << std::endl;
+   for (auto const& x : aux_mc->get_acceptance_rates()) {
+    std::cout << "> " << x.first << ": " << x.second << std::endl;
+   }
+  }
+  // pn histogram of the accepted moves of the AuxMC
+  auto sum_pn = 0;
+  std::cout << "AuxMC pn = [";
+  for (auto p = aux_config->pn.begin(); p != aux_config->pn.end(); ++p)
+  {
+   sum_pn += *p;
+   std::cout << *p << " ";
+   *p = 0;
+  }
+  std::cout << "] (the sum is = " << sum_pn << ")" << std::endl;
+
+  std::cout << "Proposed orders = [";
+  ++proposed_order[aux_config->order];
+  for (auto r = proposed_order.begin(); r != proposed_order.end(); ++r)
+  {
+   std::cout << *r << " ";
+  }
+  std::cout << "]" << std::endl;
+ }
+
+
  auto aux_current_weight = aux_config->accepted_weight;
  // Set the main config state to final aux_config state
  auto k_attempted = aux_config->order;
@@ -245,6 +289,20 @@ dcomplex auxmc::attempt() {
  if (sgn < 0) U_prod = 1.0/U_prod;
  if (sgn < 0) U_prod_aux = 1.0/U_prod_aux;
 
+ if (params.print_aux_stats) {
+  std::cout 
+   << k_current << " " << k_attempted
+   << " " << U_prod << " " << U_prod_aux
+   << " AA=" << std::abs(aux_accepted_weight) << " AC=" << std::abs(aux_current_weight) 
+   << " CA=" << std::abs(config.accepted_weight) << " CC=" << std::abs(config.current_weight) 
+   << std::endl;
+  std::cout << U_prod/U_prod_aux
+   << " " << std::abs(aux_current_weight) / std::abs(aux_accepted_weight)
+   << " " << std::abs(config.current_weight) /std::abs(config.accepted_weight) 
+   << std::endl;
+  std::cout << std::abs(U_prod/U_prod_aux * aux_accepted_weight/aux_current_weight * config.current_weight / config.accepted_weight)
+   << std::endl;
+ }
 
  // The Metropolis ratio;
  return U_prod/U_prod_aux * aux_accepted_weight/aux_current_weight * config.current_weight / config.accepted_weight;
