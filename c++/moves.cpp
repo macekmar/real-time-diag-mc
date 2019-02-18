@@ -8,6 +8,18 @@ std::vector<double> prepare_U(std::vector<double> U) {
  return U;
 };
 
+// /**
+//  * Constructor for moves in the AuxMC Markov chain: set U to U_aux
+//  */
+template<>
+common<ConfigurationAuxMC>::common(ConfigurationAuxMC &config, const solve_parameters_t &params,
+  triqs::mc_tools::random_generator &rng, const RandomVertexGenerator &rvg) 
+  : config(config), params(params), rng(rng), rvg(rvg), U(prepare_U(params.U)) {
+ 
+ if (!params.U_aux.empty()) {
+  U = prepare_U(params.U_aux);
+ }
+};
 
 // ------------ QMC insertion move --------------------------------------
 template <typename Conf>
@@ -216,25 +228,25 @@ dcomplex auxmc::attempt() {
  after_attempt();
 
  double U_prod = 1.0;
+ double U_prod_aux = 1.0;
  /**
-  * Marjan: TODO: if both auxMC and QMC have the U_qmc potential, then they
-  * cancel each other. We still have weighted hopping between the levels,
-  * because AuxMC is weighted!
+  * Marjan: 
+  * aux_..._weights do not include U_aux although it is used in the aux Markov
+  * chain.
+  * U_qmc is just an additional parameter to overcome different magnitudes of
+  * qmc weights.
  */
- /*
  int sgn = k_attempted > k_current ? 1 : -1;
- for (i = 0; i < abs(k_attempted - k_current); i++) {
-  U_prod *= U[k_current + sgn*i];
+ for (i = k_current + sgn; i != k_attempted + sgn; i += sgn) {
+  U_prod *= U[i];
+  U_prod_aux *= U_aux[i];
  };
- */
+ if (sgn < 0) U_prod = 1.0/U_prod;
+ if (sgn < 0) U_prod_aux = 1.0/U_prod_aux;
 
- // std::cout << U_prod 
- //   << " AA=" << std::abs(aux_accepted_weight) << " AC=" << std::abs(aux_current_weight) 
- //   << " CA=" << std::abs(config.accepted_weight) << " CC=" << std::abs(config.current_weight) 
- //   << std::endl;
 
  // The Metropolis ratio;
- return U_prod * aux_accepted_weight/aux_current_weight * config.current_weight / config.accepted_weight;
+ return U_prod/U_prod_aux * aux_accepted_weight/aux_current_weight * config.current_weight / config.accepted_weight;
 }
 
 dcomplex auxmc::accept() {

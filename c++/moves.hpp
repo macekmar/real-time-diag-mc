@@ -28,7 +28,7 @@ struct common {
  const solve_parameters_t &params;
  const RandomVertexGenerator& rvg;
  triqs::mc_tools::random_generator &rng;
- const std::vector<double> U;
+ std::vector<double> U;
  bool quick_exit = false;
 
  common(Conf &config, const solve_parameters_t &params,
@@ -170,11 +170,14 @@ struct auxmc : public common<ConfigurationQMC> {
  using common<ConfigurationQMC>::quick_exit;
   
  bool move_accepted = false; 
+ std::vector<int> proposed_order = std::vector<int>(params.max_perturbation_order + 1, 0);
  ConfigurationAuxMC* aux_config;
  triqs::mc_tools::mc_generic<dcomplex>* aux_mc;
 
  wrapped_forward_list<vertex_t> vertices;
  wrapped_forward_list<vertex_t> old_vertices;
+
+ std::vector<double> U_aux = prepare_U(params.U_aux);
 
  dcomplex attempt();
  dcomplex accept();
