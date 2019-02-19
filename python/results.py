@@ -109,6 +109,8 @@ def merge_results(results1, results2):
 
     if results1['metadata']['nb_proc'] == results2['metadata']['nb_proc']:
         output['metadata']['nb_proc'] = results1['metadata']['nb_proc']
+    else:
+        output['metadata']['nb_proc'] = 'undefined'
 
     return output
 
