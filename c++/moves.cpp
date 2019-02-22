@@ -281,8 +281,19 @@ dcomplex auxmc::attempt() {
   * U_qmc is just an additional parameter to overcome different magnitudes of
   * qmc weights.
  */
- int sgn = k_attempted > k_current ? 1 : -1;
- for (i = k_current + sgn; i != k_attempted + sgn; i += sgn) {
+ int start, end, sgn;
+ if (k_attempted > k_current) {
+  start = k_current + 1;
+  end = k_attempted;
+  sgn = 1;
+ }
+ else {
+  start = k_attempted + 1;
+  end = k_current;
+  sgn = -1;
+ }
+
+ for (i = start; i <= end; i ++) {
   U_prod *= U[i];
   U_prod_aux *= U_aux[i];
  };
