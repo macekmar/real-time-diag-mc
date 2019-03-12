@@ -1,6 +1,8 @@
 #include "./solver_core.hpp"
 #include "./moves.hpp"
 #include <triqs/det_manip.hpp>
+#include <iostream>
+#include <iomanip>
 
 namespace mpi = triqs::mpi;
 using triqs::arrays::range;
@@ -110,6 +112,8 @@ solver_core::solver_core(solve_parameters_t const& params)
  }
 
  // kernel binning
+ std::cout << "Nb bins: " << params.nb_bins << std::endl; 
+ std::cout << "Lc: " << params.length_cycle << std::endl; 
  kernels_binning =
      KernelBinning(-params.interaction_start, 0., params.nb_bins, params.max_perturbation_order,
                    params.nb_orbitals, false); // TODO: it should be defined in measure
@@ -354,13 +358,16 @@ int solver_core::finish(const int run_status) {
  *
  * This is a utility function, not to be used during a Monte-Carlo run.
  */
-dcomplex solver_core::evaluate_qmc_weight(std::vector<std::tuple<orbital_t, orbital_t, timec_t>> vertices) {
+dcomplex solver_core::evaluate_qmc_weight(std::vector<std::tuple<orbital_t, orbital_t, timec_t>> vertices, bool do_measure) {
  if (vertices.size() > params.max_perturbation_order)
   TRIQS_RUNTIME_ERROR << "Too many vertices compared to the max perturbation order.";
 
  auto pot_data = make_potential_data(params.nb_orbitals, params.potential);
 
  config.remove_all();
+
+TwoDetKernelMeasure measure = TwoDetKernelMeasure(&config, &kernels_binning, &pn, &kernels, &kernel_diracs, &nb_kernels);
+
 
  orbital_t i, j;
  double pot;
@@ -378,8 +385,18 @@ dcomplex solver_core::evaluate_qmc_weight(std::vector<std::tuple<orbital_t, orbi
  }
 
  config.evaluate();
+ config.accept_config();
+ if (params.method == 1 && do_measure) {
+  measure.accumulate(1);
+ }
  config.remove_all();
 
  return config.current_weight;
 };
 
+
+void solver_core::collect_qmc_weight(int dummy) {
+  TwoDetKernelMeasure measure = TwoDetKernelMeasure(&config, &kernels_binning, &pn, &kernels, &kernel_diracs, &nb_kernels);
+  mpi::communicator world;
+  measure.collect_results(world);
+};
