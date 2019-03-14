@@ -112,6 +112,9 @@ struct solve_parameters_t {
  int nb_aux_mc_cycles = 5;
  std::vector<double> U_aux = {};
  bool print_aux_stats = false;
+
+ // Quasi Monte Carlo
+ bool do_quasi_mc = false;
  
  solve_parameters_t(){};
 

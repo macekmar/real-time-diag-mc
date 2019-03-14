@@ -112,8 +112,6 @@ solver_core::solver_core(solve_parameters_t const& params)
  }
 
  // kernel binning
- std::cout << "Nb bins: " << params.nb_bins << std::endl; 
- std::cout << "Lc: " << params.length_cycle << std::endl; 
  kernels_binning =
      KernelBinning(-params.interaction_start, 0., params.nb_bins, params.max_perturbation_order,
                    params.nb_orbitals, false); // TODO: it should be defined in measure
@@ -158,50 +156,51 @@ void solver_core::set_g0(triqs::gfs::gf_view<triqs::gfs::retime, triqs::gfs::mat
  config = ConfigurationQMC(green_function_alpha, params);
 
 
- if (params.do_aux_mc) {
+ if (params.do_aux_mc || params.do_quasi_mc) {
   aux_config = ConfigurationAuxMC(green_function_alpha, params);
  }
  
  // assign moves to the Monte Carlo classes
- 
- // ------ Ordinary QMC ------
- if (!params.do_aux_mc) {
-  if (params.preferential_sampling)
-    rvg = std::unique_ptr<RandomVertexGenerator>(new piecewise_rvg<ConfigurationQMC>(qmc.get_rng(), params, config));
-  // Register moves and measurements
-  if (params.w_ins_rem > 0) {
-   qmc.add_move(moves::insert<ConfigurationQMC>(config, params, qmc.get_rng(), *rvg), "insertion", params.w_ins_rem);
-   qmc.add_move(moves::remove<ConfigurationQMC>(config, params, qmc.get_rng(), *rvg), "removal", params.w_ins_rem);
+ if (!params.do_quasi_mc) {
+  // ------ Ordinary QMC ------
+  if (!params.do_aux_mc) {
+   if (params.preferential_sampling)
+     rvg = std::unique_ptr<RandomVertexGenerator>(new piecewise_rvg<ConfigurationQMC>(qmc.get_rng(), params, config));
+   // Register moves and measurements
+   if (params.w_ins_rem > 0) {
+    qmc.add_move(moves::insert<ConfigurationQMC>(config, params, qmc.get_rng(), *rvg), "insertion", params.w_ins_rem);
+    qmc.add_move(moves::remove<ConfigurationQMC>(config, params, qmc.get_rng(), *rvg), "removal", params.w_ins_rem);
+   }
+   if (params.w_dbl > 0) {
+    qmc.add_move(moves::insert2<ConfigurationQMC>(config, params, qmc.get_rng(), *rvg), "insertion2", params.w_dbl);
+    qmc.add_move(moves::remove2<ConfigurationQMC>(config, params, qmc.get_rng(), *rvg), "removal2", params.w_dbl);
+   }
+   if (params.w_shift > 0) {
+    qmc.add_move(moves::shift<ConfigurationQMC>(config, params, qmc.get_rng(), *rvg), "shift", params.w_shift);
+   }
   }
-  if (params.w_dbl > 0) {
-   qmc.add_move(moves::insert2<ConfigurationQMC>(config, params, qmc.get_rng(), *rvg), "insertion2", params.w_dbl);
-   qmc.add_move(moves::remove2<ConfigurationQMC>(config, params, qmc.get_rng(), *rvg), "removal2", params.w_dbl);
-  }
-  if (params.w_shift > 0) {
-   qmc.add_move(moves::shift<ConfigurationQMC>(config, params, qmc.get_rng(), *rvg), "shift", params.w_shift);
-  }
- }
- // ------ Auxiliary MC ------
- else {
-  if (params.preferential_sampling)
-    rvg = std::unique_ptr<RandomVertexGenerator>(new piecewise_rvg<ConfigurationAuxMC>(aux_mc.get_rng(), params, aux_config));
-  // Register moves and measurements
-  if (params.w_ins_rem > 0) {
-    aux_mc.add_move(moves::insert<ConfigurationAuxMC>(aux_config, params, aux_mc.get_rng(), *rvg), "insertion", params.w_ins_rem);
-    aux_mc.add_move(moves::remove<ConfigurationAuxMC>(aux_config, params, aux_mc.get_rng(), *rvg), "removal", params.w_ins_rem);
-  }
-  if (params.w_dbl > 0) {
-    aux_mc.add_move(moves::insert2<ConfigurationAuxMC>(aux_config, params, aux_mc.get_rng(), *rvg), "insertion2", params.w_dbl);
-    aux_mc.add_move(moves::remove2<ConfigurationAuxMC>(aux_config, params, aux_mc.get_rng(), *rvg), "removal2", params.w_dbl);
-  }
-  if (params.w_shift > 0) {
-    aux_mc.add_move(moves::shift<ConfigurationAuxMC>(aux_config, params, aux_mc.get_rng(), *rvg), "shift", params.w_shift);
-  }
+  // ------ Auxiliary MC ------
+  else {
+   if (params.preferential_sampling)
+     rvg = std::unique_ptr<RandomVertexGenerator>(new piecewise_rvg<ConfigurationAuxMC>(aux_mc.get_rng(), params, aux_config));
+   // Register moves and measurements
+   if (params.w_ins_rem > 0) {
+     aux_mc.add_move(moves::insert<ConfigurationAuxMC>(aux_config, params, aux_mc.get_rng(), *rvg), "insertion", params.w_ins_rem);
+     aux_mc.add_move(moves::remove<ConfigurationAuxMC>(aux_config, params, aux_mc.get_rng(), *rvg), "removal", params.w_ins_rem);
+   }
+   if (params.w_dbl > 0) {
+     aux_mc.add_move(moves::insert2<ConfigurationAuxMC>(aux_config, params, aux_mc.get_rng(), *rvg), "insertion2", params.w_dbl);
+     aux_mc.add_move(moves::remove2<ConfigurationAuxMC>(aux_config, params, aux_mc.get_rng(), *rvg), "removal2", params.w_dbl);
+   }
+   if (params.w_shift > 0) {
+     aux_mc.add_move(moves::shift<ConfigurationAuxMC>(aux_config, params, aux_mc.get_rng(), *rvg), "shift", params.w_shift);
+   }
 
-  moves::auxmc move = moves::auxmc(config, params, qmc.get_rng(), *rvg);
-  move.aux_mc = &aux_mc;
-  move.aux_config = &aux_config;
-  qmc.add_move(move, "aux MC", 1.0);
+   moves::auxmc move = moves::auxmc(config, params, qmc.get_rng(), *rvg);
+   move.aux_mc = &aux_mc;
+   move.aux_config = &aux_config;
+   qmc.add_move(move, "aux MC", 1.0);
+  }
  }
 
 // The measure does not depend on the type of qmc moves...
@@ -362,13 +361,9 @@ dcomplex solver_core::evaluate_qmc_weight(std::vector<std::tuple<orbital_t, orbi
  if (vertices.size() > params.max_perturbation_order)
   TRIQS_RUNTIME_ERROR << "Too many vertices compared to the max perturbation order.";
 
+ // Construct vector of vertices
+ wrapped_forward_list<vertex_t> vertices_list;
  auto pot_data = make_potential_data(params.nb_orbitals, params.potential);
-
- config.remove_all();
-
-TwoDetKernelMeasure measure = TwoDetKernelMeasure(&config, &kernels_binning, &pn, &kernels, &kernel_diracs, &nb_kernels);
-
-
  orbital_t i, j;
  double pot;
  for (auto it = vertices.rbegin(); it != vertices.rend(); ++it) {
@@ -381,22 +376,33 @@ TwoDetKernelMeasure measure = TwoDetKernelMeasure(&config, &kernels_binning, &pn
   if (pot == 0.)
    TRIQS_RUNTIME_ERROR << "These orbitals have no potential"; // Configuration should never be fed with a zero potential vertex, or it breaks down.
 
-  config.insert(0, {i, j, std::get<2>(*it), 0, pot});
+  vertices_list.insert(0, {i, j, std::get<2>(*it), 0, pot});
  }
+
+ config.reset_to_vertices(vertices_list);
+ aux_config.reset_to_vertices(vertices_list);
 
  config.evaluate();
  config.accept_config();
- if (params.method == 1 && do_measure) {
-  measure.accumulate(1);
- }
- config.remove_all();
+ if (params.do_quasi_mc) {
+  aux_config.evaluate();
+  aux_config.accept_config();
 
- return config.current_weight;
+  if (params.method == 1) {
+   config.accepted_kernels *= std::abs(config.accepted_weight)/std::abs(aux_config.accepted_weight);
+  }
+ }
+
+if (do_measure) {
+  TwoDetKernelMeasure<ConfigurationQMC> measure = TwoDetKernelMeasure<ConfigurationQMC>(&config, &kernels_binning, &pn, &kernels, &kernel_diracs, &nb_kernels);
+  measure.accumulate(1);
+}
+ return config.accepted_weight;
 };
 
 
 void solver_core::collect_qmc_weight(int dummy) {
-  TwoDetKernelMeasure measure = TwoDetKernelMeasure(&config, &kernels_binning, &pn, &kernels, &kernel_diracs, &nb_kernels);
+  TwoDetKernelMeasure<ConfigurationQMC> measure = TwoDetKernelMeasure<ConfigurationQMC>(&config, &kernels_binning, &pn, &kernels, &kernel_diracs, &nb_kernels);
   mpi::communicator world;
   measure.collect_results(world);
 };

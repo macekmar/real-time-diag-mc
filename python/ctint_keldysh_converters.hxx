@@ -43,6 +43,7 @@ template <> struct py_converter<solve_parameters_t> {
   PyDict_SetItemString( d, "nb_aux_mc_cycles"      , convert_to_python(x.nb_aux_mc_cycles));
   PyDict_SetItemString( d, "U_aux"                 , convert_to_python(x.U_aux));
   PyDict_SetItemString( d, "print_aux_stats"       , convert_to_python(x.print_aux_stats));
+  PyDict_SetItemString( d, "do_quasi_mc"           , convert_to_python(x.do_quasi_mc));
   return d;
  }
 
@@ -92,6 +93,7 @@ template <> struct py_converter<solve_parameters_t> {
   _get_optional(dic, "nb_aux_mc_cycles"      , res.nb_aux_mc_cycles         ,5);
   _get_optional(dic, "U_aux"                 , res.U_aux                    );
   _get_optional(dic, "print_aux_stats"       , res.print_aux_stats          ,false);
+  _get_optional(dic, "do_quasi_mc"           , res.do_quasi_mc              ,false);
   return res;
  }
 
@@ -122,7 +124,7 @@ template <> struct py_converter<solve_parameters_t> {
   std::stringstream fs, fs2; int err=0;
 
 #ifndef TRIQS_ALLOW_UNUSED_PARAMETERS
-  std::vector<std::string> ks, all_keys = {"creation_ops","annihilation_ops","extern_alphas","nonfixed_op","interaction_start","alpha","nb_orbitals","potential","U","w_ins_rem","w_dbl","w_shift","max_perturbation_order","min_perturbation_order","forbid_parity_order","length_cycle","random_seed","random_name","verbosity","method","nb_bins","singular_thresholds","cycles_trapped_thresh","store_configurations","preferential_sampling","ps_gamma","do_aux_mc","nb_aux_mc_cycles","U_aux","print_aux_stats"};
+  std::vector<std::string> ks, all_keys = {"creation_ops","annihilation_ops","extern_alphas","nonfixed_op","interaction_start","alpha","nb_orbitals","potential","U","w_ins_rem","w_dbl","w_shift","max_perturbation_order","min_perturbation_order","forbid_parity_order","length_cycle","random_seed","random_name","verbosity","method","nb_bins","singular_thresholds","cycles_trapped_thresh","store_configurations","preferential_sampling","ps_gamma","do_aux_mc","nb_aux_mc_cycles","U_aux","print_aux_stats","do_quasi_mc"};
   pyref keys = PyDict_Keys(dic);
   if (!convertible_from_python<std::vector<std::string>>(keys, true)) {
    fs << "\nThe dict keys are not strings";
@@ -164,6 +166,7 @@ template <> struct py_converter<solve_parameters_t> {
   _check_optional <int                                                                             >(dic, fs, err, "nb_aux_mc_cycles"      , "int");
   _check_optional <std::vector<double>                                                             >(dic, fs, err, "U_aux"                 , "std::vector<double>");
   _check_optional <bool                                                                            >(dic, fs, err, "print_aux_stats"       , "bool");
+  _check_optional <bool                                                                            >(dic, fs, err, "do_quasi_mc"           , "bool");
   if (err) goto _error;
   return true;
 

@@ -3,6 +3,8 @@
 #include <triqs/gfs.hpp>
 #include <triqs/mc_tools.hpp>
 
+#include <forward_list>
+
 // --------------   Point on the Keldysh contour   ---------------------------
 
 /// A point on the Keldysh contour
@@ -143,3 +145,66 @@ struct g0_keldysh_alpha_t {
  }
 };
 
+// -----------------------
+/**
+ * Adding some handy methods to std::forward_list.
+ *
+ * forward_list are singly-chained sequence containers that allow constant time
+ * insertion and removal (erase).
+ */
+template <typename T>
+class wrapped_forward_list : public std::forward_list<T> {
+
+ public:
+
+ // insert before index
+ void insert(size_t k, T value) {
+  auto it = std::forward_list<T>::before_begin();
+  std::advance(it, k);
+  std::forward_list<T>::insert_after(it, value);
+ };
+
+ // insert two values so that they will be at positions `k1` and `k2`.
+ void insert2(size_t k1, size_t k2, T value1, T value2) {
+  if (k2 < k1) {
+   std::swap(k1, k2);
+   std::swap(value1, value2);
+  }
+  auto it = std::forward_list<T>::before_begin();
+  std::advance(it, k1);
+  std::forward_list<T>::insert_after(it, value1);
+  std::advance(it, k2 - k1);
+  std::forward_list<T>::insert_after(it, value2);
+ };
+
+ // erase at index
+ void erase(size_t k) {
+  auto it = std::forward_list<T>::before_begin();
+  std::advance(it, k);
+  std::forward_list<T>::erase_after(it);
+ };
+
+ // erase at two indices k1 != k2
+ void erase2(size_t k1, size_t k2) {
+  if (k2 < k1) std::swap(k1, k2);
+  auto it = std::forward_list<T>::before_begin();
+  std::advance(it, k1);
+  std::forward_list<T>::erase_after(it);
+  std::advance(it, k2 - k1 - 1);
+  std::forward_list<T>::erase_after(it);
+ };
+
+ // access
+ T operator[](size_t k) const {
+  auto it = std::forward_list<T>::begin();
+  std::advance(it, k);
+  return *it;
+ };
+
+ // assignement
+ T& operator[](size_t k) {
+  auto it = std::forward_list<T>::begin();
+  std::advance(it, k);
+  return *it;
+ };
+};
