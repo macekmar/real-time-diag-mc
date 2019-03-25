@@ -29,7 +29,7 @@ from g0_flat_band import make_g0_flat_band, make_g0c_flat_band_freq, make_g0_fla
 from g0_lattice_1d import make_g0_lattice_1d
 from solver import solve, save_configuration_list
 from results import merge
-from post_treatment import compute_correlator, compute_correlator_oldway, make_g0_contour
+from post_treatment import compute_correlator, compute_correlator_oldway, make_g0_contour, compute_reta_G_from_K_fft, compute_reta_G_from_L_fft
 
 __all__ = ['SolverCore',
            'make_g0_semi_circular',
@@ -44,7 +44,9 @@ __all__ = ['SolverCore',
            'merge',
            'compute_correlator',
            'compute_correlator_oldway',
-           'make_g0_contour']
+           'make_g0_contour',
+           'compute_reta_G_from_K_fft',
+           'compute_reta_G_from_L_fft']
 
 ### Do not ignore DeprecationWarning (revert python weird default)
 import warnings

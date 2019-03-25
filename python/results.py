@@ -18,7 +18,7 @@ def merge_results(results1, results2):
     If one of the inputs is empty, the other is returned.
 
     The merging strategy is the following:
-    TODO: WIP
+    TODO: finish docstring
     """
 
     ### empty case
@@ -201,14 +201,13 @@ def add_cn_to_results(results, method='single'):
     res = results['results_part']
     res['cn'] = _compute_cn_v(res['pn'], res['U'], method=method)
 
-def merge(results1, results2):
+def _merge_2_results(results1, results2):
     """
-    Merge results into a single result dictionnary, including parameters (if it
-    makes sense), and compute cn.
+    Merge 2 results into a single result dictionnary, including parameters (if it
+    makes sense).
     """
 
     output = merge_results(results1, results2)
-    add_cn_to_results(output)
 
     ### merge parameters if they are equal in both results
     if 'parameters' in results1 and 'parameters' in results2:
@@ -220,6 +219,19 @@ def merge(results1, results2):
                 else:
                     output['parameters'][key] = 'undefined'
 
+    return output
+
+def merge(*args):
+    """
+    Merge any number of results into a single result dictionnary, including parameters (if it
+    makes sense), and compute cn.
+    """
+    output = args[0]
+
+    for arg in args[1:]:
+        output = _merge_2_results(output, arg)
+
+    add_cn_to_results(output)
     return output
 
 if __name__ == '__main__':

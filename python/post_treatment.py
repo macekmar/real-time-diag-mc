@@ -1,5 +1,7 @@
 import numpy as np
 from scipy.fftpack import fft, ifft
+import warnings
+from toolbox import fourier_transform
 
 #########   Generalized fft convolution #########
 
@@ -82,6 +84,35 @@ def generalized_fftconvolve(in1, in2, subscripts=r't, t -> t'):
 
     return _centered(ret[:length].copy(), len(in1))
 
+def _keldysh_to_retarded(archive):
+    """
+    no orbital
+    """
+    def do_it(ar):
+        reta_ar = {}
+        assert (ar['bin_times'] < 0.).all()
+        reta_ar['bin_times'] = -ar['bin_times'][::-1]
+        reta_ar['cn'] = ar['cn']
+        reta_ar['kernels'] = np.conj(ar['kernels'][:, ::-1, 0, ...] + ar['kernels'][:, ::-1, 1, ...])
+        reta_ar['dirac_times'] = -ar['dirac_times']
+        reta_ar['kernel_diracs'] = np.conj(ar['kernel_diracs'][:, :, 0, ...] + ar['kernel_diracs'][:, :, 1, ...])
+        return reta_ar
+
+    return {'results_all': do_it(archive['results_all']), 'results_part': do_it(archive['results_part'])}
+
+def _force_broadcast_to(a1, shape2):
+    """
+    Force broadcast a 1D array into a new shape.
+    """
+    l1 = len(a1) # 1D
+    i = shape2.index(l1)
+    new_shape = [1] * len(shape2)
+    new_shape[i] = l1
+    new_shape = tuple(new_shape)
+
+    return np.broadcast_to(a1.reshape(new_shape), shape2)
+
+
 ######### Post treatment functions #########
 
 
@@ -97,6 +128,7 @@ def compute_correlator(archive, g0_func, no_cn=False):
     TODO: add diracs !!
     TODO: optimize for big system sizes
     """
+    warnings.warn("Dirac deltas are not considered !!!", RuntimeWarning)
 
     if archive['parameters']['method'] == 0:
         raise ValueError, 'The archive contains non-kernel method results, cannot proceed.'
@@ -178,6 +210,67 @@ def compute_correlator_oldway(archive, abs_g0_value):
     G_part = extract(archive['results_part'])
 
     return G, G_part
+
+
+def compute_reta_G_from_K_fft(archive, omegas, g0_reta_val):
+    """
+    stationnary limit only
+    no orbital
+    """
+
+    reta_kernel = _keldysh_to_retarded(archive)
+    res = reta_kernel['results_all']
+    omegas, kernel = fourier_transform(res['bin_times'],
+                                       res['kernels'][:, :, 0] * res['cn'][1:, None],
+                                       w=omegas, n='auto', axis=1)
+
+    for k, t in enumerate(res['dirac_times']):
+        kernel += res['kernel_diracs'][:, None, k, 0] * res['cn'][1:, None] * np.exp(1.j * omegas[None, :] * t)
+
+    res = reta_kernel['results_part']
+    omegas, kernel_part = fourier_transform(res['bin_times'],
+                                            res['kernels'][:, :, 0, :] * res['cn'][1:, None, :],
+                                            w=omegas, n='auto', axis=1)
+
+    for k, t in enumerate(res['dirac_times']):
+        kernel_part += res['kernel_diracs'][:, None, k, 0, :] * res['cn'][1:, None, :] * np.exp(1.j * omegas[None, :, None] * t)
+
+
+    g0_reta_val_bc = _force_broadcast_to(g0_reta_val, kernel[0].shape)
+    gf = kernel * g0_reta_val_bc
+    gf = np.concatenate((g0_reta_val_bc[None, ...], gf), axis=0)
+
+    g0_reta_val_bc = _force_broadcast_to(g0_reta_val, kernel_part[0].shape)
+    gf_part = kernel_part * g0_reta_val_bc
+    gf_part = np.concatenate((g0_reta_val_bc[None, ...], gf_part), axis=0)
+
+    return omegas, gf, gf_part
+
+
+def compute_reta_G_from_L_fft(archive, omegas, g0_reta_val, g1_reta_val):
+    """
+    stationnary limit only
+    no orbital
+    """
+
+    omegas, F, F_part = compute_reta_G_from_K_fft(archive, omegas, g0_reta_val)
+
+    g0_reta_val_bc = _force_broadcast_to(g0_reta_val, F[0].shape)
+    gf = 1.j * F * g0_reta_val_bc
+    gf = np.concatenate((g0_reta_val_bc[None, ...], gf), axis=0)
+
+    g0_reta_val_bc = _force_broadcast_to(g0_reta_val, F_part[0].shape)
+    gf_part = 1.j * F_part * g0_reta_val_bc
+    gf_part = np.concatenate((g0_reta_val_bc[None, ...], gf_part), axis=0)
+
+    g1_reta_val_bc = _force_broadcast_to(g1_reta_val, gf[0].shape)
+    gf[1, ...] = g1_reta_val_bc
+
+    g1_reta_val_bc = _force_broadcast_to(g1_reta_val, gf_part[0].shape)
+    gf_part[1, ...] = g1_reta_val_bc
+
+    return omegas, gf, gf_part
+
 
 
 ######### Utilities #########
