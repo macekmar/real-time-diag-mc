@@ -334,3 +334,37 @@ dcomplex solver_core::evaluate_qmc_weight(std::vector<std::tuple<orbital_t, orbi
  return config.current_weight;
 };
 
+//// array getters with emptyness check
+// triqs2 doesnt want to give empty arrays to python, raising a very unspecific error
+ array<long, 1> solver_core::get_pn() const {
+  if (pn.is_empty())
+   TRIQS_RUNTIME_ERROR << "pn array is empty";
+  return pn;
+ }
+
+ array<dcomplex, 1> solver_core::get_sn() const {
+  if (sn.is_empty())
+   TRIQS_RUNTIME_ERROR << "sn array is empty";
+  return sn;
+ }
+
+ array<dcomplex, 4> solver_core::get_kernels() const {
+  if (kernels.is_empty())
+   TRIQS_RUNTIME_ERROR << "kernels array is empty.";
+  std::cout << ">>>>>>>>>>>>>>> abs kernels sum = " << sum(abs(kernels)) << std::endl;
+  return kernels / kernels_binning.get_bin_length();
+ }
+
+ array<dcomplex, 4> solver_core::get_kernel_diracs() const {
+  if (kernel_diracs.is_empty())
+   TRIQS_RUNTIME_ERROR << "kernel_diracs array is empty";
+  return kernel_diracs;
+ }
+
+ array<long, 4> solver_core::get_nb_kernels() const {
+  if (nb_kernels.is_empty())
+   TRIQS_RUNTIME_ERROR << "nb_kernels array is empty";
+  std::cout << ">>>>>>>>>>>>>>> abs nb_kernels sum = " << sum(abs(nb_kernels)) << std::endl;
+  return nb_kernels;
+ }
+

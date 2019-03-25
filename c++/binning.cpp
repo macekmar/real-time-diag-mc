@@ -6,6 +6,9 @@
 KernelBinning::KernelBinning(double t_min_, double t_max_, int nb_bins_, int max_order, int nb_orbitals, bool match_boundaries = false)
     : t_max(t_max_), t_min(t_min_), bin_length((t_max_ - t_min_) / nb_bins_), nb_bins(nb_bins_) {
 
+ if (nb_bins <= 0)
+  TRIQS_RUNTIME_ERROR << "Binning must have at least one bin.";
+
  if (match_boundaries) {
   double delta_t = t_max - t_min;
   t_min -= 0.5 * delta_t / (nb_bins - 1);
@@ -24,6 +27,9 @@ KernelBinning::KernelBinning(double t_min_, double t_max_, int nb_bins_, int max
   bin_times(i) = time;
   time += bin_length;
  }
+
+ // add a dummy dirac to avoid empty array
+ add_dirac(1, {0, up, 0., 0}, 0.);
 }
 
 // ----------
@@ -57,6 +63,8 @@ array<dcomplex, 4> KernelBinning::get_dirac_values() const {
   output(range(), i, range(), range()) = it->second;
   i++;
  }
+ if (output.is_empty())
+  TRIQS_RUNTIME_ERROR << "dirac_values array is empty";
  return output;
 }
 
@@ -68,6 +76,8 @@ array<double, 1> KernelBinning::get_dirac_times() const {
   output(i) = it->first;
   i++;
  }
+ if (output.is_empty())
+  TRIQS_RUNTIME_ERROR << "dirac_times array is empty";
  return output;
 }
 

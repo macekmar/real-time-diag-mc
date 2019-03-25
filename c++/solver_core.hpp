@@ -50,11 +50,11 @@ class solver_core {
  std::vector<std::vector<double>> get_config_list() const { return config.config_list; }
  std::vector<int> get_config_mult() const { return config.config_mult; }
  std::vector<dcomplex> get_config_weight() const { return config.config_weight; }
- array<long, 1> get_pn() const { return pn; }
- array<dcomplex, 1> get_sn() const { return sn; }
- array<dcomplex, 4> get_kernels() const { return kernels / kernels_binning.get_bin_length(); }
- array<dcomplex, 4> get_kernel_diracs() const { return kernel_diracs; }
- array<long, 4> get_nb_kernels() const { return nb_kernels; }
+ array<long, 1> get_pn() const;
+ array<dcomplex, 1> get_sn() const;
+ array<dcomplex, 4> get_kernels() const;
+ array<dcomplex, 4> get_kernel_diracs() const;
+ array<long, 4> get_nb_kernels() const;
  array<double, 1> get_bin_times() const { return kernels_binning.get_bin_times(); }
  array<double, 1> get_dirac_times() const { return kernels_binning.get_dirac_times(); }
  std::vector<double> get_U() const { return params.U; }

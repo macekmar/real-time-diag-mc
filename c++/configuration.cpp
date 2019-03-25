@@ -17,7 +17,7 @@ Configuration::Configuration(g0_keldysh_alpha_t green_function, const solve_para
      order(0),
      potential(1.) {
 
- if (not params.cycles_trapped_thresh > 0)
+ if (not (params.cycles_trapped_thresh > 0))
   TRIQS_RUNTIME_ERROR << "cycles_trapped_treshold must be > 0.";
 
  std::vector<keldysh_contour_pt> creation_pts, annihila_pts;
@@ -287,7 +287,7 @@ void Configuration::accept_config() {
  */
 void Configuration::incr_cycles_trapped() {
  cycles_trapped++;
- if (cycles_trapped % params.cycles_trapped_thresh == 0) {
+ if ((cycles_trapped % params.cycles_trapped_thresh) == 0) {
   evaluate();
   accepted_weight = current_weight;
   accepted_kernels() = current_kernels();
@@ -317,7 +317,7 @@ std::vector<double> Configuration::signature() {
 void Configuration::register_accepted_config() {
  auto config = signature();
 
- if (config_list.size() > 0 && config == config_list[config_list.size() - 1]) // short-circuit eval
+ if ((config_list.size() > 0) && (config == config_list[config_list.size() - 1])) // short-circuit eval
   config_mult[config_mult.size() - 1]++;
  else {
   config_list.emplace_back(config);
