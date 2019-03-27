@@ -1,5 +1,23 @@
 import numpy as np
 from scipy import signal
+from mpi4py import MPI
+
+### manage parameters
+def extract_and_check_params(params, reference):
+    world = MPI.COMM_WORLD
+    output = {}
+    for key, default in reference.items():
+        if key not in params:
+            if default is None:
+                raise ValueError, "Parameter '{0}' is missing !".format(key)
+            else:
+                output[key] = default
+                if world.rank == 0:
+                    print "Parameter {0} defaulted to {1}".format(key, str(default))
+        else:
+            output[key] = params[key]
+            del params[key]
+    return output
 
 def expand_axis(a, val, end=False, axis=0):
     """

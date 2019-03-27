@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from time import clock
 import cPickle
 from os.path import splitext
-from utility import reduce_binning
+from utility import reduce_binning, extract_and_check_params
 import warnings
 from copy import deepcopy
 from results import merge_results, add_cn_to_results
@@ -125,7 +125,6 @@ def _collect_results(solver, res_structure, size_part):
         part_comm.Free()
     else:
         assert part_comm.size == min(size_part, comm.size)
-
     if comm.rank == 0:
         output = {}
         change_axis = lambda x: np.rollaxis(x, 0, x.ndim) # send first axis to last position
@@ -469,21 +468,6 @@ def solve(**params):
     ### start time
     start_time = datetime.now()
 
-    ### manage parameters
-    def extract_and_check_params(params, reference):
-        output = {}
-        for key, default in reference.items():
-            if key not in params:
-                if default is None:
-                    raise ValueError, "Parameter '{0}' is missing !".format(key)
-                else:
-                    output[key] = default
-                    if world.rank == 0:
-                        print "Parameter {0} defaulted to {1}".format(key, str(default))
-            else:
-                output[key] = params[key]
-                del params[key]
-        return output
 
     # python parameters should not change between subruns
     params_py = extract_and_check_params(params, PARAMS_PYTHON_KEYS)
