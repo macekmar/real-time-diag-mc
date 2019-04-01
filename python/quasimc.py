@@ -4,7 +4,7 @@ from time import clock
 import numpy as np
 
 import model
-from quasimc_utility import distribute_u
+from quasimc_utility import distribute_u, distribute_u_complex
 
 from ctint_keldysh import SolverCore
 from mpi4py import MPI
@@ -47,8 +47,7 @@ def quasi_solver(solver, **params):
     _add_params_to_results(results_to_save, dict(params_cpp, **params_py))
 
     ### Calculate inverse CDFs
-    inv_cdf = model.calculate_inv_cdfs(model_funs, t_min=t_min)
-
+    integral, inv_cdf = model.calculate_inv_cdfs(model_funs, t_min=t_min)
 
     N_vec = [0] + params_py['N'][:]
     N_max = N_vec[-1]
@@ -58,17 +57,28 @@ def quasi_solver(solver, **params):
 
     ### Calculation
     for io, order in enumerate(orders):
+
+        if world.rank == 0:
+            print("")
+            print("==================================================================")
+            print("Order: {0}".format(order))
+            print("")
+
         results = {}
         results['results_part'] = {}
 
+
         ### Generate quasi random numbers
+        points = [None for i in range(len(N_vec)-1)]
+        N_true = [0 for i in range(len(N_vec)-1)]
         if world.rank == 0:
             print('Generating quasi random numbers')
-            u = model.generate_u(inv_cdf, t_min, N_max, order)
-            N_true, points = distribute_u(u, order, t_min, N_vec, world.size)
-        else:
-            points = [None for i in range(len(N_vec)-1)]
-            N_true = [0 for i in range(len(N_vec)-1)]
+            # u = model.generate_u(inv_cdf, t_min, N_max, order)
+            # N_true, points = distribute_u(u, order, t_min, N_vec, world.size)
+
+            # This generates roughly enough points
+            u = model.generate_u_complex(inv_cdf, t_min, N_max, order)
+            N_true, points = distribute_u_complex(u, order, t_min, N_vec, world.size)
 
         N_true = world.bcast(N_true, root=0)
 
@@ -77,7 +87,8 @@ def quasi_solver(solver, **params):
         for iN in range(len(N_vec) - 1):
             if world.rank == 0:
                 print("Calculating points from {0} to {1}.".format(N_vec[iN], N_vec[iN+1]))
-                print("Number of points in the domain: {0}".format({N_true[iN]}))
+                print("Number of generated points: {0}".format(N_true[iN]))
+                print("Number of points in the domain (+ trailing zeros): {0}".format(np.sum([p.shape[0] for p in points[iN]])))
 
 
             u = world.scatter(points[iN], root=0)
@@ -86,6 +97,9 @@ def quasi_solver(solver, **params):
             u = u[inds]
 
             # Calculate
+
+            # TODO: Implement 'save_period'
+
             _ = model.get(solver, u, True)
             N_total += N_true[iN]
 
@@ -143,8 +157,13 @@ def quasi_solver(solver, **params):
                 if io == 0 and iN == 0:
                     for key in results:
                         results_to_save[key] = results[key]
-                    results_to_save["results_all"]["cn"] = np.ones(params_cpp["max_perturbation_order"]+1)
-                    results_to_save["results_part"]["cn"] = np.ones((params_cpp["max_perturbation_order"]+1, iN+1))
+                    cn = [np.prod(integral[-i-1:]) for i in range(len(integral))]
+                    cn = np.insert(cn, 0, 1)
+                    # results_to_save["results_all"]["cn"] = np.ones(params_cpp["max_perturbation_order"]+1)
+                    # results_to_save["results_part"]["cn"] = np.ones((params_cpp["max_perturbation_order"]+1, iN+1))
+                    results_to_save["results_all"]["cn"] = cn
+                    #results_to_save["results_all"]["cn"][1:] /= results_to_save["results_all"]["pn"][0]
+                    results_to_save["results_part"]["cn"] = cn[:, np.newaxis] #np.tile(cn, (len(N_vec), 1))
                 else:
                     results_to_save = quasi_merge_results(order, results_to_save, results)
 

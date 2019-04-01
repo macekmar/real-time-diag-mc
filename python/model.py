@@ -52,10 +52,11 @@ def generate_u(inv_cdf, interaction_start, N_samples, dim, N_skip=0):
    
 def generate_u_complex(inv_cdf, interaction_start, N_samples, dim, N_skip=0):
     """Generates u distributed by spring model.
-    It returns N_samples in the domain"""
-     # This came from a fit
+    It returns u points where at least N_samples are in the domain."""
+     # This came from a fit for Corentin 2 parameters !!!!!!!!!!!!!!!!!!!
     N_batch = int(1.02/np.exp(-(dim-1.1325)**2/7.6**2)*N_samples)
     itr = 0
+    N = 0
     while N < N_samples:
         # Inverse transform sampling
         v = sobol_seq.i4_sobol_generate(dim, N_batch, skip=N_skip + N+1)
@@ -68,9 +69,9 @@ def generate_u_complex(inv_cdf, interaction_start, N_samples, dim, N_skip=0):
         # Reject u out of t_min
         inds = np.where(np.all(u > interaction_start, axis=1))[0]
         if N == 0:
-            u_samples = u[inds,:]
+            u_samples = u#[inds,:]
         else:
-            u_samples = np.vstack((u_samples, u[inds,:]))
+            u_samples = np.vstack((u_samples, u)) #[inds,:]))
 
         N += len(inds)
 
@@ -78,18 +79,19 @@ def generate_u_complex(inv_cdf, interaction_start, N_samples, dim, N_skip=0):
         #print("Loop %d, added: %d, done %d" % (itr, len(inds), N_batch))
         N_batch = int(1.02/np.exp(-(dim-1.1325)**2/7.65**2)*(N_samples-N))
     # At most we reject 10 % of samples!
-    return u_samples[:N_samples,:]
+    return u_samples #[:N_samples,:]
 
 
-def _calculate_inv_cdf(fun, t_min, t_max=0, Nt=201):
+def _calculate_inv_cdf(fun, t_min, t_max=0, Nt=1001):
     """Calculates inverse CDF for a nonnormalized function."""
     u_lin = np.linspace(t_min, t_max, Nt)
     fun_val = np.abs(fun(u_lin[:, np.newaxis])) # Newaxis is necessary for the get function
     cdf = cumtrapz(fun_val, u_lin, initial=0)
-    cdf = cdf/cdf[-1]
-    return PchipInterpolator(cdf, u_lin)
+    integral = cdf[-1]
+    cdf = cdf/integral
+    return integral, PchipInterpolator(cdf, u_lin)
 
-def calculate_inv_cdfs(model, t_min, t_max=0, Nt=201):
+def calculate_inv_cdfs(model, t_min, t_max=0, Nt=1001):
     
     world = MPI.COMM_WORLD
     # Split
@@ -99,15 +101,17 @@ def calculate_inv_cdfs(model, t_min, t_max=0, Nt=201):
         funs = np.array_split(funs, world.size)
     else:
         funs = None
-
     funs = world.scatter(funs, root=0)
+    integral = [None for i in range(len(funs))]
     inv_cdf = [None for i in range(len(funs))]
     # Calculate
     for i, f in enumerate(funs):
-        inv_cdf[i] = _calculate_inv_cdf(f, t_min=t_min, t_max=t_max, Nt=Nt)
+        integral[i], inv_cdf[i] = _calculate_inv_cdf(f, t_min=t_min, t_max=t_max, Nt=Nt)
     # Gather
+    integral = world.gather(integral, root=0)
     inv_cdf = world.gather(inv_cdf, root=0)
     if world.rank == 0:
+        integral = [l for arr in integral for l in arr]
         inv_cdf = [l for arr in inv_cdf for l in arr]
 
-    return inv_cdf
+    return integral, inv_cdf
