@@ -1,13 +1,13 @@
 #pragma once
 #include "./qmc_data.hpp"
-#include <triqs/det_manip.hpp>
+#include "./det_manip.hpp"
 
 #include <forward_list>
 #include <set>
 #include <iterator>
 #include <utility>
 
-using triqs::det_manip::det_manip;
+using triqs::modified_det_manip::det_manip;
 
 // -----------------------
  /**

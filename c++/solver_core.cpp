@@ -1,6 +1,6 @@
 #include "./solver_core.hpp"
 #include "./moves.hpp"
-#include <triqs/det_manip.hpp>
+#include "./det_manip.hpp"
 
 namespace mpi = triqs::mpi;
 using triqs::arrays::range;
