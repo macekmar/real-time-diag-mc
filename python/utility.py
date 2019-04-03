@@ -135,21 +135,24 @@ def convolve_coord(coord_a, coord_b, mode='full'):
 
 def vcut(coord, values, left=None, right=None, axis=-1):
     """
-    Cut the coordinate and values arrays of a sampled function so as to reduce its coordinate range to [`left`, `right`].
+    Cut the coordinate and values arrays of a sampled function so as to reduce
+    its coordinate range to [`left`, `right`].
 
+    This returns copies and do not modify the input arrays.
     None means infinity.
     """
-    coord_out = coord.copy()
-    values_out = np.swapaxes(values.copy(), 0, axis)
+    coord_out = coord
+    values_out = np.swapaxes(values, 0, axis)
     if left is not None:
-        left_i = np.argmin(np.abs(coord_out - left))
+        left_i = np.searchsorted(coord_out, [left])[0]
         coord_out = coord_out[left_i:]
         values_out = values_out[left_i:]
     if right is not None:
-        right_i = np.argmin(np.abs(coord_out - right)) + 1
-        coord_out = coord_out[:right_i]
-        values_out = values_out[:right_i]
-    return coord_out, np.swapaxes(values_out, 0, axis)
+        right_i = np.searchsorted(coord_out, [right])[0]
+        if right_i < len(coord_out):
+            coord_out = coord_out[:right_i]
+            values_out = values_out[:right_i]
+    return coord_out.copy(), np.swapaxes(values_out, 0, axis).copy()
 
 
 if __name__ == '__main__':
@@ -250,5 +253,39 @@ if __name__ == '__main__':
         tcb = convolve_coord(tc, tb, mode=mode)
         assert len(tcb) == len(convolve_to_test(tc, tb, mode=mode))
         assert np.abs(tcb[np.where(cb == 1.)[0]]) < tol
+
+    ### test vcut
+    x_ref = np.linspace(-10, 10, 100)
+    f_ref = np.sin(x_ref) + x_ref
+
+    x = x_ref.copy()
+    f = f_ref.copy()
+
+    xc, fc = vcut(x, f, 0., 5.)
+
+    assert xc.base is None # is not a view
+    assert fc.base is None
+    assert np.array_equal(x, x_ref)
+    assert np.array_equal(f, f_ref)
+    assert 0. <= xc[0] and xc[-1] <= 5.
+    assert np.array_equal(xc, x[np.logical_and(0. <= x, x <= 5.)])
+    assert np.array_equal(fc, f[np.logical_and(0. <= x, x <= 5.)])
+
+    ### test vcut
+    x_ref = np.linspace(-10, 10, 100)
+    f_ref = np.vstack((np.sin(x_ref) + x_ref, np.cos(x_ref) - x_ref))
+
+    x = x_ref.copy()
+    f = f_ref.copy()
+
+    xc, fc = vcut(x, f, 0., 5., axis=1)
+
+    assert xc.base is None
+    assert fc.base is None
+    assert np.array_equal(x, x_ref)
+    assert np.array_equal(f, f_ref)
+    assert 0. <= xc[0] and xc[-1] <= 5.
+    assert np.array_equal(xc, x[np.logical_and(0. <= x, x <= 5.)])
+    assert np.array_equal(fc, f[:, np.logical_and(0. <= x, x <= 5.)])
 
     print 'Success'
