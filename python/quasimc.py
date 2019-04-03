@@ -62,10 +62,10 @@ def quasi_solver(solver, **params):
     for io, order in enumerate(orders):
 
         if world.rank == 0:
-            print("")
-            print("==================================================================")
-            print("Order: {0}".format(order))
-            print("")
+            print
+            print "=================================================================="
+            print "Order: {0}".format(order)
+            print
 
         results = {}
         results['results_part'] = {}
@@ -75,7 +75,7 @@ def quasi_solver(solver, **params):
         points = [None for i in range(len(N_vec)-1)]
         N_true = [0 for i in range(len(N_vec)-1)]
         if world.rank == 0:
-            print('Generating quasi random numbers')
+            print 'Generating quasi random numbers'
             # u = model.generate_u(inv_cdf, t_min, N_max, order)
             # N_true, points = distribute_u(u, order, t_min, N_vec, world.size)
 
@@ -89,9 +89,9 @@ def quasi_solver(solver, **params):
         N_total = 0
         for iN in range(len(N_vec) - 1):
             if world.rank == 0:
-                print("Calculating points from {0} to {1}.".format(N_vec[iN], N_vec[iN+1]))
-                print("Number of generated points: {0}".format(N_true[iN]))
-                print("Number of points in the domain (+ trailing zeros): {0}".format(np.sum([p.shape[0] for p in points[iN]])))
+                print "Calculating points from {0} to {1}.".format(N_vec[iN], N_vec[iN+1])
+                print "Number of generated points: {0}".format(N_true[iN])
+                print "Number of points in the domain (+ trailing zeros): {0}".format(np.sum([p.shape[0] for p in points[iN]]))
 
 
             u = world.scatter(points[iN], root=0)
@@ -112,8 +112,8 @@ def quasi_solver(solver, **params):
             ### Process results
             if world.rank == 0:
 
-                print('Run time:', datetime.now() - start_time)
-                print('Date time:', datetime.now())
+                print 'Run time:', datetime.now() - start_time
+                print 'Date time:', datetime.now()
 
                 res_all = {}
                 for key in ['bin_times', 'dirac_times', 'kernels', 'nb_kernels', 'kernel_diracs']:
@@ -192,7 +192,10 @@ def quasi_solver(solver, **params):
 def quasi_merge_results(order, results_to_save, results):
     for res in ["results_all", "results_part"]:
         for key in ["kernels", 'nb_kernels', 'kernel_diracs']:
-            results_to_save[res][key][order-1] = results[res][key][order-1]
+            try:
+                results_to_save[res][key][order-1] = results[res][key][order-1]
+            except KeyError: # nb_kernels is absent if kernels have been Fourier transformed
+                pass
 
     res, key = 'results_all', 'pn'
     results_to_save[res][key][0][order-1] = results[res][key][0][order-1]
