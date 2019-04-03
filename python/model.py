@@ -28,12 +28,12 @@ def model(funs, u):
 
     order = u.shape[1]
     t = np.sort(u, axis=1)
-    vals = 1
+    vals = 1.0
     for i in range(order-1):
         arg = (t[:,i:i+1] - t[:,i+1:i+2])
         vals *= funs[-(order-i)](arg)
         #vals *= self.get(arg)**(1+2*((i+1)%2)) # For symmetric case (params Corentin 2)
-    vals *= funs[-(order-i)](t[:,-1:])
+    vals *= funs[-1](t[:,-1:])
     return vals
 
 def generate_u(inv_cdf, interaction_start, N_samples, dim, N_skip=0):
