@@ -8,9 +8,10 @@ from quasimc_utility import distribute_u, distribute_u_complex
 
 from ctint_keldysh import SolverCore
 from mpi4py import MPI
-from solver import (PARAMS_CPP_KEYS, PARAMS_PYTHON_KEYS, 
+from solver import (PARAMS_CPP_KEYS, PARAMS_PYTHON_KEYS,
                     _add_params_to_results, _collect_results, add_cn_to_results,
                     _save_in_file, extract_and_check_params, reduce_binning)
+from fourier_transform import fourier_transform
 
 ###############################################################################
 
@@ -18,8 +19,9 @@ from solver import (PARAMS_CPP_KEYS, PARAMS_PYTHON_KEYS,
 PARAMS_PYTHON_KEYS['N'] = None
 PARAMS_PYTHON_KEYS['order'] = None # int or a list of ints
 PARAMS_PYTHON_KEYS['model'] = None
+PARAMS_PYTHON_KEYS['frequency_range'] = False # False to store times, tuple (freq_min, freq_max, nb_freq) to store frequencies
 
-### Removed not needed 
+### Removed not needed
 del(PARAMS_PYTHON_KEYS['nb_warmup_cycles'])
 
 def quasi_solver(solver, **params):
@@ -30,6 +32,7 @@ def quasi_solver(solver, **params):
     ### Process parameters
     params_py = extract_and_check_params(params, PARAMS_PYTHON_KEYS)
     params_cpp = extract_and_check_params(params, PARAMS_CPP_KEYS)
+    do_fourier = False if (params_py['frequency_range'] is False) else True
 
     if params_cpp['method'] == 0:
         raise Exception("Method 0 is not implemented yet.")
@@ -40,7 +43,7 @@ def quasi_solver(solver, **params):
     metadata = {}
     metadata['duration'] = {}
     metadata['nb_measures'] = {}
-    metadata['N'] = []   
+    metadata['N'] = []
     # Remove 'model', which cannot be saved, g0_lesser is taken care of in _add_params_to_results
     model_funs = params_py['model'][:]
     del(params_py['model'])
@@ -105,7 +108,7 @@ def quasi_solver(solver, **params):
 
             world.barrier()
             solver.collect_qmc_weight(1) # 1 is just a dummy variable
-            
+
             ### Process results
             if world.rank == 0:
 
@@ -119,20 +122,32 @@ def quasi_solver(solver, **params):
                 res_all['pn'] = np.zeros((1, params_cpp["max_perturbation_order"] - params_cpp["min_perturbation_order"]))
                 res_all['pn'][0][order-1] = N_total
 
+                ### Fourier transform if asked
+                if do_fourier:
+                    w_window = params_py['frequency_range'][0:2]
+                    nb_w = params_py['frequency_range'][2]
+                    w, kernels_w = fourier_transform(res_all['bin_times'], res_all['kernels'],
+                                                     w_window, nb_w, axis=1)
+                    res_all['omega'] = w
+                    res_all['kernels'] = kernels_w
+
+                    del res_all['bin_times']
+                    del res_all['nb_kernels']
+
                 # res_all
                 results['results_all'] = res_all # Lower orders are still contained in res_all
 
                 # res_part
                 res_part = dict(res_all)
                 # bin reduction
-                if 'kernels' in res_part:
+                if ('kernels' in res_part) and (not do_fourier):
                     nb_bins_sum = params_py['nb_bins_sum']
                     res_part['bin_times'] = reduce_binning(res_part['bin_times'], nb_bins_sum) / float(nb_bins_sum)
                     res_part['kernels'] = reduce_binning(res_part['kernels'], nb_bins_sum, axis=1) / float(nb_bins_sum)
                     res_part['nb_kernels'] = reduce_binning(res_part['nb_kernels'], nb_bins_sum, axis=1) # no normalization !
 
                 for key in results['results_all']:
-                    if key not in ["U", "bin_times"]:
+                    if key not in ["U", "bin_times", "omega"]:
                         if iN == 0:
                             if key == "pn":
                                 results['results_part'][key] = np.zeros([res_part[key].shape[1]] + [len(N_vec)-1], dtype=res_part[key].dtype)
@@ -178,7 +193,7 @@ def quasi_merge_results(order, results_to_save, results):
     for res in ["results_all", "results_part"]:
         for key in ["kernels", 'nb_kernels', 'kernel_diracs']:
             results_to_save[res][key][order-1] = results[res][key][order-1]
-    
+
     res, key = 'results_all', 'pn'
     results_to_save[res][key][0][order-1] = results[res][key][0][order-1]
     res, key = 'results_part', 'pn'
