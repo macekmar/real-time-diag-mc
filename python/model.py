@@ -1,8 +1,18 @@
-import sobol_seq
+import sobol
 import numpy as np
 from scipy.integrate import cumtrapz
 from scipy.interpolate import PchipInterpolator
 from mpi4py import MPI
+
+def _generate_sobol(dim, N, skip=1):                                           
+    i = 0              
+    nums = []                           
+    for n in sobol.sobol_gen(dim, skip):
+        i += 1         
+        nums.append(n)
+        if i > N:
+            break
+    return np.array(nums)
 
 def get(solver, u, do_measure=False):
     """ Returns weights in points u."""
@@ -40,7 +50,7 @@ def generate_u(inv_cdf, interaction_start, N_samples, dim, N_skip=0):
     """Generates u distributed by spring model.
     It generates N_samples v-variables. Some u-variables (true variables) 
     can lie outside of the domain [-interaction_start, 0]^order."""
-    v = sobol_seq.i4_sobol_generate(dim, N_samples, skip=N_skip+1)
+    v = _generate_sobol(dim, N_samples, skip=N_skip+1)
     u = np.zeros_like(v)
     for i in range(-dim, 0):
         u[:,i] = inv_cdf[i](v[:,i])
@@ -59,7 +69,7 @@ def generate_u_complex(inv_cdf, interaction_start, N_samples, dim, N_skip=0):
     N = 0
     while N < N_samples:
         # Inverse transform sampling
-        v = sobol_seq.i4_sobol_generate(dim, N_batch, skip=N_skip + N+1)
+        v = _generate_sobol(dim, N_batch, skip=N_skip + N+1)
         u = np.zeros_like(v)
         for i in range(-dim, 0):
             u[:,i] = inv_cdf[i](v[:,i])
