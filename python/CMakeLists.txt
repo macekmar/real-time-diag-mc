@@ -22,11 +22,6 @@ triqs_python_extension_and_install(g0_lattice_1d)
 include_directories(${TRIQS_INCLUDE_ALL} ${CMAKE_CURRENT_SOURCE_DIR})
 triqs_set_rpath_for_target(g0_lattice_1d)
 
-# Build the module sobol
-triqs_python_extension_and_install(sobol)
-include_directories(${TRIQS_INCLUDE_ALL} ${CMAKE_CURRENT_SOURCE_DIR})
-triqs_set_rpath_for_target(sobol)
-
 # add version file
 configure_file(version.py.in version.py)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/version.py DESTINATION ${TRIQS_PYTHON_LIB_DEST_ROOT}/${CMAKE_PROJECT_NAME})
