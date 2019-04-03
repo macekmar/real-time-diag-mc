@@ -389,7 +389,8 @@ dcomplex solver_core::evaluate_qmc_weight(std::vector<std::tuple<orbital_t, orbi
   aux_config.accept_config();
 
   if (params.method == 1) {
-   config.accepted_kernels *= std::abs(config.accepted_weight)/std::abs(aux_config.accepted_weight);
+   config.accepted_kernels *= std::abs(config.accepted_weight);
+   config.accepted_kernels /= std::abs(aux_config.accepted_weight);
   }
  }
 

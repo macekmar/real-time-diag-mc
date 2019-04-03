@@ -1,9 +1,10 @@
-//#include <tuple>
-// #include <triqs/arrays.hpp>
-// using namespace triqs::arrays;
-
-
-//using namespace std;
+#include <iostream>
+#include <cstdlib>
+#include <fstream>
+#include <iomanip>
+#include <cmath>
+#include <ctime>
+#include <cstring>
 
 #include "sobol.hpp"
 
@@ -11,7 +12,6 @@
 
 //****************************************************************************80
 
-int i4_bit_hi1 ( int n )
 
 //****************************************************************************80
 //
@@ -65,6 +65,8 @@ int i4_bit_hi1 ( int n )
 //
 //    Output, int I4_BIT_HI1, the location of the high order bit.
 //
+
+int i4_bit_hi1 ( int n )
 {
   int bit;
 
@@ -158,7 +160,7 @@ int i4_bit_lo0 ( int n )
 //****************************************************************************80
 
 
-std::tuple<int, array<double, 1>> i4_sobol ( int dim_num, int seed)
+std::pair<int, array<double, 1>> i4_sobol ( int dim_num, int seed)
 
 //****************************************************************************80
 //
@@ -13816,7 +13818,7 @@ std::tuple<int, array<double, 1>> i4_sobol ( int dim_num, int seed)
   seed_save = seed;
   seed = seed + 1;
 
-  return std::make_tuple(seed, quasi);
+  return std::make_pair(seed, quasi);
 # undef DIM_MAX2
 # undef LOG_MAX
 }
@@ -13863,8 +13865,8 @@ array<double, 2> i4_sobol_generate ( int m, int n, int skip )
   for ( j = 0; j < n; j++ )
   {
     auto result = i4_sobol ( m, seed);
-    seed = std::get<0>(result);
-    r(range(), j) = std::get<1>(result);
+    seed = result.first;
+    r(range(), j) = result.second;
   }
 
   return r;
