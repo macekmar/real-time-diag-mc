@@ -5,7 +5,7 @@ from scipy.interpolate import PchipInterpolator
 from mpi4py import MPI
 
 def _generate_sobol(dim, N, skip=1):                                           
-    i = 0              
+    i = 1              
     nums = []                           
     for n in sobol.sobol_gen(dim, skip):
         i += 1         
@@ -63,13 +63,13 @@ def generate_u(inv_cdf, interaction_start, N_samples, dim, N_skip=0):
 def generate_u_complex(inv_cdf, interaction_start, N_samples, dim, N_skip=0):
     """Generates u distributed by spring model.
     It returns u points where at least N_samples are in the domain."""
-     # This came from a fit for Corentin 2 parameters !!!!!!!!!!!!!!!!!!!
-    N_batch = int(1.02/np.exp(-(dim-1.1325)**2/7.6**2)*N_samples)
+    N_batch = N_samples
     itr = 0
     N = 0
+    N_generated = 0
     while N < N_samples:
         # Inverse transform sampling
-        v = _generate_sobol(dim, N_batch, skip=N_skip + N+1)
+        v = _generate_sobol(dim, N_batch, skip=N_skip + N_generated + 1)
         u = np.zeros_like(v)
         for i in range(-dim, 0):
             u[:,i] = inv_cdf[i](v[:,i])
@@ -79,16 +79,18 @@ def generate_u_complex(inv_cdf, interaction_start, N_samples, dim, N_skip=0):
         # Reject u out of t_min
         inds = np.where(np.all(u > interaction_start, axis=1))[0]
         if N == 0:
-            u_samples = u#[inds,:]
+            u_samples = u
         else:
-            u_samples = np.vstack((u_samples, u)) #[inds,:]))
+            u_samples = np.vstack((u_samples, u))
 
         N += len(inds)
+        N_generated += N_batch
 
         itr += 1
-        #print("Loop %d, added: %d, done %d" % (itr, len(inds), N_batch))
-        N_batch = int(1.02/np.exp(-(dim-1.1325)**2/7.65**2)*(N_samples-N))
-    # At most we reject 10 % of samples!
+        if len(inds) != 0:
+            N_batch = np.int(np.ceil( (N_samples - N)*max(1, 1.1*N_batch/float(len(inds)))))
+        else:
+            N_batch *= 2
     return u_samples #[:N_samples,:]
 
 

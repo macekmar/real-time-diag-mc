@@ -22,8 +22,7 @@ def distribute_u(u, order, t_min, N_vec, N_proc):
         p = p.reshape((sub_len, N_proc, order))
         p = np.array_split(p, N_proc, axis=1)
         for j, _ in enumerate(p):
-            #p[j] = p[j].squeeze() # 3D array, 2nd dim is 1, problem if 1st is 1
-            p[j] = p[j][:,0,...]
+            p[j] = p[j][:,0,...] # 3D array, 2nd dim is 1, problem if 1st is 1
 
         points.append(p)
 
@@ -39,10 +38,21 @@ def distribute_u_complex(u, order, t_min, N_vec, N_proc):
     if all_inds[0] != 0:
         all_inds = np.insert(all_inds, 0, 0)
     # N_vec is [0, N1, N2, ...]
+    N_first = 0
     for i in range(len(N_vec)-1):
         # ... and take N_i of them
-        p = np.copy(u[ all_inds[N_vec[i]] : all_inds[N_vec[i+1]] ])
-        N_true.append(p.shape[0])
+        p = np.copy(u[ all_inds[N_vec[i]:N_vec[i+1]] ])
+        # Explanation of the three lines below:
+        # all_inds contain indices of the point inside the domain, thus when we
+        # take all_inds[:N] indices we have N points inside the domain
+        # the last index is all_inds[N-1]
+        # This is the minimum number of points we have to generate to get N
+        # points inside the domain. Because indices for arrays start with 0,
+        # we add 1.
+        # We are interested in the number of points between two N.
+        N_last = all_inds[N_vec[i+1]-1] + 1
+        N_true.append(N_last - N_first) # N_true is the number of generated points
+        N_first = N_last
         # Remove points outside of the domain
         inds = np.where(np.all(p > t_min, axis=1))[0]
         p = p[inds]
@@ -52,8 +62,7 @@ def distribute_u_complex(u, order, t_min, N_vec, N_proc):
         p = p.reshape((sub_len, N_proc, order))
         p = np.array_split(p, N_proc, axis=1)
         for j, _ in enumerate(p):
-            #p[j] = p[j].squeeze() # 3D array, 2nd dim is 1, problem if 1st is 1
-            p[j] = p[j][:,0,...]
+            p[j] = p[j][:,0,...] # 3D array, 2nd dim is 1, problem if 1st is 1
 
         points.append(p)
 
