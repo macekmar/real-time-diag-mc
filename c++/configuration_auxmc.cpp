@@ -55,13 +55,17 @@ void ConfigurationAuxMC::evaluate() {
   prod = config_qmc.current_weight;
   eval_vertices.clear();
   // .. and the rest
+  int i = 1;
+  double power = 1;
   for (vi = vertices.begin(); vi != vertices.end(); ++vi) {
    if (std::next(vi, 1) == vertices.end()) break;
    vtx = {0, 0, std::next(vi, 1)->t - vi->t, 0, pot_data.potential_of(0, 0)};
    eval_vertices.insert(0, vtx);
    _eval(eval_vertices);
-   prod *= config_qmc.current_weight;
+   power = (i % 2) ? 3.0 : 1.0;
+   prod *= std::pow(config_qmc.current_weight, power);
    eval_vertices.clear();  
+   i++;
   }
   current_weight = std::abs(prod);
  }
