@@ -10,12 +10,14 @@ def distribute_u(u, order, t_min, N_vec, N_proc):
     # goes to the i-th process
     points = []
     N_true = []
+    N_to_calc = []
     for i in range(len(N_vec)-1):
         p = np.copy(u[N_vec[i]:N_vec[i+1]])
+        N_true.append(p.shape[0])
         # Remove points outside of the domain
         inds = np.where(np.all(p > t_min, axis=1))[0]
         p = p[inds]
-        N_true.append(p.shape[0])
+        N_to_calc.append(p.shape[0])
 
         sub_len = np.int(np.ceil(np.true_divide(len(p), N_proc)))
         p.resize(sub_len*N_proc, order)
@@ -26,12 +28,13 @@ def distribute_u(u, order, t_min, N_vec, N_proc):
 
         points.append(p)
 
-    return N_true, points
+    return N_true, N_to_calc, points
 
 
 def distribute_u_complex(u, order, t_min, N_vec, N_proc):
     points = []
     N_true = []
+    N_to_calc = []
     # Find all points in the domain ...
     all_inds = np.where(np.all(u > t_min, axis=1))[0]
     # First point may not be in the domain
@@ -52,6 +55,7 @@ def distribute_u_complex(u, order, t_min, N_vec, N_proc):
         # We are interested in the number of points between two N.
         N_last = all_inds[N_vec[i+1]-1] + 1
         N_true.append(N_last - N_first) # N_true is the number of generated points
+        N_to_calc.append(p.shape[0])
         N_first = N_last
         # Remove points outside of the domain
         inds = np.where(np.all(p > t_min, axis=1))[0]
@@ -66,4 +70,4 @@ def distribute_u_complex(u, order, t_min, N_vec, N_proc):
 
         points.append(p)
 
-    return N_true, points
+    return N_true, N_to_calc, points
