@@ -94,7 +94,7 @@ def fourier_transform(t, ft, w_window, nb_w, axis=-1):
     n = _next_regular(n)
 
     w, fw = _fft(t, ft, n=n, axis=axis)
-    w, fw = vcut(w, fw, left=w_min, right=w_max)
+    w, fw = vcut(w, fw, left=w_min, right=w_max, axis=axis)
     return w, fw
 
 if __name__ == '__main__':
@@ -134,5 +134,6 @@ if __name__ == '__main__':
     assert np.min(w) >= -2.
     assert np.max(w) <= 2.
     assert len(w) >= 100
+    assert len(fw) == len(w)
 
     print 'Success !'
