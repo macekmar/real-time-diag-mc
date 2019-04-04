@@ -79,7 +79,7 @@ def quasi_solver(solver, **params):
             # u = model.generate_u(inv_cdf, t_min, N_max, order)
             # N_true, points = distribute_u(u, order, t_min, N_vec, world.size)
 
-            # This generates roughly enough points
+            # # This generates roughly enough points
             u = model.generate_u_complex(inv_cdf, t_min, N_max, order)
             N_true, points = distribute_u_complex(u, order, t_min, N_vec, world.size)
 
@@ -172,7 +172,7 @@ def quasi_solver(solver, **params):
                 if io == 0 and iN == 0:
                     for key in results:
                         results_to_save[key] = results[key]
-                    cn = [np.prod(integral[-i-1:]) for i in range(len(integral))]
+                    cn = [np.prod(integral[:i+1]) for i in range(len(integral))]
                     cn = np.insert(cn, 0, 1)
                     # results_to_save["results_all"]["cn"] = np.ones(params_cpp["max_perturbation_order"]+1)
                     # results_to_save["results_part"]["cn"] = np.ones((params_cpp["max_perturbation_order"]+1, iN+1))

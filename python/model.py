@@ -25,25 +25,23 @@ def model(funs, u):
 
     Times are first ordered as:
     \[
-        -\infty < u_1 < u_2 < \dots < u_n < 0
+        -\infty < u_n < u_{n-1} < \dots < u_2 < u_1 < 0
     \]
     In general functions $f_i$ are different and stored in `self.sm_funs`
     as `[f_1 f_2 ... f_n]`.
     The spring model then returns
     \[
-        f_1(u_1-u_2) f_2(u_2-u_3) \dots f_{n-1}(u_{n_1} - u_n) f_n(u_n)
+        f_n(u_n-u_{n-1})  \dots f_2(u_2 - u_1) f_1(u_1)
     \]
-    The last term can be imagined as f_n(u_n - u_{n+1}), 
-    where u_{n+1} = 0. """
+    The last term can be imagined as f_1(u_1 - u_0), 
+    where u_0 = 0. """
 
     order = u.shape[1]
-    t = np.sort(u, axis=1)
-    vals = 1.0
-    for i in range(order-1):
-        arg = (t[:,i:i+1] - t[:,i+1:i+2])
-        vals *= funs[-(order-i)](arg)
-        #vals *= self.get(arg)**(1+2*((i+1)%2)) # For symmetric case (params Corentin 2)
-    vals *= funs[-1](t[:,-1:])
+    t = np.sort(u, axis=1)[:, ::-1] # The u closest to 0 is the first one; copy u, we do not want to change it?
+    vals = funs[0](t[:,0:1])
+    for i in range(1, order):
+        arg = t[:,i:i+1] - t[:,i-1:i]
+        vals *= funs[i](arg)
     return vals
 
 def generate_u(inv_cdf, interaction_start, N_samples, dim, N_skip=0):
@@ -52,11 +50,11 @@ def generate_u(inv_cdf, interaction_start, N_samples, dim, N_skip=0):
     can lie outside of the domain [-interaction_start, 0]^order."""
     v = _generate_sobol(dim, N_samples, skip=N_skip+1)
     u = np.zeros_like(v)
-    for i in range(-dim, 0):
+    for i in range(0, dim):
         u[:,i] = inv_cdf[i](v[:,i])
     # Back to u from v
-    for i in range(2, dim+1):
-        u[:,-i] = u[:,-i] + u[:,-i+1]
+    for i in range(1, dim):
+        u[:,i] = u[:,i] + u[:,i-1]
     # Reject u out of t_min
     return u
    
@@ -71,11 +69,11 @@ def generate_u_complex(inv_cdf, interaction_start, N_samples, dim, N_skip=0):
         # Inverse transform sampling
         v = _generate_sobol(dim, N_batch, skip=N_skip + N_generated + 1)
         u = np.zeros_like(v)
-        for i in range(-dim, 0):
+        for i in range(0, dim):
             u[:,i] = inv_cdf[i](v[:,i])
         # Back to u from v
-        for i in range(2, dim+1):
-            u[:,-i] = u[:,-i] + u[:,-i+1]
+        for i in range(1, dim):
+            u[:,i] = u[:,i] + u[:,i-1]
         # Reject u out of t_min
         inds = np.where(np.all(u > interaction_start, axis=1))[0]
         if N == 0:
@@ -105,25 +103,32 @@ def _calculate_inv_cdf(fun, t_min, t_max=0, Nt=1001):
 
 def calculate_inv_cdfs(model, t_min, t_max=0, Nt=1001):
     
-    world = MPI.COMM_WORLD
-    # Split
-    if world.rank == 0:
-        print('Calculating inverse CDF')
-        funs = model
-        funs = np.array_split(funs, world.size)
-    else:
-        funs = None
-    funs = world.scatter(funs, root=0)
+    # world = MPI.COMM_WORLD
+    # # Split
+    # if world.rank == 0:
+    #     print('Calculating inverse CDF')
+    #     funs = model
+    #     funs = np.array_split(funs, world.size)
+    # else:
+    #     funs = None
+    # funs = world.scatter(funs, root=0)
+    # integral = [None for i in range(len(funs))]
+    # inv_cdf = [None for i in range(len(funs))]
+    # # Calculate
+    # for i, f in enumerate(funs):
+    #     integral[i], inv_cdf[i] = _calculate_inv_cdf(f, t_min=t_min, t_max=t_max, Nt=Nt)
+    # # Gather
+    # integral = world.gather(integral, root=0)
+    # inv_cdf = world.gather(inv_cdf, root=0)
+    # if world.rank == 0:
+    #     integral = [l for arr in integral for l in arr]
+    #     inv_cdf = [l for arr in inv_cdf for l in arr]
+
+
+    funs = model
     integral = [None for i in range(len(funs))]
     inv_cdf = [None for i in range(len(funs))]
-    # Calculate
     for i, f in enumerate(funs):
         integral[i], inv_cdf[i] = _calculate_inv_cdf(f, t_min=t_min, t_max=t_max, Nt=Nt)
-    # Gather
-    integral = world.gather(integral, root=0)
-    inv_cdf = world.gather(inv_cdf, root=0)
-    if world.rank == 0:
-        integral = [l for arr in integral for l in arr]
-        inv_cdf = [l for arr in inv_cdf for l in arr]
 
     return integral, inv_cdf
