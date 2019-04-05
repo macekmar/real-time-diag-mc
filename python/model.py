@@ -4,16 +4,6 @@ from scipy.integrate import cumtrapz
 from scipy.interpolate import PchipInterpolator
 from mpi4py import MPI
 
-def _generate_sobol(dim, N, skip=1):                                           
-    i = 1              
-    nums = []                           
-    for n in sobol.sobol_gen(dim, skip):
-        i += 1         
-        nums.append(n)
-        if i > N:
-            break
-    return np.array(nums)
-
 def get(solver, u, do_measure=False):
     """ Returns weights in points u."""
     return np.array([
@@ -44,11 +34,11 @@ def model(funs, u):
         vals *= funs[i](arg)
     return vals
 
-def generate_u(inv_cdf, interaction_start, N_samples, dim, N_skip=0):
+def generate_u(gen, inv_cdf, interaction_start, N_samples, dim):
     """Generates u distributed by spring model.
     It generates N_samples v-variables. Some u-variables (true variables) 
     can lie outside of the domain [-interaction_start, 0]^order."""
-    v = _generate_sobol(dim, N_samples, skip=N_skip+1)
+    v = gen.generate(N_samples)
     u = np.zeros_like(v)
     for i in range(0, dim):
         u[:,i] = inv_cdf[i](v[:,i])
@@ -58,7 +48,7 @@ def generate_u(inv_cdf, interaction_start, N_samples, dim, N_skip=0):
     # Reject u out of t_min
     return u
    
-def generate_u_complex(inv_cdf, interaction_start, N_samples, dim, N_skip=0):
+def generate_u_complex(gen, inv_cdf, interaction_start, N_samples, dim):
     """Generates u distributed by spring model.
     It returns u points where at least N_samples are in the domain."""
     N_batch = N_samples
@@ -67,7 +57,7 @@ def generate_u_complex(inv_cdf, interaction_start, N_samples, dim, N_skip=0):
     N_generated = 0
     while N < N_samples:
         # Inverse transform sampling
-        v = _generate_sobol(dim, N_batch, skip=N_skip + N_generated + 1)
+        v = gen.generate(N_batch)
         u = np.zeros_like(v)
         for i in range(0, dim):
             u[:,i] = inv_cdf[i](v[:,i])
@@ -86,7 +76,7 @@ def generate_u_complex(inv_cdf, interaction_start, N_samples, dim, N_skip=0):
 
         itr += 1
         if len(inds) != 0:
-            N_batch = np.int(np.ceil( (N_samples - N)*max(1, 1.1*N_batch/float(len(inds)))))
+            N_batch = np.int(np.ceil( (N_samples - N)*max(1, 1.05*N_batch/float(len(inds)))))
         else:
             N_batch *= 2
     return u_samples #[:N_samples,:]
