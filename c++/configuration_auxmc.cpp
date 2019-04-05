@@ -5,9 +5,9 @@
 #include <forward_list>
 #include <iterator>
 
-ConfigurationAuxMC::ConfigurationAuxMC(g0_keldysh_alpha_t green_function, const solve_parameters_t &params) 
- : Configuration(green_function, params), 
-   config_qmc(green_function, params) 
+ConfigurationAuxMC::ConfigurationAuxMC(g0_keldysh_alpha_t green_function, const solve_parameters_t &params)
+ : Configuration(green_function, params),
+   config_qmc(green_function, params)
 {
  zero_weight = config_qmc.current_weight;
  // Configuration constructor calls evaluate, but zero_weight is defined
@@ -28,14 +28,14 @@ void ConfigurationAuxMC::accept_config(){
 
 /**
  * Evaluates AuxMC weight by providing list of vertices for _eval
- * 
+ *
  * In the first approximation, the AuxMC weight is
  *    W(u_1) * W(u_2 - u_1) * W(u_3 - u_2) * ..., where |u_1| < |u_2| < ...
  * W is the first order QMC weight (`_eval` for one vertex)
  */
 void ConfigurationAuxMC::evaluate() {
  dcomplex prod;
- vertex_t vtx;  
+ vertex_t vtx;
  wrapped_forward_list<vertex_t> vertices = vertices_list_;
  wrapped_forward_list<vertex_t> eval_vertices = {};
  wrapped_forward_list<vertex_t>::iterator vi;
@@ -62,9 +62,12 @@ void ConfigurationAuxMC::evaluate() {
    vtx = {0, 0, std::next(vi, 1)->t - vi->t, 0, pot_data.potential_of(0, 0)};
    eval_vertices.insert(0, vtx);
    _eval(eval_vertices);
-   power = (i % 2) ? 3.0 : 1.0;
+   if (order % 2 == 0)
+    power = (i % 2) ? 3.0 : 1.0;
+   else
+    power = 1.0;
    prod *= std::pow(config_qmc.current_weight, power);
-   eval_vertices.clear();  
+   eval_vertices.clear();
    i++;
   }
   current_weight = std::abs(prod);
