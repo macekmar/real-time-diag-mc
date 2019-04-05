@@ -19,8 +19,10 @@ from fourier_transform import fourier_transform
 PARAMS_PYTHON_KEYS['N'] = None
 PARAMS_PYTHON_KEYS['order'] = None # int or a list of ints
 PARAMS_PYTHON_KEYS['model'] = None
-PARAMS_PYTHON_KEYS['num_gen_mode'] = 'complex'
 PARAMS_PYTHON_KEYS['frequency_range'] = False # False to store times, tuple (freq_min, freq_max, nb_freq) to store frequencies
+
+PARAMS_PYTHON_KEYS['num_gen_mode'] = 'complex'
+PARAMS_PYTHON_KEYS['num_gen'] = None
 
 ### Removed not needed
 del(PARAMS_PYTHON_KEYS['nb_warmup_cycles'])
@@ -42,6 +44,8 @@ def quasi_solver(solver, **params):
     if not((params_py['num_gen_mode'] is 'simple') or (params_py['num_gen_mode'] is 'complex')):
         raise Exception("Number generator mode should be 'simple' or 'complex'.")
 
+    gen_class = params_py['num_gen']
+
     ### result structure
     results_to_save = {}
     metadata = {}
@@ -51,6 +55,7 @@ def quasi_solver(solver, **params):
     # Remove 'model', which cannot be saved, g0_lesser is taken care of in _add_params_to_results
     model_funs = params_py['model'][:]
     del(params_py['model'])
+    del(params_py['num_gen'])
     _add_params_to_results(results_to_save, dict(params_cpp, **params_py))
 
     ### Calculate inverse CDFs
@@ -75,34 +80,43 @@ def quasi_solver(solver, **params):
         results['results_part'] = {}
 
 
-        ### Generate quasi random numbers
-        points = [None for i in range(len(N_vec)-1)]
-        N_true = [0 for i in range(len(N_vec)-1)]
-        N_to_calc = [0 for i in range(len(N_vec)-1)]
+        ### Reset generator
         if world.rank == 0:
-            print 'Generating quasi random numbers'
-            if params_py['num_gen_mode'] is 'simple':
-                u = model.generate_u(inv_cdf, t_min, N_max, order)
-                N_true, N_to_calc, points = distribute_u(u, order, t_min, N_vec, world.size)
-            if params_py['num_gen_mode'] is 'complex':
-                # # This generates roughly enough points
-                u = model.generate_u_complex(inv_cdf, t_min, N_max, order)
-                N_true, N_to_calc, points = distribute_u_complex(u, order, t_min, N_vec, world.size)
+            gen = gen_class(order)
 
-        N_true = world.bcast(N_true, root=0)
-        N_to_calc = world.bcast(N_to_calc, root=0)
+
 
         ### Calculate
         N_total = 0
         N_calc = 0
         for iN in range(len(N_vec) - 1):
+
+            points = None
+            N_true = 0
+            N_to_calc = 0
+
+
             if world.rank == 0:
                 print "Calculating points from {0} to {1}.".format(N_vec[iN], N_vec[iN+1])
-                print "Number of generated points: {0}".format(N_true[iN])
-                print "Number of points in the domain (+ trailing zeros): {0}".format(np.sum([p.shape[0] for p in points[iN]]))
+                
+                print 'Generating quasi random numbers'
+                N_to_gen = N_vec[iN+1] - N_vec[iN]
+                if params_py['num_gen_mode'] is 'simple':
+                    u = model.generate_u(gen, inv_cdf, t_min, N_to_gen, order)
+                    N_true, N_to_calc, points = distribute_u(u, order, t_min, world.size)
+                if params_py['num_gen_mode'] is 'complex':
+                    # # This generates roughly enough points
+                    u = model.generate_u_complex(gen, inv_cdf, t_min, N_to_gen, order)
+                    N_true, N_to_calc, points = distribute_u(u, order, t_min, world.size)
+                
+                print "Number of generated points: {0}".format(N_true)
+                print "Number of points in the domain {0} (+ trailing zeros): {1}".format(N_to_calc, np.sum([p.shape[0] for p in points]))
+
+            N_true = world.bcast(N_true, root=0)
+            N_to_calc = world.bcast(N_to_calc, root=0)
 
 
-            u = world.scatter(points[iN], root=0)
+            u = world.scatter(points, root=0)
             # Points are padded, remove trailing zeros
             inds = np.where(np.all(u != 0.0, axis=1))[0]
             u = u[inds]
@@ -112,8 +126,8 @@ def quasi_solver(solver, **params):
             # TODO: Implement 'save_period'
 
             _ = model.get(solver, u, True)
-            N_total += N_true[iN]
-            N_calc += N_to_calc[iN]
+            N_total += N_true
+            N_calc += N_to_calc
 
             world.barrier()
             solver.collect_qmc_weight(1) # 1 is just a dummy variable
