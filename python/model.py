@@ -76,9 +76,10 @@ def generate_u_complex(gen, inv_cdf, interaction_start, N_samples, dim):
 
         itr += 1
         if len(inds) != 0:
-            N_batch = np.int(np.ceil( (N_samples - N)*max(1, N_batch/float(len(inds)))))
+            #N_batch = np.int(np.ceil( (N_samples - N)*max(1, N_batch/float(len(inds)))))
+            N_batch = max(1, N_samples - N)
         else:
-            N_batch *= 2
+            N_batch = max(N_batch + 1, int(N_batch*1.1))
     return u_samples #[:N_samples,:]
 
 
