@@ -19,6 +19,7 @@ from fourier_transform import fourier_transform
 PARAMS_PYTHON_KEYS['N'] = None
 PARAMS_PYTHON_KEYS['order'] = None # int or a list of ints
 PARAMS_PYTHON_KEYS['model'] = None
+PARAMS_PYTHON_KEYS['num_gen_mode'] = 'complex'
 PARAMS_PYTHON_KEYS['frequency_range'] = False # False to store times, tuple (freq_min, freq_max, nb_freq) to store frequencies
 
 ### Removed not needed
@@ -37,6 +38,9 @@ def quasi_solver(solver, **params):
     if params_cpp['method'] == 0:
         raise Exception("Method 0 is not implemented yet.")
     t_min = -params_cpp['interaction_start']
+
+    if not((params_py['num_gen_mode'] is 'simple') or (params_py['num_gen_mode'] is 'complex')):
+        raise Exception("Number generator mode should be 'simple' or 'complex'.")
 
     ### result structure
     results_to_save = {}
@@ -74,19 +78,23 @@ def quasi_solver(solver, **params):
         ### Generate quasi random numbers
         points = [None for i in range(len(N_vec)-1)]
         N_true = [0 for i in range(len(N_vec)-1)]
+        N_to_calc = [0 for i in range(len(N_vec)-1)]
         if world.rank == 0:
             print 'Generating quasi random numbers'
-            # u = model.generate_u(inv_cdf, t_min, N_max, order)
-            # N_true, points = distribute_u(u, order, t_min, N_vec, world.size)
-
-            # # This generates roughly enough points
-            u = model.generate_u_complex(inv_cdf, t_min, N_max, order)
-            N_true, points = distribute_u_complex(u, order, t_min, N_vec, world.size)
+            if params_py['num_gen_mode'] is 'simple':
+                u = model.generate_u(inv_cdf, t_min, N_max, order)
+                N_true, N_to_calc, points = distribute_u(u, order, t_min, N_vec, world.size)
+            if params_py['num_gen_mode'] is 'complex':
+                # # This generates roughly enough points
+                u = model.generate_u_complex(inv_cdf, t_min, N_max, order)
+                N_true, N_to_calc, points = distribute_u_complex(u, order, t_min, N_vec, world.size)
 
         N_true = world.bcast(N_true, root=0)
+        N_to_calc = world.bcast(N_to_calc, root=0)
 
         ### Calculate
         N_total = 0
+        N_calc = 0
         for iN in range(len(N_vec) - 1):
             if world.rank == 0:
                 print "Calculating points from {0} to {1}.".format(N_vec[iN], N_vec[iN+1])
@@ -105,6 +113,7 @@ def quasi_solver(solver, **params):
 
             _ = model.get(solver, u, True)
             N_total += N_true[iN]
+            N_calc += N_to_calc[iN]
 
             world.barrier()
             solver.collect_qmc_weight(1) # 1 is just a dummy variable
@@ -120,7 +129,9 @@ def quasi_solver(solver, **params):
                     res_all[key] = np.array(getattr(solver, key))
                 res_all['U'] = np.array(solver.U)[np.newaxis, :]
                 res_all['pn'] = np.zeros((1, params_cpp["max_perturbation_order"] - params_cpp["min_perturbation_order"]))
+                res_all['pc'] = np.zeros((1, params_cpp["max_perturbation_order"] - params_cpp["min_perturbation_order"]))
                 res_all['pn'][0][order-1] = N_total
+                res_all['pc'][0][order-1] = N_calc
 
                 ### Fourier transform if asked
                 if do_fourier:
@@ -149,7 +160,7 @@ def quasi_solver(solver, **params):
                 for key in results['results_all']:
                     if key not in ["U", "bin_times", "omega"]:
                         if iN == 0:
-                            if key == "pn":
+                            if key == "pn" or key == 'pc':
                                 results['results_part'][key] = np.zeros([res_part[key].shape[1]] + [len(N_vec)-1], dtype=res_part[key].dtype)
                             else:
                                 results['results_part'][key] = np.zeros(list(res_part[key].shape) + [len(N_vec)-1], dtype=res_part[key].dtype)
@@ -197,9 +208,10 @@ def quasi_merge_results(order, results_to_save, results):
             except KeyError: # nb_kernels is absent if kernels have been Fourier transformed
                 pass
 
-    res, key = 'results_all', 'pn'
-    results_to_save[res][key][0][order-1] = results[res][key][0][order-1]
-    res, key = 'results_part', 'pn'
-    results_to_save[res][key][order-1] = results[res][key][order-1]
+    for k in ['pn', 'pc']:
+        res, key = 'results_all', k
+        results_to_save[res][key][0][order-1] = results[res][key][0][order-1]
+        res, key = 'results_part', k
+        results_to_save[res][key][order-1] = results[res][key][order-1]
 
     return results_to_save
