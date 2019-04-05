@@ -593,8 +593,6 @@ static CYTHON_INLINE PyObject* __Pyx_PyObject_Call(PyObject *func, PyObject *arg
 #define __Pyx_PyObject_Call(func, arg, kw) PyObject_Call(func, arg, kw)
 #endif
 
-static CYTHON_INLINE PyObject *__Pyx_GetModuleGlobalName(PyObject *name);
-
 static CYTHON_INLINE void __Pyx_RaiseTooManyValuesError(Py_ssize_t expected);
 
 static CYTHON_INLINE void __Pyx_RaiseNeedMoreValuesError(Py_ssize_t index);
@@ -734,25 +732,25 @@ static char __pyx_k_throw[] = "throw";
 static char __pyx_k_values[] = "values";
 static char __pyx_k_dim_num[] = "dim_num";
 static char __pyx_k_sobol_gen[] = "sobol_gen";
-static char __pyx_k_i4_sobol_py[] = "i4_sobol_py";
-static char __pyx_k_home_corentin_src_sobol_sobol_p[] = "/home/corentin/src/sobol/sobol.pyx";
+static char __pyx_k_sobol_single_value[] = "sobol_single_value";
+static char __pyx_k_home_corentin_src_ctint_keldysh[] = "/home/corentin/src/ctint_keldysh/sobol/sobol.pyx";
 static PyObject *__pyx_n_s__3;
 static PyObject *__pyx_n_s_args;
 static PyObject *__pyx_n_s_close;
 static PyObject *__pyx_n_s_dim_num;
-static PyObject *__pyx_kp_s_home_corentin_src_sobol_sobol_p;
-static PyObject *__pyx_n_s_i4_sobol_py;
+static PyObject *__pyx_kp_s_home_corentin_src_ctint_keldysh;
 static PyObject *__pyx_n_s_main;
 static PyObject *__pyx_n_s_range;
 static PyObject *__pyx_n_s_seed;
 static PyObject *__pyx_n_s_send;
 static PyObject *__pyx_n_s_sobol;
 static PyObject *__pyx_n_s_sobol_gen;
+static PyObject *__pyx_n_s_sobol_single_value;
 static PyObject *__pyx_n_s_start;
 static PyObject *__pyx_n_s_test;
 static PyObject *__pyx_n_s_throw;
 static PyObject *__pyx_n_s_values;
-static PyObject *__pyx_pf_5sobol_i4_sobol_py(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_dim_num, PyObject *__pyx_v_seed); /* proto */
+static PyObject *__pyx_pf_5sobol_sobol_single_value(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_dim_num, PyObject *__pyx_v_seed); /* proto */
 static PyObject *__pyx_pf_5sobol_2sobol_gen(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_dim_num, PyObject *__pyx_v_start); /* proto */
 static PyObject *__pyx_tp_new_5sobol___pyx_scope_struct__sobol_gen(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
 static PyObject *__pyx_int_0;
@@ -764,15 +762,15 @@ static PyObject *__pyx_codeobj__5;
 /* "sobol.pyx":10
  *     pair[int, vector[double]] i4_sobol (int dim_num, int seed)
  * 
- * def i4_sobol_py(dim_num, seed):             # <<<<<<<<<<<<<<
+ * def sobol_single_value(dim_num, seed):             # <<<<<<<<<<<<<<
  *     return i4_sobol(dim_num, seed)
  * 
  */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_5sobol_1i4_sobol_py(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
-static PyMethodDef __pyx_mdef_5sobol_1i4_sobol_py = {"i4_sobol_py", (PyCFunction)__pyx_pw_5sobol_1i4_sobol_py, METH_VARARGS|METH_KEYWORDS, 0};
-static PyObject *__pyx_pw_5sobol_1i4_sobol_py(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
+static PyObject *__pyx_pw_5sobol_1sobol_single_value(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
+static PyMethodDef __pyx_mdef_5sobol_1sobol_single_value = {"sobol_single_value", (PyCFunction)__pyx_pw_5sobol_1sobol_single_value, METH_VARARGS|METH_KEYWORDS, 0};
+static PyObject *__pyx_pw_5sobol_1sobol_single_value(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
   PyObject *__pyx_v_dim_num = 0;
   PyObject *__pyx_v_seed = 0;
   int __pyx_lineno = 0;
@@ -780,7 +778,7 @@ static PyObject *__pyx_pw_5sobol_1i4_sobol_py(PyObject *__pyx_self, PyObject *__
   int __pyx_clineno = 0;
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
-  __Pyx_RefNannySetupContext("i4_sobol_py (wrapper)", 0);
+  __Pyx_RefNannySetupContext("sobol_single_value (wrapper)", 0);
   {
     static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_dim_num,&__pyx_n_s_seed,0};
     PyObject* values[2] = {0,0};
@@ -801,11 +799,11 @@ static PyObject *__pyx_pw_5sobol_1i4_sobol_py(PyObject *__pyx_self, PyObject *__
         case  1:
         if (likely((values[1] = PyDict_GetItem(__pyx_kwds, __pyx_n_s_seed)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("i4_sobol_py", 1, 2, 2, 1); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 10; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+          __Pyx_RaiseArgtupleInvalid("sobol_single_value", 1, 2, 2, 1); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 10; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "i4_sobol_py") < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 10; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "sobol_single_value") < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 10; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 2) {
       goto __pyx_L5_argtuple_error;
@@ -818,20 +816,20 @@ static PyObject *__pyx_pw_5sobol_1i4_sobol_py(PyObject *__pyx_self, PyObject *__
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("i4_sobol_py", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 10; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+  __Pyx_RaiseArgtupleInvalid("sobol_single_value", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 10; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
   __pyx_L3_error:;
-  __Pyx_AddTraceback("sobol.i4_sobol_py", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("sobol.sobol_single_value", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  __pyx_r = __pyx_pf_5sobol_i4_sobol_py(__pyx_self, __pyx_v_dim_num, __pyx_v_seed);
+  __pyx_r = __pyx_pf_5sobol_sobol_single_value(__pyx_self, __pyx_v_dim_num, __pyx_v_seed);
 
   /* function exit code */
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_5sobol_i4_sobol_py(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_dim_num, PyObject *__pyx_v_seed) {
+static PyObject *__pyx_pf_5sobol_sobol_single_value(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_dim_num, PyObject *__pyx_v_seed) {
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   int __pyx_t_1;
@@ -840,11 +838,11 @@ static PyObject *__pyx_pf_5sobol_i4_sobol_py(CYTHON_UNUSED PyObject *__pyx_self,
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
-  __Pyx_RefNannySetupContext("i4_sobol_py", 0);
+  __Pyx_RefNannySetupContext("sobol_single_value", 0);
 
   /* "sobol.pyx":11
  * 
- * def i4_sobol_py(dim_num, seed):
+ * def sobol_single_value(dim_num, seed):
  *     return i4_sobol(dim_num, seed)             # <<<<<<<<<<<<<<
  * 
  * def sobol_gen(dim_num, start):
@@ -861,7 +859,7 @@ static PyObject *__pyx_pf_5sobol_i4_sobol_py(CYTHON_UNUSED PyObject *__pyx_self,
   /* "sobol.pyx":10
  *     pair[int, vector[double]] i4_sobol (int dim_num, int seed)
  * 
- * def i4_sobol_py(dim_num, seed):             # <<<<<<<<<<<<<<
+ * def sobol_single_value(dim_num, seed):             # <<<<<<<<<<<<<<
  *     return i4_sobol(dim_num, seed)
  * 
  */
@@ -869,7 +867,7 @@ static PyObject *__pyx_pf_5sobol_i4_sobol_py(CYTHON_UNUSED PyObject *__pyx_self,
   /* function exit code */
   __pyx_L1_error:;
   __Pyx_XDECREF(__pyx_t_3);
-  __Pyx_AddTraceback("sobol.i4_sobol_py", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("sobol.sobol_single_value", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
   __Pyx_XGIVEREF(__pyx_r);
@@ -993,11 +991,12 @@ static PyObject *__pyx_gb_5sobol_4generator(__pyx_CoroutineObject *__pyx_generat
   PyObject *__pyx_t_2 = NULL;
   Py_ssize_t __pyx_t_3;
   PyObject *(*__pyx_t_4)(PyObject *);
-  PyObject *__pyx_t_5 = NULL;
-  PyObject *__pyx_t_6 = NULL;
-  Py_ssize_t __pyx_t_7;
+  int __pyx_t_5;
+  int __pyx_t_6;
+  PyObject *__pyx_t_7 = NULL;
   PyObject *__pyx_t_8 = NULL;
-  PyObject *(*__pyx_t_9)(PyObject *);
+  PyObject *__pyx_t_9 = NULL;
+  PyObject *(*__pyx_t_10)(PyObject *);
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
@@ -1018,7 +1017,7 @@ static PyObject *__pyx_gb_5sobol_4generator(__pyx_CoroutineObject *__pyx_generat
  * def sobol_gen(dim_num, start):
  *     seed = 0             # <<<<<<<<<<<<<<
  *     for _ in range(start):
- *         seed, _ = i4_sobol_py(dim_num, seed)
+ *         seed, _ = i4_sobol(dim_num, seed)
  */
   __Pyx_INCREF(__pyx_int_0);
   __Pyx_GIVEREF(__pyx_int_0);
@@ -1028,7 +1027,7 @@ static PyObject *__pyx_gb_5sobol_4generator(__pyx_CoroutineObject *__pyx_generat
  * def sobol_gen(dim_num, start):
  *     seed = 0
  *     for _ in range(start):             # <<<<<<<<<<<<<<
- *         seed, _ = i4_sobol_py(dim_num, seed)
+ *         seed, _ = i4_sobol(dim_num, seed)
  * 
  */
   __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 15; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
@@ -1087,39 +1086,14 @@ static PyObject *__pyx_gb_5sobol_4generator(__pyx_CoroutineObject *__pyx_generat
     /* "sobol.pyx":16
  *     seed = 0
  *     for _ in range(start):
- *         seed, _ = i4_sobol_py(dim_num, seed)             # <<<<<<<<<<<<<<
+ *         seed, _ = i4_sobol(dim_num, seed)             # <<<<<<<<<<<<<<
  * 
  *     while True:
  */
-    __pyx_t_5 = __Pyx_GetModuleGlobalName(__pyx_n_s_i4_sobol_py); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 16; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-    __Pyx_GOTREF(__pyx_t_5);
-    __pyx_t_6 = NULL;
-    __pyx_t_7 = 0;
-    if (CYTHON_COMPILING_IN_CPYTHON && unlikely(PyMethod_Check(__pyx_t_5))) {
-      __pyx_t_6 = PyMethod_GET_SELF(__pyx_t_5);
-      if (likely(__pyx_t_6)) {
-        PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_5);
-        __Pyx_INCREF(__pyx_t_6);
-        __Pyx_INCREF(function);
-        __Pyx_DECREF_SET(__pyx_t_5, function);
-        __pyx_t_7 = 1;
-      }
-    }
-    __pyx_t_8 = PyTuple_New(2+__pyx_t_7); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 16; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-    __Pyx_GOTREF(__pyx_t_8);
-    if (__pyx_t_6) {
-      __Pyx_GIVEREF(__pyx_t_6); PyTuple_SET_ITEM(__pyx_t_8, 0, __pyx_t_6); __pyx_t_6 = NULL;
-    }
-    __Pyx_INCREF(__pyx_cur_scope->__pyx_v_dim_num);
-    __Pyx_GIVEREF(__pyx_cur_scope->__pyx_v_dim_num);
-    PyTuple_SET_ITEM(__pyx_t_8, 0+__pyx_t_7, __pyx_cur_scope->__pyx_v_dim_num);
-    __Pyx_INCREF(__pyx_cur_scope->__pyx_v_seed);
-    __Pyx_GIVEREF(__pyx_cur_scope->__pyx_v_seed);
-    PyTuple_SET_ITEM(__pyx_t_8, 1+__pyx_t_7, __pyx_cur_scope->__pyx_v_seed);
-    __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_8, NULL); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 16; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_5 = __Pyx_PyInt_As_int(__pyx_cur_scope->__pyx_v_dim_num); if (unlikely((__pyx_t_5 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 16; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_6 = __Pyx_PyInt_As_int(__pyx_cur_scope->__pyx_v_seed); if (unlikely((__pyx_t_6 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 16; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_2 = __pyx_convert_pair_to_py_int____std_3a__3a_vector_3c_double_3e___(i4_sobol(__pyx_t_5, __pyx_t_6)); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 16; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_2);
-    __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-    __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
     if ((likely(PyTuple_CheckExact(__pyx_t_2))) || (PyList_CheckExact(__pyx_t_2))) {
       PyObject* sequence = __pyx_t_2;
       #if CYTHON_COMPILING_IN_CPYTHON
@@ -1134,46 +1108,46 @@ static PyObject *__pyx_gb_5sobol_4generator(__pyx_CoroutineObject *__pyx_generat
       }
       #if CYTHON_COMPILING_IN_CPYTHON
       if (likely(PyTuple_CheckExact(sequence))) {
-        __pyx_t_5 = PyTuple_GET_ITEM(sequence, 0); 
+        __pyx_t_7 = PyTuple_GET_ITEM(sequence, 0); 
         __pyx_t_8 = PyTuple_GET_ITEM(sequence, 1); 
       } else {
-        __pyx_t_5 = PyList_GET_ITEM(sequence, 0); 
+        __pyx_t_7 = PyList_GET_ITEM(sequence, 0); 
         __pyx_t_8 = PyList_GET_ITEM(sequence, 1); 
       }
-      __Pyx_INCREF(__pyx_t_5);
+      __Pyx_INCREF(__pyx_t_7);
       __Pyx_INCREF(__pyx_t_8);
       #else
-      __pyx_t_5 = PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 16; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-      __Pyx_GOTREF(__pyx_t_5);
+      __pyx_t_7 = PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 16; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_7);
       __pyx_t_8 = PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 16; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_8);
       #endif
       __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     } else {
       Py_ssize_t index = -1;
-      __pyx_t_6 = PyObject_GetIter(__pyx_t_2); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 16; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-      __Pyx_GOTREF(__pyx_t_6);
+      __pyx_t_9 = PyObject_GetIter(__pyx_t_2); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 16; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_9);
       __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-      __pyx_t_9 = Py_TYPE(__pyx_t_6)->tp_iternext;
-      index = 0; __pyx_t_5 = __pyx_t_9(__pyx_t_6); if (unlikely(!__pyx_t_5)) goto __pyx_L6_unpacking_failed;
-      __Pyx_GOTREF(__pyx_t_5);
-      index = 1; __pyx_t_8 = __pyx_t_9(__pyx_t_6); if (unlikely(!__pyx_t_8)) goto __pyx_L6_unpacking_failed;
+      __pyx_t_10 = Py_TYPE(__pyx_t_9)->tp_iternext;
+      index = 0; __pyx_t_7 = __pyx_t_10(__pyx_t_9); if (unlikely(!__pyx_t_7)) goto __pyx_L6_unpacking_failed;
+      __Pyx_GOTREF(__pyx_t_7);
+      index = 1; __pyx_t_8 = __pyx_t_10(__pyx_t_9); if (unlikely(!__pyx_t_8)) goto __pyx_L6_unpacking_failed;
       __Pyx_GOTREF(__pyx_t_8);
-      if (__Pyx_IternextUnpackEndCheck(__pyx_t_9(__pyx_t_6), 2) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 16; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-      __pyx_t_9 = NULL;
-      __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+      if (__Pyx_IternextUnpackEndCheck(__pyx_t_10(__pyx_t_9), 2) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 16; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_10 = NULL;
+      __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
       goto __pyx_L7_unpacking_done;
       __pyx_L6_unpacking_failed:;
-      __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-      __pyx_t_9 = NULL;
+      __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+      __pyx_t_10 = NULL;
       if (__Pyx_IterFinish() == 0) __Pyx_RaiseNeedMoreValuesError(index);
       {__pyx_filename = __pyx_f[0]; __pyx_lineno = 16; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __pyx_L7_unpacking_done:;
     }
     __Pyx_GOTREF(__pyx_cur_scope->__pyx_v_seed);
-    __Pyx_DECREF_SET(__pyx_cur_scope->__pyx_v_seed, __pyx_t_5);
-    __Pyx_GIVEREF(__pyx_t_5);
-    __pyx_t_5 = 0;
+    __Pyx_DECREF_SET(__pyx_cur_scope->__pyx_v_seed, __pyx_t_7);
+    __Pyx_GIVEREF(__pyx_t_7);
+    __pyx_t_7 = 0;
     __Pyx_GOTREF(__pyx_cur_scope->__pyx_v__);
     __Pyx_DECREF_SET(__pyx_cur_scope->__pyx_v__, __pyx_t_8);
     __Pyx_GIVEREF(__pyx_t_8);
@@ -1183,17 +1157,17 @@ static PyObject *__pyx_gb_5sobol_4generator(__pyx_CoroutineObject *__pyx_generat
  * def sobol_gen(dim_num, start):
  *     seed = 0
  *     for _ in range(start):             # <<<<<<<<<<<<<<
- *         seed, _ = i4_sobol_py(dim_num, seed)
+ *         seed, _ = i4_sobol(dim_num, seed)
  * 
  */
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
   /* "sobol.pyx":18
- *         seed, _ = i4_sobol_py(dim_num, seed)
+ *         seed, _ = i4_sobol(dim_num, seed)
  * 
  *     while True:             # <<<<<<<<<<<<<<
- *         seed, values = i4_sobol_py(dim_num, seed)
+ *         seed, values = i4_sobol(dim_num, seed)
  *         yield values
  */
   while (1) {
@@ -1201,39 +1175,14 @@ static PyObject *__pyx_gb_5sobol_4generator(__pyx_CoroutineObject *__pyx_generat
     /* "sobol.pyx":19
  * 
  *     while True:
- *         seed, values = i4_sobol_py(dim_num, seed)             # <<<<<<<<<<<<<<
+ *         seed, values = i4_sobol(dim_num, seed)             # <<<<<<<<<<<<<<
  *         yield values
  * 
  */
-    __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_i4_sobol_py); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-    __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_8 = NULL;
-    __pyx_t_3 = 0;
-    if (CYTHON_COMPILING_IN_CPYTHON && unlikely(PyMethod_Check(__pyx_t_2))) {
-      __pyx_t_8 = PyMethod_GET_SELF(__pyx_t_2);
-      if (likely(__pyx_t_8)) {
-        PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_2);
-        __Pyx_INCREF(__pyx_t_8);
-        __Pyx_INCREF(function);
-        __Pyx_DECREF_SET(__pyx_t_2, function);
-        __pyx_t_3 = 1;
-      }
-    }
-    __pyx_t_5 = PyTuple_New(2+__pyx_t_3); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-    __Pyx_GOTREF(__pyx_t_5);
-    if (__pyx_t_8) {
-      __Pyx_GIVEREF(__pyx_t_8); PyTuple_SET_ITEM(__pyx_t_5, 0, __pyx_t_8); __pyx_t_8 = NULL;
-    }
-    __Pyx_INCREF(__pyx_cur_scope->__pyx_v_dim_num);
-    __Pyx_GIVEREF(__pyx_cur_scope->__pyx_v_dim_num);
-    PyTuple_SET_ITEM(__pyx_t_5, 0+__pyx_t_3, __pyx_cur_scope->__pyx_v_dim_num);
-    __Pyx_INCREF(__pyx_cur_scope->__pyx_v_seed);
-    __Pyx_GIVEREF(__pyx_cur_scope->__pyx_v_seed);
-    PyTuple_SET_ITEM(__pyx_t_5, 1+__pyx_t_3, __pyx_cur_scope->__pyx_v_seed);
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_5, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_6 = __Pyx_PyInt_As_int(__pyx_cur_scope->__pyx_v_dim_num); if (unlikely((__pyx_t_6 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_5 = __Pyx_PyInt_As_int(__pyx_cur_scope->__pyx_v_seed); if (unlikely((__pyx_t_5 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_1 = __pyx_convert_pair_to_py_int____std_3a__3a_vector_3c_double_3e___(i4_sobol(__pyx_t_6, __pyx_t_5)); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_1);
-    __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     if ((likely(PyTuple_CheckExact(__pyx_t_1))) || (PyList_CheckExact(__pyx_t_1))) {
       PyObject* sequence = __pyx_t_1;
       #if CYTHON_COMPILING_IN_CPYTHON
@@ -1249,37 +1198,37 @@ static PyObject *__pyx_gb_5sobol_4generator(__pyx_CoroutineObject *__pyx_generat
       #if CYTHON_COMPILING_IN_CPYTHON
       if (likely(PyTuple_CheckExact(sequence))) {
         __pyx_t_2 = PyTuple_GET_ITEM(sequence, 0); 
-        __pyx_t_5 = PyTuple_GET_ITEM(sequence, 1); 
+        __pyx_t_8 = PyTuple_GET_ITEM(sequence, 1); 
       } else {
         __pyx_t_2 = PyList_GET_ITEM(sequence, 0); 
-        __pyx_t_5 = PyList_GET_ITEM(sequence, 1); 
+        __pyx_t_8 = PyList_GET_ITEM(sequence, 1); 
       }
       __Pyx_INCREF(__pyx_t_2);
-      __Pyx_INCREF(__pyx_t_5);
+      __Pyx_INCREF(__pyx_t_8);
       #else
       __pyx_t_2 = PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_2);
-      __pyx_t_5 = PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-      __Pyx_GOTREF(__pyx_t_5);
+      __pyx_t_8 = PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_8);
       #endif
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     } else {
       Py_ssize_t index = -1;
-      __pyx_t_8 = PyObject_GetIter(__pyx_t_1); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-      __Pyx_GOTREF(__pyx_t_8);
+      __pyx_t_7 = PyObject_GetIter(__pyx_t_1); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_7);
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-      __pyx_t_9 = Py_TYPE(__pyx_t_8)->tp_iternext;
-      index = 0; __pyx_t_2 = __pyx_t_9(__pyx_t_8); if (unlikely(!__pyx_t_2)) goto __pyx_L10_unpacking_failed;
+      __pyx_t_10 = Py_TYPE(__pyx_t_7)->tp_iternext;
+      index = 0; __pyx_t_2 = __pyx_t_10(__pyx_t_7); if (unlikely(!__pyx_t_2)) goto __pyx_L10_unpacking_failed;
       __Pyx_GOTREF(__pyx_t_2);
-      index = 1; __pyx_t_5 = __pyx_t_9(__pyx_t_8); if (unlikely(!__pyx_t_5)) goto __pyx_L10_unpacking_failed;
-      __Pyx_GOTREF(__pyx_t_5);
-      if (__Pyx_IternextUnpackEndCheck(__pyx_t_9(__pyx_t_8), 2) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-      __pyx_t_9 = NULL;
-      __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+      index = 1; __pyx_t_8 = __pyx_t_10(__pyx_t_7); if (unlikely(!__pyx_t_8)) goto __pyx_L10_unpacking_failed;
+      __Pyx_GOTREF(__pyx_t_8);
+      if (__Pyx_IternextUnpackEndCheck(__pyx_t_10(__pyx_t_7), 2) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_10 = NULL;
+      __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
       goto __pyx_L11_unpacking_done;
       __pyx_L10_unpacking_failed:;
-      __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-      __pyx_t_9 = NULL;
+      __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+      __pyx_t_10 = NULL;
       if (__Pyx_IterFinish() == 0) __Pyx_RaiseNeedMoreValuesError(index);
       {__pyx_filename = __pyx_f[0]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __pyx_L11_unpacking_done:;
@@ -1289,13 +1238,13 @@ static PyObject *__pyx_gb_5sobol_4generator(__pyx_CoroutineObject *__pyx_generat
     __Pyx_GIVEREF(__pyx_t_2);
     __pyx_t_2 = 0;
     __Pyx_XGOTREF(__pyx_cur_scope->__pyx_v_values);
-    __Pyx_XDECREF_SET(__pyx_cur_scope->__pyx_v_values, __pyx_t_5);
-    __Pyx_GIVEREF(__pyx_t_5);
-    __pyx_t_5 = 0;
+    __Pyx_XDECREF_SET(__pyx_cur_scope->__pyx_v_values, __pyx_t_8);
+    __Pyx_GIVEREF(__pyx_t_8);
+    __pyx_t_8 = 0;
 
     /* "sobol.pyx":20
  *     while True:
- *         seed, values = i4_sobol_py(dim_num, seed)
+ *         seed, values = i4_sobol(dim_num, seed)
  *         yield values             # <<<<<<<<<<<<<<
  * 
  * 
@@ -1325,9 +1274,9 @@ static PyObject *__pyx_gb_5sobol_4generator(__pyx_CoroutineObject *__pyx_generat
   __pyx_L1_error:;
   __Pyx_XDECREF(__pyx_t_1);
   __Pyx_XDECREF(__pyx_t_2);
-  __Pyx_XDECREF(__pyx_t_5);
-  __Pyx_XDECREF(__pyx_t_6);
+  __Pyx_XDECREF(__pyx_t_7);
   __Pyx_XDECREF(__pyx_t_8);
+  __Pyx_XDECREF(__pyx_t_9);
   __Pyx_AddTraceback("sobol_gen", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_L0:;
   __Pyx_XDECREF(__pyx_r); __pyx_r = 0;
@@ -1623,14 +1572,14 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_args, __pyx_k_args, sizeof(__pyx_k_args), 0, 0, 1, 1},
   {&__pyx_n_s_close, __pyx_k_close, sizeof(__pyx_k_close), 0, 0, 1, 1},
   {&__pyx_n_s_dim_num, __pyx_k_dim_num, sizeof(__pyx_k_dim_num), 0, 0, 1, 1},
-  {&__pyx_kp_s_home_corentin_src_sobol_sobol_p, __pyx_k_home_corentin_src_sobol_sobol_p, sizeof(__pyx_k_home_corentin_src_sobol_sobol_p), 0, 0, 1, 0},
-  {&__pyx_n_s_i4_sobol_py, __pyx_k_i4_sobol_py, sizeof(__pyx_k_i4_sobol_py), 0, 0, 1, 1},
+  {&__pyx_kp_s_home_corentin_src_ctint_keldysh, __pyx_k_home_corentin_src_ctint_keldysh, sizeof(__pyx_k_home_corentin_src_ctint_keldysh), 0, 0, 1, 0},
   {&__pyx_n_s_main, __pyx_k_main, sizeof(__pyx_k_main), 0, 0, 1, 1},
   {&__pyx_n_s_range, __pyx_k_range, sizeof(__pyx_k_range), 0, 0, 1, 1},
   {&__pyx_n_s_seed, __pyx_k_seed, sizeof(__pyx_k_seed), 0, 0, 1, 1},
   {&__pyx_n_s_send, __pyx_k_send, sizeof(__pyx_k_send), 0, 0, 1, 1},
   {&__pyx_n_s_sobol, __pyx_k_sobol, sizeof(__pyx_k_sobol), 0, 0, 1, 1},
   {&__pyx_n_s_sobol_gen, __pyx_k_sobol_gen, sizeof(__pyx_k_sobol_gen), 0, 0, 1, 1},
+  {&__pyx_n_s_sobol_single_value, __pyx_k_sobol_single_value, sizeof(__pyx_k_sobol_single_value), 0, 0, 1, 1},
   {&__pyx_n_s_start, __pyx_k_start, sizeof(__pyx_k_start), 0, 0, 1, 1},
   {&__pyx_n_s_test, __pyx_k_test, sizeof(__pyx_k_test), 0, 0, 1, 1},
   {&__pyx_n_s_throw, __pyx_k_throw, sizeof(__pyx_k_throw), 0, 0, 1, 1},
@@ -1651,14 +1600,14 @@ static int __Pyx_InitCachedConstants(void) {
   /* "sobol.pyx":10
  *     pair[int, vector[double]] i4_sobol (int dim_num, int seed)
  * 
- * def i4_sobol_py(dim_num, seed):             # <<<<<<<<<<<<<<
+ * def sobol_single_value(dim_num, seed):             # <<<<<<<<<<<<<<
  *     return i4_sobol(dim_num, seed)
  * 
  */
   __pyx_tuple_ = PyTuple_Pack(2, __pyx_n_s_dim_num, __pyx_n_s_seed); if (unlikely(!__pyx_tuple_)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 10; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_tuple_);
   __Pyx_GIVEREF(__pyx_tuple_);
-  __pyx_codeobj__2 = (PyObject*)__Pyx_PyCode_New(2, 0, 2, 0, 0, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple_, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_home_corentin_src_sobol_sobol_p, __pyx_n_s_i4_sobol_py, 10, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 10; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_codeobj__2 = (PyObject*)__Pyx_PyCode_New(2, 0, 2, 0, 0, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple_, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_home_corentin_src_ctint_keldysh, __pyx_n_s_sobol_single_value, 10, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 10; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
 
   /* "sobol.pyx":13
  *     return i4_sobol(dim_num, seed)
@@ -1670,7 +1619,7 @@ static int __Pyx_InitCachedConstants(void) {
   __pyx_tuple__4 = PyTuple_Pack(5, __pyx_n_s_dim_num, __pyx_n_s_start, __pyx_n_s_seed, __pyx_n_s__3, __pyx_n_s_values); if (unlikely(!__pyx_tuple__4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 13; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_tuple__4);
   __Pyx_GIVEREF(__pyx_tuple__4);
-  __pyx_codeobj__5 = (PyObject*)__Pyx_PyCode_New(2, 0, 5, 0, 0, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__4, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_home_corentin_src_sobol_sobol_p, __pyx_n_s_sobol_gen, 13, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 13; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_codeobj__5 = (PyObject*)__Pyx_PyCode_New(2, 0, 5, 0, 0, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__4, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_home_corentin_src_ctint_keldysh, __pyx_n_s_sobol_gen, 13, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 13; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_RefNannyFinishContext();
   return 0;
   __pyx_L1_error:;
@@ -1786,13 +1735,13 @@ PyMODINIT_FUNC PyInit_sobol(void)
   /* "sobol.pyx":10
  *     pair[int, vector[double]] i4_sobol (int dim_num, int seed)
  * 
- * def i4_sobol_py(dim_num, seed):             # <<<<<<<<<<<<<<
+ * def sobol_single_value(dim_num, seed):             # <<<<<<<<<<<<<<
  *     return i4_sobol(dim_num, seed)
  * 
  */
-  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_5sobol_1i4_sobol_py, NULL, __pyx_n_s_sobol); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 10; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_5sobol_1sobol_single_value, NULL, __pyx_n_s_sobol); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 10; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_i4_sobol_py, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 10; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_sobol_single_value, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 10; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
   /* "sobol.pyx":13
@@ -2034,23 +1983,6 @@ static CYTHON_INLINE PyObject* __Pyx_PyObject_Call(PyObject *func, PyObject *arg
     return result;
 }
 #endif
-
-static CYTHON_INLINE PyObject *__Pyx_GetModuleGlobalName(PyObject *name) {
-    PyObject *result;
-#if CYTHON_COMPILING_IN_CPYTHON
-    result = PyDict_GetItem(__pyx_d, name);
-    if (likely(result)) {
-        Py_INCREF(result);
-    } else {
-#else
-    result = PyObject_GetItem(__pyx_d, name);
-    if (!result) {
-        PyErr_Clear();
-#endif
-        result = __Pyx_GetBuiltinName(name);
-    }
-    return result;
-}
 
 static CYTHON_INLINE void __Pyx_RaiseTooManyValuesError(Py_ssize_t expected) {
     PyErr_Format(PyExc_ValueError,
