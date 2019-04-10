@@ -89,6 +89,7 @@ def quasi_solver(solver, **params):
         ### Calculate
         N_total = 0
         N_calc = 0
+        N_save = 0
         for iN in range(len(N_vec) - 1):
 
             points = None
@@ -210,7 +211,11 @@ def quasi_solver(solver, **params):
                 # Modify pn
                 # res = dict(results_to_save)
                 # res["results_all"]["pn"] = res["results_all"]["pn"][np.newaxis,:]
-                _save_in_file(results_to_save, params_py['filename'], params_py['run_name'])
+#                _save_in_file(results_to_save, params_py['filename'], params_py['run_name'])                    
+                if (N_vec[iN+1] - N_save) >= params_py["save_period"] or iN == len(N_vec) - 2:
+                    _save_in_file(results_to_save, params_py['filename'], params_py['run_name'])
+                    N_save = N_vec[iN+1]
+
 
     return results
 

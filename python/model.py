@@ -55,6 +55,7 @@ def generate_u_complex(gen, inv_cdf, interaction_start, N_samples, dim):
     itr = 0
     N = 0
     N_generated = 0
+    u_samples = np.empty((0,dim))                                                                               
     while N < N_samples:
         # Inverse transform sampling
         v = gen.generate(N_batch)
@@ -66,10 +67,10 @@ def generate_u_complex(gen, inv_cdf, interaction_start, N_samples, dim):
             u[:,i] = u[:,i] + u[:,i-1]
         # Reject u out of t_min
         inds = np.where(np.all(u > interaction_start, axis=1))[0]
-        if N == 0:
-            u_samples = u
-        else:
-            u_samples = np.vstack((u_samples, u))
+        # if N == 0:
+        #     u_samples = u
+        # else:
+        u_samples = np.vstack((u_samples, u))
 
         N += len(inds)
         N_generated += N_batch
