@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from time import clock
+import os
 
 import numpy as np
 
@@ -14,6 +15,8 @@ from solver import (PARAMS_CPP_KEYS, PARAMS_PYTHON_KEYS,
 from fourier_transform import fourier_transform
 
 ###############################################################################
+
+REWRITE = 'w' # Default value is 'a', which creates large files
 
 ### Extend params keys for the quasi method
 PARAMS_PYTHON_KEYS['N'] = None
@@ -45,6 +48,12 @@ def quasi_solver(solver, **params):
         raise Exception("Number generator mode should be 'simple' or 'complex'.")
 
     gen_class = params_py['num_gen']
+
+    ### Check for file
+
+    if REWRITE is 'w':
+        if os.path.isfile(params_py['filename']):
+            raise Exception("File %s already exists!" % params_py['filename'])
 
     ### result structure
     results_to_save = {}
@@ -213,7 +222,7 @@ def quasi_solver(solver, **params):
                 # res["results_all"]["pn"] = res["results_all"]["pn"][np.newaxis,:]
 #                _save_in_file(results_to_save, params_py['filename'], params_py['run_name'])                    
                 if (N_vec[iN+1] - N_save) >= params_py["save_period"] or iN == len(N_vec) - 2:
-                    _save_in_file(results_to_save, params_py['filename'], params_py['run_name'])
+                    _save_in_file(results_to_save, params_py['filename'], params_py['run_name'], filemode=REWRITE)
                     N_save = N_vec[iN+1]
 
 
