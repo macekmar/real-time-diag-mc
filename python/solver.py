@@ -369,7 +369,7 @@ def _next_name_gen(first_name):
         yield name
 
 
-def _save_in_file(results, filename, run_name, overwrite=True, filemode='a'):
+def _save_in_file(results, filename, run_name, overwrite=True, filemode='w'):
     """
     Saves the `results` dictionnary in `filename` as an hdf5 archive under the key `run_name`.
 
@@ -385,6 +385,9 @@ def _save_in_file(results, filename, run_name, overwrite=True, filemode='a'):
     """
 
     assert MPI.COMM_WORLD.rank == 0 # avoid multiple processes to save
+
+    if filemode == "w" and overwrite is False:
+        raise Exception "Filemode 'w' clashes with overwrite=False."
 
     ### create archive and fill it with leading elements and metadata
     with HDFArchive(filename, filemode) as ar:

@@ -16,8 +16,6 @@ from fourier_transform import fourier_transform
 
 ###############################################################################
 
-REWRITE = 'w' # Default value is 'a', which creates large files
-
 ### Extend params keys for the quasi method
 PARAMS_PYTHON_KEYS['N'] = None
 PARAMS_PYTHON_KEYS['order'] = None # int or a list of ints
@@ -26,6 +24,7 @@ PARAMS_PYTHON_KEYS['frequency_range'] = False # False to store times, tuple (fre
 
 PARAMS_PYTHON_KEYS['num_gen_mode'] = 'complex'
 PARAMS_PYTHON_KEYS['num_gen'] = None
+PARAMS_PYTHON_KEYS['filemode'] = 'w' # Filemode for opening the hdf files, 'w' or 'a'
 
 ### Removed not needed
 del(PARAMS_PYTHON_KEYS['nb_warmup_cycles'])
@@ -49,11 +48,9 @@ def quasi_solver(solver, **params):
 
     gen_class = params_py['num_gen']
 
-    ### Check for file
-
-    if REWRITE is 'w':
-        if os.path.isfile(params_py['filename']):
-            raise Exception("File %s already exists!" % params_py['filename'])
+    ### Check if results file already exist
+    if params_py['filemode'] is 'w' and os.path.isfile(params_py['filename']):
+        raise IOError("File %s already exists!" % params_py['filename'])
 
     ### result structure
     results_to_save = {}
@@ -222,7 +219,7 @@ def quasi_solver(solver, **params):
                 # res["results_all"]["pn"] = res["results_all"]["pn"][np.newaxis,:]
 #                _save_in_file(results_to_save, params_py['filename'], params_py['run_name'])                    
                 if (N_vec[iN+1] - N_save) >= params_py["save_period"] or iN == len(N_vec) - 2:
-                    _save_in_file(results_to_save, params_py['filename'], params_py['run_name'], filemode=REWRITE)
+                    _save_in_file(results_to_save, params_py['filename'], params_py['run_name'], filemode=params_py['filemode'])
                     N_save = N_vec[iN+1]
 
 
