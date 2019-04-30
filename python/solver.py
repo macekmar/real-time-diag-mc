@@ -387,7 +387,7 @@ def _save_in_file(results, filename, run_name, overwrite=True, filemode='w'):
     assert MPI.COMM_WORLD.rank == 0 # avoid multiple processes to save
 
     if filemode == "w" and overwrite is False:
-        raise Exception "Filemode 'w' clashes with overwrite=False."
+        raise Exception("Filemode 'w' clashes with overwrite=False.")
 
     ### create archive and fill it with leading elements and metadata
     with HDFArchive(filename, filemode) as ar:
