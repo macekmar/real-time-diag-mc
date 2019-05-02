@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from time import clock
 import cPickle
 from os.path import splitext
-from utility import reduce_binning, pad_along_axis
+from utility import reduce_binning, pad_along_axis, extract_and_check_params
 import warnings
 from copy import deepcopy
 from results import merge_results, add_cn_to_results
@@ -125,7 +125,6 @@ def _collect_results(solver, res_structure, size_part):
         part_comm.Free()
     else:
         assert part_comm.size == min(size_part, comm.size)
-
     if comm.rank == 0:
         output = {}
         change_axis = lambda x: np.rollaxis(x, 0, x.ndim) # send first axis to last position
@@ -374,7 +373,7 @@ def _next_name_gen(first_name):
         yield name
 
 
-def _save_in_file(results, filename, run_name, overwrite=True):
+def _save_in_file(results, filename, run_name, overwrite=True, filemode='w'):
     """
     Saves the `results` dictionnary in `filename` as an hdf5 archive under the key `run_name`.
 
@@ -391,8 +390,11 @@ def _save_in_file(results, filename, run_name, overwrite=True):
 
     assert MPI.COMM_WORLD.rank == 0 # avoid multiple processes to save
 
+    if filemode == "w" and overwrite is False:
+        raise Exception("Filemode 'w' clashes with overwrite=False.")
+
     ### create archive and fill it with leading elements and metadata
-    with HDFArchive(filename, 'a') as ar:
+    with HDFArchive(filename, filemode) as ar:
 
         ### run name
         if run_name in ar:
@@ -434,7 +436,8 @@ PARAMS_PYTHON_KEYS = {'staircase': None,
                       'g0_lesser': None,
                       'g0_greater': None,
                       'size_part': 1,
-                      'nb_bins_sum': 1}
+                      'nb_bins_sum': 1,
+                      'filemode': 'w'}
 
 ### The following params should be the same as in parameters.hpp (and the default values too !)
 PARAMS_CPP_KEYS = {'creation_ops': None,
@@ -473,21 +476,6 @@ def solve(**params):
     ### start time
     start_time = datetime.now()
 
-    ### manage parameters
-    def extract_and_check_params(params, reference):
-        output = {}
-        for key, default in reference.items():
-            if key not in params:
-                if default is None:
-                    raise ValueError, "Parameter '{0}' is missing !".format(key)
-                else:
-                    output[key] = default
-                    if world.rank == 0:
-                        print "Parameter {0} defaulted to {1}".format(key, str(default))
-            else:
-                output[key] = params[key]
-                del params[key]
-        return output
 
     # python parameters should not change between subruns
     params_py = extract_and_check_params(params, PARAMS_PYTHON_KEYS)
