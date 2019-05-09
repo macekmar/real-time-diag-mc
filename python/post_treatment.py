@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.fftpack import fft, ifft
 import warnings
-from toolbox import fourier_transform
+from fourier_transform import fourier_transform
 
 #########   Generalized fft convolution #########
 
