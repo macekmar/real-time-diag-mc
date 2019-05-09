@@ -27,6 +27,8 @@ Configuration::Configuration(g0_keldysh_alpha_t green_function, const solve_para
  }
  spin_dvpt = creation_pts[0].s;
 
+ set_ops();
+
  nb_cofact = array<long, 1>(params.max_perturbation_order);
  nb_cofact() = 0;
  nb_inverse = array<long, 1>(params.max_perturbation_order);
@@ -65,12 +67,68 @@ Configuration::Configuration(g0_keldysh_alpha_t green_function, const solve_para
 }
 
 /**
+ * Set creation and annihilation contour points from parameters
+ * 
+ * Marjan: Previously *_pts were defined only inside the constructor, but I
+ *         need to access them every time I reset the configuration.
+ * TODO: Of course, they don't change after the initialization????
+ */
+void Configuration::set_ops() {
+ for (int rank = 0; rank < params.creation_ops.size(); ++rank) {
+  creation_pts.push_back(make_keldysh_contour_pt(params.creation_ops[rank], rank));
+  annihila_pts.push_back(make_keldysh_contour_pt(params.annihilation_ops[rank], rank));
+ }
+
+ if (annihila_pts.size() != creation_pts.size())
+  TRIQS_RUNTIME_ERROR << "`annihila_pts` and `creation_pts` have different sizes";
+
+ // inserting external Keldysh contour points
+ std::list<keldysh_contour_pt>::iterator apt, cpt;
+ for (cpt = creation_pts.begin(), apt = annihila_pts.begin(); 
+      cpt != creation_pts.end() && apt != annihila_pts.end(); 
+      ++cpt, ++apt) {
+  if (apt->s != cpt->s) // both points assumed to have same spin
+   TRIQS_RUNTIME_ERROR << "Pairs of annihilation and creation points must have the same spin";
+ }
+}
+
+/**
+ * Resets the attributes to the starting value
+ */
+void Configuration::set_default_values() {
+ std::list<keldysh_contour_pt>::iterator apt, cpt;
+ for (cpt = creation_pts.begin(), apt = annihila_pts.begin(); 
+      cpt != creation_pts.end() && apt != annihila_pts.end(); 
+      ++cpt, ++apt) 
+ {
+  times_list_.insert(apt->t);
+  times_list_.insert(cpt->t);
+  orbitals_list_.insert(0, apt->x);
+  orbitals_list_.insert(0, cpt->x);
+ }
+ set_default_matrix();
+}
+
+/**
+ * Inserts annigilation and creation points into the empty (should be) matrix
+ */
+void Configuration::set_default_matrix() {
+ std::list<keldysh_contour_pt>::iterator apt, cpt;
+ for (cpt = creation_pts.begin(), apt = annihila_pts.begin(); 
+      cpt != creation_pts.end() && apt != annihila_pts.end(); 
+      ++cpt, ++apt) {  
+  matrices[apt->s].insert_at_end(*apt, *cpt);
+ }
+}
+
+/**
  * Insert a vertex at position k (before index k).
  */
 void Configuration::insert(int k, vertex_t vtx) {
  times_list_.insert(vtx.t);
  orbitals_list_.insert(k, vtx.x_up);
 
+ vertices_list_.insert(k, vtx);
  auto pt = vtx.get_up_pt();
  matrices[up].insert(k, k, pt, pt);
  pt = vtx.get_down_pt();
@@ -90,12 +148,14 @@ void Configuration::insert2(int k1, int k2, vertex_t vtx1, vertex_t vtx2) {
  times_list_.insert(vtx2.t);
  orbitals_list_.insert2(k1, k2, vtx1.x_up, vtx2.x_up);
 
+ vertices_list_.insert2(k1, k2, vtx1, vtx2);
  auto pt1 = vtx1.get_up_pt();
  auto pt2 = vtx2.get_up_pt();
  matrices[up].insert2(k1, k2, k1, k2, pt1, pt2, pt1, pt2);
  pt1 = vtx1.get_down_pt();
  pt2 = vtx2.get_down_pt();
  matrices[down].insert2(k1, k2, k1, k2, pt1, pt2, pt1, pt2);
+
 
  potential_list.insert2(k1, k2, vtx1.potential, vtx2.potential);
  potential *= vtx1.potential * vtx2.potential;
@@ -110,6 +170,7 @@ void Configuration::remove(int k) {
  times_list_.erase(get_time(k)); // before matrix removal
  orbitals_list_.erase(k);
 
+ vertices_list_.erase(k);
  for (auto& m : matrices) m.remove(k, k);
 
  potential /= potential_list[k];
@@ -126,6 +187,7 @@ void Configuration::remove2(int k1, int k2) {
  times_list_.erase(get_time(k2));
  orbitals_list_.erase2(k1, k2);
 
+ vertices_list_.erase2(k1, k2);
  for (auto& m : matrices) m.remove2(k1, k2, k1, k2);
 
  potential /= potential_list[k1] * potential_list[k2];
@@ -142,6 +204,7 @@ void Configuration::change_vertex(int k, vertex_t vtx) {
  times_list_.insert(vtx.t);
  orbitals_list_[k] = vtx.x_up;
 
+ vertices_list_[k] = vtx;
  auto pt = vtx.get_up_pt();
  matrices[up].change_row(k, pt);
  matrices[up].change_col(k, pt);
@@ -160,13 +223,41 @@ void Configuration::change_vertex(int k, vertex_t vtx) {
  * points in the matrices.
  */
 vertex_t Configuration::get_vertex(int k) const {
- auto pt_up = matrices[up].get_x(k);
- auto pt_down = matrices[down].get_x(k);
- return {pt_up.x, pt_down.x, pt_up.t, pt_up.k_index, potential_list[k]}; // no consistency check is done
+ return vertices_list_[k];
+};
+
+/**
+ * Insert vertices consequently
+ */
+void Configuration::insert_vertices(wrapped_forward_list<vertex_t> vertices) {
+ int i = 0;
+ int begin_order = order;
+ while (!vertices.empty()){
+  insert(begin_order + i, vertices.front());
+  vertices.pop_front();
+  ++i;
+ }
+};
+
+/**
+ * Resets configuration to the given vertices
+ */
+void Configuration::reset_to_vertices(wrapped_forward_list<vertex_t> vertices) {
+ times_list_.clear();
+ orbitals_list_.clear(); 
+ for (auto& m : matrices) m.clear();
+ potential_list.clear();
+ order = 0;
+ potential = 1.0;
+ vertices_list_.clear();
+
+ set_default_values();
+
+ insert_vertices(vertices);
 };
 
 inline timec_t Configuration::get_time(int k) const {
- return matrices[up].get_x(k).t;
+ return vertices_list_[k].t;
 };
 
 /**

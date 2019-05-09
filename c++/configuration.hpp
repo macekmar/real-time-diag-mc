@@ -6,6 +6,7 @@
 #include <set>
 #include <iterator>
 #include <utility>
+#include <list>
 
 using triqs::modified_det_manip::det_manip;
 
@@ -139,6 +140,8 @@ class Configuration {
  wrapped_forward_list<double> potential_list;
  std::set<timec_t> times_list_; // sorted container
  wrapped_forward_list<orbital_t> orbitals_list_;
+ wrapped_forward_list<vertex_t> vertices_list_;
+ std::list<keldysh_contour_pt> creation_pts, annihila_pts;
  double potential = 1.;
  int cycles_trapped = 0;
 
@@ -184,6 +187,8 @@ class Configuration {
  inline timec_t get_time(int k) const;
 
  void remove_all() { while (order > 0) remove(0); };
+ void insert_vertices(wrapped_forward_list<vertex_t> vertices);
+ void reset_to_vertices(wrapped_forward_list<vertex_t> vertices);
 
  void evaluate();
  void accept_config();
@@ -192,11 +197,15 @@ class Configuration {
  // getters
  const std::set<timec_t>& times_list() const {return times_list_;};
  const wrapped_forward_list<orbital_t>& orbitals_list() const {return orbitals_list_;};
+ const wrapped_forward_list<vertex_t> vertices_list() const {return vertices_list_;};
 
  // utility and debug
  std::vector<double> signature();
  void register_accepted_config();
  void register_attempted_config();
+ void set_ops();
+ void set_default_values();
+ void set_default_matrix();
  void print();
 };
 

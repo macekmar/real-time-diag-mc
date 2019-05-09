@@ -106,6 +106,9 @@ struct solve_parameters_t {
  /// Preferential sampling parameter -- time sampling lorentzian width
  double ps_gamma = 1.;
 
+ // Quasi Monte Carlo
+ bool do_quasi_mc = false;
+
  solve_parameters_t(){};
 
 };

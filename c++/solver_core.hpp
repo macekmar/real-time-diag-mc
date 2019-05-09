@@ -42,7 +42,8 @@ class solver_core {
 
  bool collect_results(int size_partition);
 
- dcomplex evaluate_qmc_weight(std::vector<std::tuple<orbital_t, orbital_t, timec_t>> vertices);
+ dcomplex evaluate_qmc_weight(std::vector<std::tuple<orbital_t, orbital_t, timec_t>> vertices, bool do_measure = false);
+ void collect_qmc_weight(int dummy);
 
  // getters
  double get_qmc_duration() const { return cum_qmc_duration; }
