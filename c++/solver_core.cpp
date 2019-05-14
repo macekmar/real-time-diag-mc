@@ -305,7 +305,7 @@ int solver_core::finish(const int run_status) {
  *
  * This is a utility function, not to be used during a Monte-Carlo run.
  */
-dcomplex solver_core::evaluate_qmc_weight(std::vector<std::tuple<orbital_t, orbital_t, timec_t>> vertices, bool do_measure) {
+dcomplex solver_core::evaluate_qmc_weight(std::vector<std::tuple<orbital_t, orbital_t, timec_t>> vertices) {
  if (vertices.size() > params.max_perturbation_order)
   TRIQS_RUNTIME_ERROR << "Too many vertices compared to the max perturbation order.";
 
@@ -332,28 +332,10 @@ dcomplex solver_core::evaluate_qmc_weight(std::vector<std::tuple<orbital_t, orbi
 
  config.evaluate();
  config.accept_config();
- if (params.do_quasi_mc) {
-   // TODO: Get model weight !
-   dcomplex model_weight = 1.0;
-
-  if (params.method == 1) {
-   config.accepted_kernels *= std::abs(config.accepted_weight);
-   config.accepted_kernels /= std::abs(model_weight);
-  }
- }
-
- if (do_measure) {
-   TwoDetKernelMeasure measure = TwoDetKernelMeasure(&config, &kernels_binning, &pn, &kernels, &kernel_diracs, &nb_kernels);
-   measure.accumulate(1);
- }
+ 
  return config.accepted_weight;
 };
 
-void solver_core::collect_qmc_weight(int dummy) {
-  TwoDetKernelMeasure measure = TwoDetKernelMeasure(&config, &kernels_binning, &pn, &kernels, &kernel_diracs, &nb_kernels);
-  mpi::communicator world;
-  measure.collect_results(world);
-};
 
 //// array getters with emptyness check
 // triqs2 doesnt want to give empty arrays to python, raising a very unspecific error

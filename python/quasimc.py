@@ -78,12 +78,12 @@ def quasi_solver(solver, **params):
                 print "\nCalculating points from {0} to {1}.".format(N_vec[iN], N_vec[iN+1])
        
             itr = 0
-            for v in generator:
+            for l in generator:
                 if N_calculated == N_vec[iN+1]:
                     break
                 # v += shift # TODO
-                u = model.v_to_u(inv_cdf, v[np.newaxis,:])[0]
-                u = np.array(u, dtype=np.float)
+                v = model.l_to_v(inv_cdf, l[np.newaxis,:])[0]
+                u = np.array(v, dtype=np.float)
                 N_generated += 1
                 # check if domain
                 if np.all(u > t_min):
@@ -91,7 +91,8 @@ def quasi_solver(solver, **params):
                     if itr % world.size != world.rank:
                         continue           
                     # calculate
-                    solver.evaluate_qmc_weight([(0, 0, c) for c in u], True)
+                    solver.evaluate_importance_sampling([float(x) for x in l], True)
+
                     N_calculated += 1
                 ### Process and save results
                 # save above save_period or at the end of each N_vec
@@ -99,7 +100,7 @@ def quasi_solver(solver, **params):
                 if time_from_save.total_seconds() > params_py['save_period'] or \
                                                     N_calculated == N_vec[iN+1]:
                     world.barrier()
-                    solver.collect_qmc_weight(1)
+                    solver.collect_sampling_weights(1)
                     if world.rank == 0:
                         if N_calculated != N_vec[iN+1]:
                             ratio_calc = (N_calculated - N_vec[iN])/float(N_vec[iN+1] - N_vec[iN])

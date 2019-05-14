@@ -109,6 +109,9 @@ struct solve_parameters_t {
  // Quasi Monte Carlo
  bool do_quasi_mc = false;
 
+ std::vector<std::vector<double>> sampling_model_intervals;
+ std::vector<std::vector<std::vector<double>>> sampling_model_coeff;
+
  solve_parameters_t(){};
 
 };

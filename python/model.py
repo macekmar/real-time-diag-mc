@@ -7,7 +7,7 @@ from mpi4py import MPI
 def get(solver, u, do_measure=False):
     """ Returns weights in points u."""
     return np.array([
-        solver.evaluate_qmc_weight([(0, 0, c) for c in coors], do_measure) for coors in u
+        solver.evaluate_qmc_weight([(0, 0, c) for c in coors]) for coors in u
     ])
 
 def model(funs, u):
@@ -34,7 +34,7 @@ def model(funs, u):
         vals *= funs[i](arg)
     return vals
 
-def v_to_u(inv_cdf, v):
+def l_to_v(inv_cdf, v):
     """Maps v back to u domain."""
     dim = v.shape[-1]
     u = np.zeros_like(v)
