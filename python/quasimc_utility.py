@@ -60,8 +60,16 @@ def process_parameters(params, default_py, default_cpp):
         random_shift = np.zeros((max(params_py['order']),))
         overwrite = True
 
+    # Process random seed
+    if params_py['random_seed'] is False:
+        seed = generator.default_seed
+        if world.rank == 0:
+            print("Setting the seed to the default value: %d of the generator: %s" % (generator.default_seed, str(generator)))
+    else:
+        seed = params_py['random_seed']
+
     # Check if the results file already exist
     if params_py['filemode'] is 'w' and os.path.isfile(params_py['filename']):
         raise IOError("File %s already exists!" % params_py['filename'])
 
-    return t_min, model, generator, nb_bins_sum, random_shift, overwrite, params_py, params_cpp
+    return t_min, model, generator, nb_bins_sum, random_shift, seed, overwrite, params_py, params_cpp

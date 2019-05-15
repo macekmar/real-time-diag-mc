@@ -21,6 +21,7 @@ PARAMS_PYTHON_KEYS['frequency_range'] = False # False to store times, tuple (fre
 PARAMS_PYTHON_KEYS['num_gen_mode'] = 'complex'
 PARAMS_PYTHON_KEYS['num_gen'] = None
 PARAMS_PYTHON_KEYS['random_shift'] = False
+PARAMS_PYTHON_KEYS['random_seed'] = False
 PARAMS_PYTHON_KEYS['filemode'] = 'w' # Filemode for opening the hdf files, 'w' or 'a'
 
 ### Removed not needed
@@ -31,8 +32,8 @@ def quasi_solver(solver, **params):
 
     start_time = datetime.now()
 
-    t_min, model_funs, gen_class, nb_bins_sum, random_shift, overwrite, \
-    params_py, params_cpp = \
+    t_min, model_funs, gen_class, nb_bins_sum, random_shift, seed, \
+    overwrite, params_py, params_cpp = \
                 process_parameters(params, PARAMS_PYTHON_KEYS, PARAMS_CPP_KEYS)
     
     N_vec = [0] + params_py['N'][:]
@@ -55,8 +56,9 @@ def quasi_solver(solver, **params):
     metadata['orders'] = orders
     metadata['model_integrals'] = model_ints
     metadata['random_shift'] = random_shift
+    metadata['random_num_generator'] = str(gen_class)
+    metadata['random_seed'] = seed
     results_to_save['metadata'] = metadata
-    # TODO: generator, seed
     if world.rank == 0:
         params_py['run_name'] = save_empty_results(results_to_save, params_py['filename'], params_py['run_name'], overwrite=overwrite, filemode=params_py['filemode'])
         print("Saving into run_name: %s" % params_py['run_name'])     
@@ -70,7 +72,8 @@ def quasi_solver(solver, **params):
             print "\n=================================================================="
             print "Order: {0}\n".format(order)
 
-        generator = gen_class(dim=order, seed=1<<30)  # TODO seed
+
+        generator = gen_class(dim=order, seed=seed)
 
         ### Calculate
         N_generated = 0

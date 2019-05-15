@@ -66,7 +66,7 @@ class HarmonicGenerator():
         Martin Roberts, May 2018.
     
     """
-    def __init__(self,dim=1,seed=1<<30):
+    def __init__(self,dim,seed):
         """
         qh = QH(d=1, seed=1<<30) creates a generator for d-dimensional 
         quasi-random vectors based on Harmonious Number Additive Recurrence.    
@@ -77,9 +77,6 @@ class HarmonicGenerator():
         h = phi(dim)
         for i in range(dim):
             self.alpha[i] = np.power(h,-(i+1))
-
-    def __str__(self):
-        return "Harmonic generator"
 
     def rand(self,n=1,out=None):
         """
@@ -105,3 +102,8 @@ class HarmonicGenerator():
         while True:
             self.count += 1
             yield ((self.count - 1) * self.alpha) % 1
+
+    class __metaclass__(type):    
+        def __str__(self):
+            return "Harmonic generator"
+        default_seed = 1<<30
