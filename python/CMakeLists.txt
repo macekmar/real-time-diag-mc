@@ -26,3 +26,6 @@ triqs_set_rpath_for_target(g0_lattice_1d)
 configure_file(version.py.in version.py)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/version.py DESTINATION ${TRIQS_PYTHON_LIB_DEST_ROOT}/${CMAKE_PROJECT_NAME})
 install (FILES ${PYTHON_SOURCES} DESTINATION ${TRIQS_PYTHON_LIB_DEST_ROOT}/${CMAKE_PROJECT_NAME})
+
+# add generators
+add_subdirectory(generators)
