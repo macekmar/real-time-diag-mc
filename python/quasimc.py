@@ -20,7 +20,7 @@ PARAMS_PYTHON_KEYS['frequency_range'] = False # False to store times, tuple (fre
 
 PARAMS_PYTHON_KEYS['num_gen_mode'] = 'complex'
 PARAMS_PYTHON_KEYS['num_gen'] = None
-PARAMS_PYTHON_KEYS['random_shift'] = None
+PARAMS_PYTHON_KEYS['random_shift'] = False
 PARAMS_PYTHON_KEYS['filemode'] = 'w' # Filemode for opening the hdf files, 'w' or 'a'
 
 ### Removed not needed

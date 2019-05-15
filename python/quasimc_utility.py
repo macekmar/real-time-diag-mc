@@ -36,7 +36,7 @@ def process_parameters(params, default_py, default_cpp):
         nb_bins_sum = 1
 
     # Check random shift
-    if params_py['random_shift'] is not None:
+    if params_py['random_shift'] is not False:
         random_shift = params_py['random_shift']
         if type(random_shift) is not np.ndarray:
             raise Exception("Parameter random_shift has to be a numpy array.")
@@ -57,7 +57,7 @@ def process_parameters(params, default_py, default_cpp):
             if world.rank == 0:
                 print("Changing run_name to %s" % name)
     else:
-        random_shift = 0.0
+        random_shift = np.zeros((max(params_py['order']),))
         overwrite = True
 
     # Check if the results file already exist
