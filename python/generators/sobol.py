@@ -1,9 +1,13 @@
-#!/usr/bin/env python
-from __future__ import print_function
+# This is a modified file written by Dirk Nuyens and taken from 
+# https://bitbucket.org/dnuyens/qmc-generators/src/master/
+# The original file is digitalseq_b2g.py in the python folder
+#
+# The accompanying file gen_sobol_Cs_col (renamed from sobol_Cs.col)
+# contains generating numbers (matrices?) based on  new-joe-kuo-6.21201
+# (https://web.maths.unsw.edu.au/~fkuo/sobol/index.html)
 
-####
-## (C) Dirk Nuyens, KU Leuven, 2016,...
-##
+import os
+import numpy as np
 
 # the following function is duplicated from poylat.py such that this file can be used stand alone
 def bitreverse(a, m=None):
@@ -13,7 +17,7 @@ def bitreverse(a, m=None):
     a_rev = int(a_bin[::-1], 2) << max(0, m - a_m)
     return a_rev
 
-class digitalseq_b2g:
+class digitalseq_b2g(object): # EDIT Marjan Macek: remove returnDeepCopy
     """
       Digital sequence point generator based on generating matrices.
       This sequence generator can take classical (m by m) generating matrices
@@ -23,7 +27,7 @@ class digitalseq_b2g:
       This code is specific for base 2 digital nets.
     """
 
-    def __init__(self, Cs, kstart=0, m=None, s=None, returnDeepCopy=True):
+    def __init__(self, Cs, kstart=0, m=None, s=None):
         """
           Construct a digital sequence point generator given a list of
           generating matrices.
@@ -155,8 +159,7 @@ class digitalseq_b2g:
         self.Csr = [ [ bitreverse(int(Csjc), self.t) for Csjc in Csj ] for Csj in Cs ]
         self.n = 2**self.m
         self.recipd = 2**-self.t
-        self.returnDeepCopy = returnDeepCopy
-        self.reset()
+        self.reset() # EDIT Marjan Macek: remove returnDeepCopy
 
     def reset(self):
         """Reset this digital sequence to its initial state: next index = kstart."""
@@ -195,26 +198,27 @@ class digitalseq_b2g:
         """Return the next point of the sequence or raise StopIteration."""
         if self.k < self.n - 1:
             self.calc_next()
-            if self.returnDeepCopy:
-                from copy import deepcopy
-                return deepcopy(self.x)
-            return self.x
+            return np.array(self.x) # EDIT Marjan Macek: delete return copy, return np,array
         else:
             raise StopIteration
 
     def next(self):
         return self.__next__()
 
-if __name__ == "__main__":
-    import sys
-    if len(sys.argv) > 1: f = sys.argv[1]
-    else: f = sys.stdin
-    seq = digitalseq_b2g(f)
-    if seq.t > 53:
-        import mpmath
-        mpmath.mp.prec = seq.t
-        seq.recipd = mpmath.mpf(1) / 2**seq.t
-    for x in seq:
-        for xj in x:
-            print(xj, end=' ')
-        print()
+class SobolGenerator(digitalseq_b2g):
+    def __init__(self, dim, seed):
+        f = open(os.path.dirname(__file__) + "/sobol_Cs.col")
+        i = 0
+        Cs = []
+        for line in f:
+            Cs.append(list(map(int, line.split())))
+            i += 1
+            if i >= dim:
+                break
+        f.close()
+        super(SobolGenerator, self).__init__(Cs=Cs, kstart=seed+1)
+
+    class __metaclass__(type):    
+        def __str__(self):
+            return "Sobol generator"
+        default_seed = 1
