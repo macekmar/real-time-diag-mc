@@ -2,7 +2,7 @@ import numpy as np
 from mpi4py import MPI
 from pytriqs.archive import HDFArchive
 from fourier_transform import fourier_transform, _next_regular
-from solver import reduce_binning
+from solver import reduce_binning, _next_name_gen
 import h5py
 
 def extract_results(solver):
@@ -77,9 +77,9 @@ def save_empty_results(results, filename, run_name, overwrite=True, filemode='w'
             else:
                 ### Change run_name by appending a (or increasing the) trailling number
                 nng = _next_name_gen(run_name)
-                run_name = nng(run_name)
+                run_name = nng.next()
                 while run_name in ar:
-                    run_name = nng(run_name)
+                    run_name = nng.next()
 
         ### new empty group
         ar.create_group(run_name)

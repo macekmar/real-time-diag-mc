@@ -1,12 +1,11 @@
 import sys
-from datetime import datetime, timedelta
-from time import clock
+from datetime import datetime
 
 import numpy as np
+from mpi4py import MPI
 
 import model
 from fourier_transform import fourier_transform
-from mpi4py import MPI
 from quasimc_results import *
 from quasimc_utility import process_parameters
 from solver import PARAMS_CPP_KEYS, PARAMS_PYTHON_KEYS, _add_params_to_results
@@ -21,18 +20,19 @@ PARAMS_PYTHON_KEYS['frequency_range'] = False # False to store times, tuple (fre
 
 PARAMS_PYTHON_KEYS['num_gen_mode'] = 'complex'
 PARAMS_PYTHON_KEYS['num_gen'] = None
-PARAMS_PYTHON_KEYS['random_shift'] = 0.0
+PARAMS_PYTHON_KEYS['random_shift'] = None
 PARAMS_PYTHON_KEYS['filemode'] = 'w' # Filemode for opening the hdf files, 'w' or 'a'
 
 ### Removed not needed
-del(PARAMS_PYTHON_KEYS['nb_warmup_cycles'])
+del PARAMS_PYTHON_KEYS['nb_warmup_cycles']
 
 def quasi_solver(solver, **params):
     world = MPI.COMM_WORLD
 
     start_time = datetime.now()
 
-    t_min, model_funs, gen_class, nb_bins_sum, params_py, params_cpp = \
+    t_min, model_funs, gen_class, nb_bins_sum, random_shift, overwrite, \
+    params_py, params_cpp = \
                 process_parameters(params, PARAMS_PYTHON_KEYS, PARAMS_CPP_KEYS)
     
     N_vec = [0] + params_py['N'][:]
@@ -54,10 +54,12 @@ def quasi_solver(solver, **params):
     metadata['nb_proc'] = MPI.COMM_WORLD.size
     metadata['orders'] = orders
     metadata['model_integrals'] = model_ints
+    metadata['random_shift'] = random_shift
     results_to_save['metadata'] = metadata
-    # TODO: generator, seed, random shift
+    # TODO: generator, seed
     if world.rank == 0:
-        params_py['run_name'] = save_empty_results(results_to_save, params_py['filename'], params_py['run_name'], params_py['filemode'])
+        params_py['run_name'] = save_empty_results(results_to_save, params_py['filename'], params_py['run_name'], overwrite=overwrite, filemode=params_py['filemode'])
+        print("Saving into run_name: %s" % params_py['run_name'])     
 
     ### Calculation
     last_save = datetime.now()
@@ -76,20 +78,19 @@ def quasi_solver(solver, **params):
         for iN in range(len(N_vec) - 1):
             if world.rank == 0:
                 print "\nCalculating points from {0} to {1}.".format(N_vec[iN], N_vec[iN+1])
-       
+
             itr = 0
             for l in generator:
                 if N_calculated == N_vec[iN+1]:
                     break
-                # v += shift # TODO
-                v = model.l_to_v(inv_cdf, l[np.newaxis,:])[0]
-                u = np.array(v, dtype=np.float)
+                l = (l + random_shift[:order]) % 1
+                u = solver.l_to_u([float(x) for x in l])
                 N_generated += 1
                 # check if domain
-                if np.all(u > t_min):
+                if np.all(np.array(u) > t_min):
                     itr += 1
                     if itr % world.size != world.rank:
-                        continue           
+                        continue
                     # calculate
                     solver.evaluate_importance_sampling([float(x) for x in l], True)
 
@@ -125,4 +126,3 @@ def quasi_solver(solver, **params):
                 print '\nDate time:', datetime.now()
                 print 'Total run time:', datetime.now() - start_time, ' Order run time:', datetime.now() - order_start_time
                 print 'Demanded points: %d  Gen. points: %d Calc. pts: %d' % (N_vec[iN+1],  N_generated, world.size*N_calculated)
-
