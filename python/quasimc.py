@@ -4,10 +4,9 @@ from datetime import datetime
 import numpy as np
 from mpi4py import MPI
 
-import model
 from fourier_transform import fourier_transform
 from quasimc_results import *
-from quasimc_utility import process_parameters
+from quasimc_utility import process_parameters, calculate_inv_cdfs
 from solver import PARAMS_CPP_KEYS, PARAMS_PYTHON_KEYS, _add_params_to_results
 
 ###############################################################################
@@ -23,6 +22,7 @@ PARAMS_PYTHON_KEYS['num_gen'] = None
 PARAMS_PYTHON_KEYS['random_shift'] = False
 PARAMS_PYTHON_KEYS['random_seed'] = False
 PARAMS_PYTHON_KEYS['filemode'] = 'w' # Filemode for opening the hdf files, 'w' or 'a'
+PARAMS_PYTHON_KEYS['nb_sampling_intervals'] = 1001
 
 ### Removed not needed
 del PARAMS_PYTHON_KEYS['nb_warmup_cycles']
@@ -42,9 +42,15 @@ def quasi_solver(solver, **params):
         orders = [orders]
 
     ### Calculate inverse CDFs and the integral of the model
-    integral, inv_cdf = model.calculate_inv_cdfs(model_funs, t_min=t_min)
+    # Integrals are not needed for normalization, because the model is already
+    # normalized.
+    integral, inv_cdf = calculate_inv_cdfs(model_funs, t_min=t_min, Nt=params_py['nb_sampling_intervals'])
     model_ints = [np.prod(integral[:i+1]) for i in range(len(integral))]
     model_ints = np.insert(model_ints, 0, 1)
+    # Set model
+    intervals = [inv_cdf[i].x.tolist() for i in range(max(params_py['order']))]
+    coeff = [inv_cdf[i].c.T.tolist() for i in range(max(params_py['order']))]
+    solver.set_model(intervals, coeff)
 
     ### Prepare results
     results_to_save = create_empty_results(orders, N_vec, params_py, params_cpp)
@@ -58,6 +64,8 @@ def quasi_solver(solver, **params):
     metadata['random_shift'] = random_shift
     metadata['random_num_generator'] = str(gen_class)
     metadata['random_seed'] = seed
+    metadata['sampling_coeff'] = coeff
+    metadata['sampling_intervals'] = intervals
     results_to_save['metadata'] = metadata
     if world.rank == 0:
         params_py['run_name'] = save_empty_results(results_to_save, params_py['filename'], params_py['run_name'], overwrite=overwrite, filemode=params_py['filemode'])
@@ -113,8 +121,8 @@ def quasi_solver(solver, **params):
                         chunk_results = extract_results(solver)
                         chunk_results['N_generated'] = N_generated
                         chunk_results['N_calculated'] = world.size*N_calculated
-                        # Normalization
-                        chunk_results['kernels'][order-1] *= model_ints[order]/float(N_generated)
+                        # # Normalization
+                        chunk_results['kernels'][order-1] /= float(N_generated)
 
                         metadata['total_duration'] = (datetime.now() - start_time).total_seconds()
                         metadata['order_duration'] = (datetime.now() - order_start_time).total_seconds()

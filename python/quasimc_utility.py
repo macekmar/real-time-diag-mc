@@ -3,6 +3,8 @@ import re
 
 import numpy as np
 from mpi4py import MPI
+from scipy.integrate import cumtrapz
+from scipy.interpolate import PchipInterpolator
 
 from solver import extract_and_check_params
 
@@ -73,3 +75,22 @@ def process_parameters(params, default_py, default_cpp):
         raise IOError("File %s already exists!" % params_py['filename'])
 
     return t_min, model, generator, nb_bins_sum, random_shift, seed, overwrite, params_py, params_cpp
+
+
+def _calculate_inv_cdf(fun, t_min, t_max=0, Nt=1001):
+    """Calculates inverse CDF for a nonnormalized function."""
+    u_lin = np.linspace(t_min, t_max, Nt)
+    fun_val = np.abs(fun(u_lin[:, np.newaxis])) # Newaxis is necessary for the get function
+    cdf = cumtrapz(fun_val, u_lin, initial=0)
+    integral = cdf[-1]
+    cdf = cdf/integral
+    return integral, PchipInterpolator(cdf, u_lin)
+
+def calculate_inv_cdfs(funs, t_min, t_max=0, Nt=1001):
+    """Calculates inverse CDF for nonnormalized functions."""
+    integral = [None for i in range(len(funs))]
+    inv_cdf = [None for i in range(len(funs))]
+    for i, f in enumerate(funs):
+        integral[i], inv_cdf[i] = _calculate_inv_cdf(f, t_min=t_min, t_max=t_max, Nt=Nt)
+
+    return integral, inv_cdf
