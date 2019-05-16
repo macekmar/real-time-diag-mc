@@ -39,7 +39,7 @@ template <> struct py_converter<solve_parameters_t> {
   PyDict_SetItemString( d, "store_configurations"    , convert_to_python(x.store_configurations));
   PyDict_SetItemString( d, "preferential_sampling"   , convert_to_python(x.preferential_sampling));
   PyDict_SetItemString( d, "ps_gamma"                , convert_to_python(x.ps_gamma));
-  PyDict_SetItemString( d, "do_quasi_mc"             , convert_to_python(x.do_quasi_mc));
+  PyDict_SetItemString( d, "do_importance_sampling"  , convert_to_python(x.do_importance_sampling));
   PyDict_SetItemString( d, "sampling_model_intervals", convert_to_python(x.sampling_model_intervals));
   PyDict_SetItemString( d, "sampling_model_coeff"    , convert_to_python(x.sampling_model_coeff));
   return d;
@@ -87,7 +87,7 @@ template <> struct py_converter<solve_parameters_t> {
   _get_optional(dic, "store_configurations"    , res.store_configurations       ,0);
   _get_optional(dic, "preferential_sampling"   , res.preferential_sampling      ,false);
   _get_optional(dic, "ps_gamma"                , res.ps_gamma                   ,1.);
-  _get_optional(dic, "do_quasi_mc"             , res.do_quasi_mc                ,false);
+  _get_optional(dic, "do_importance_sampling"  , res.do_importance_sampling     ,false);
   res.sampling_model_intervals = convert_from_python<std::vector<std::vector<double> >>(PyDict_GetItemString(dic, "sampling_model_intervals"));
   res.sampling_model_coeff = convert_from_python<std::vector<std::vector<std::vector<double> > >>(PyDict_GetItemString(dic, "sampling_model_coeff"));
   return res;
@@ -120,7 +120,7 @@ template <> struct py_converter<solve_parameters_t> {
   std::stringstream fs, fs2; int err=0;
 
 #ifndef TRIQS_ALLOW_UNUSED_PARAMETERS
-  std::vector<std::string> ks, all_keys = {"creation_ops","annihilation_ops","extern_alphas","nonfixed_op","interaction_start","alpha","nb_orbitals","potential","U","w_ins_rem","w_dbl","w_shift","max_perturbation_order","min_perturbation_order","forbid_parity_order","length_cycle","random_seed","random_name","verbosity","method","nb_bins","singular_thresholds","cycles_trapped_thresh","store_configurations","preferential_sampling","ps_gamma","do_quasi_mc","sampling_model_intervals","sampling_model_coeff"};
+  std::vector<std::string> ks, all_keys = {"creation_ops","annihilation_ops","extern_alphas","nonfixed_op","interaction_start","alpha","nb_orbitals","potential","U","w_ins_rem","w_dbl","w_shift","max_perturbation_order","min_perturbation_order","forbid_parity_order","length_cycle","random_seed","random_name","verbosity","method","nb_bins","singular_thresholds","cycles_trapped_thresh","store_configurations","preferential_sampling","ps_gamma","do_importance_sampling","sampling_model_intervals","sampling_model_coeff"};
   pyref keys = PyDict_Keys(dic);
   if (!convertible_from_python<std::vector<std::string>>(keys, true)) {
    fs << "\nThe dict keys are not strings";
@@ -158,7 +158,7 @@ template <> struct py_converter<solve_parameters_t> {
   _check_optional <int                                                                             >(dic, fs, err, "store_configurations"    , "int");
   _check_optional <bool                                                                            >(dic, fs, err, "preferential_sampling"   , "bool");
   _check_optional <double                                                                          >(dic, fs, err, "ps_gamma"                , "double");
-  _check_optional <bool                                                                            >(dic, fs, err, "do_quasi_mc"             , "bool");
+  _check_optional <bool                                                                            >(dic, fs, err, "do_importance_sampling"  , "bool");
   _check_mandatory<std::vector<std::vector<double> >                                               >(dic, fs, err, "sampling_model_intervals", "std::vector<std::vector<double> >");
   _check_mandatory<std::vector<std::vector<std::vector<double> > >                                 >(dic, fs, err, "sampling_model_coeff"    , "std::vector<std::vector<std::vector<double> > >");
   if (err) goto _error;

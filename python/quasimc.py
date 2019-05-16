@@ -17,7 +17,6 @@ PARAMS_PYTHON_KEYS['order'] = None # int or a list of ints
 PARAMS_PYTHON_KEYS['model'] = None
 PARAMS_PYTHON_KEYS['frequency_range'] = False # False to store times, tuple (freq_min, freq_max, nb_freq) to store frequencies
 
-PARAMS_PYTHON_KEYS['num_gen_mode'] = 'complex'
 PARAMS_PYTHON_KEYS['num_gen'] = None
 PARAMS_PYTHON_KEYS['random_shift'] = False
 PARAMS_PYTHON_KEYS['random_seed'] = False
@@ -26,6 +25,10 @@ PARAMS_PYTHON_KEYS['nb_sampling_intervals'] = 1001
 
 ### Removed not needed
 del PARAMS_PYTHON_KEYS['nb_warmup_cycles']
+del PARAMS_PYTHON_KEYS['staircase']
+del PARAMS_PYTHON_KEYS['nb_cycles']
+del PARAMS_PYTHON_KEYS['g0_lesser']
+del PARAMS_PYTHON_KEYS['g0_greater']
 
 def quasi_solver(solver, **params):
     world = MPI.COMM_WORLD
