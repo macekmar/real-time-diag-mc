@@ -91,7 +91,7 @@ def quasi_solver(solver, **params):
         N_calculated = 0
         for iN in range(len(N_vec) - 1):
             if world.rank == 0:
-                print "\nCalculating points from {0} to {1}.".format(N_vec[iN], N_vec[iN+1])
+                print "\nCalculating points from {0} to {1}.".format(world.size*N_vec[iN], world.size*N_vec[iN+1])
 
             itr = 0
             for l in generator:
@@ -139,4 +139,4 @@ def quasi_solver(solver, **params):
             if world.rank == 0:
                 print '\nDate time:', datetime.now()
                 print 'Total run time:', datetime.now() - start_time, ' Order run time:', datetime.now() - order_start_time
-                print 'Demanded points: %d  Gen. points: %d Calc. pts: %d' % (N_vec[iN+1],  N_generated, world.size*N_calculated)
+                print 'Demanded points: %d*%d  Gen. points: %d Calc. pts: %d' % (world.size, N_vec[iN+1],  N_generated, world.size*N_calculated)
