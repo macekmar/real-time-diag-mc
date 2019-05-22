@@ -7,8 +7,10 @@ class PseudoGenerator():
         self.rng.seed(seed)
 
     def __iter__(self):
-        while True:
-            yield self.rng.rand(self.dim)
+        return self
+
+    def next(self):
+        return self.rng.rand(self.dim)
 
     class __metaclass__(type):    
         def __str__(self):

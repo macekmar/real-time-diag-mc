@@ -99,9 +99,11 @@ class HarmonicGenerator():
         return np.outer(counts, self.alpha) % 1
 
     def __iter__(self):
-        while True:
-            self.count += 1
-            yield ((self.count - 1) * self.alpha) % 1
+        return self
+
+    def next(self):
+        self.count += 1
+        return ((self.count - 1) * self.alpha) % 1
 
     class __metaclass__(type):    
         def __str__(self):

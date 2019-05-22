@@ -93,22 +93,22 @@ def quasi_solver(solver, **params):
             if world.rank == 0:
                 print "\nCalculating points from {0} to {1}.".format(world.size*N_vec[iN], world.size*N_vec[iN+1])
 
-            itr = 0
-            for l in generator:
-                if N_calculated == N_vec[iN+1]:
-                    break
-                l = (l + random_shift[:order]) % 1
-                u = solver.l_to_u([float(x) for x in l])
-                N_generated += 1
-                # check if domain
-                if np.all(np.array(u) > t_min):
-                    itr += 1
-                    if itr % world.size != world.rank:
-                        continue
-                    # calculate
-                    solver.evaluate_importance_sampling([float(x) for x in l], True)
+            for _ in range(N_vec[iN+1] - N_vec[iN]):
+                # Generate l whose u lies inside of the domain
+                l = []
+                while len(l) < world.size:
+                    N_generated += 1
+                    l_proposed = generator.next()
+                    l_proposed = (l_proposed + random_shift[:order]) % 1
+                    u = solver.l_to_u([float(x) for x in l_proposed])
+                    # check if in domain
+                    if np.all(np.array(u) > t_min):
+                        l.append(l_proposed)
 
-                    N_calculated += 1
+                # each rank only calculates the rank-th point out of world.size number of them
+                solver.evaluate_importance_sampling([float(x) for x in l[world.rank]], True)
+
+                N_calculated += 1
                 ### Process and save results
                 # save above save_period or at the end of each N_vec
                 time_from_save = datetime.now() - last_save
@@ -139,4 +139,4 @@ def quasi_solver(solver, **params):
             if world.rank == 0:
                 print '\nDate time:', datetime.now()
                 print 'Total run time:', datetime.now() - start_time, ' Order run time:', datetime.now() - order_start_time
-                print 'Demanded points: %d*%d  Gen. points: %d Calc. pts: %d' % (world.size, N_vec[iN+1],  N_generated, world.size*N_calculated)
+                print 'Total demanded points: %d*%d  Gen. points: %d Calc. pts: %d' % (world.size, N_vec[iN+1],  N_generated, world.size*N_calculated)
