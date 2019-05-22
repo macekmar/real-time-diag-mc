@@ -40,6 +40,8 @@ def quasi_solver(solver, **params):
                 process_parameters(params, PARAMS_PYTHON_KEYS, PARAMS_CPP_KEYS)
     
     N_vec = [0] + params_py['N'][:]
+    N_vec = list(set(N_vec)) # Remove duplicates
+    N_vec.sort()
     orders = params_py["order"]
     if isinstance(orders, int):
         orders = [orders]
