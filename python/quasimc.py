@@ -129,8 +129,6 @@ def quasi_solver(solver, **params):
 
                         update_results(chunk_results, metadata, io, order, iN, nb_bins_sum, params_py)
 
-                    world.barrier() # Is it necessary?
-
             ### Print some results at the end of each N_vec:
             if world.rank == 0:
                 print '\nDate time:', datetime.now()
