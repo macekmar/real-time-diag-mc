@@ -1,12 +1,13 @@
 from mpi4py import MPI
 import ctint_keldysh as ctk
-import ctint_keldysh.model as ctkm
 import ctint_keldysh.quasimc as ctkq
-import ctint_keldysh.gen_harmonic as harmonic
+from ctint_keldysh.generators import *
 import matplotlib.pyplot as plt
 import numpy as np
 from pytriqs.archive import HDFArchive
 import sys
+
+# Part of run_quasimc_diff_part.sh
 
 N_samples = int(sys.argv[1])
 
@@ -23,7 +24,6 @@ p_cpp = {'U': 1.0,
          'alpha': 0.5,
          'annihilation_ops': [[0, 0, 0.0, 0]],
          'creation_ops': [[0, 0, 0.0, 0]],
-         'do_quasi_mc': True,
          'extern_alphas': [0.0],
          'forbid_parity_order': -1,
          'interaction_start': 100.0,
@@ -31,7 +31,7 @@ p_cpp = {'U': 1.0,
          'max_perturbation_order': 20,
          'method': 1,
          'min_perturbation_order': 0,
-         'nb_bins': 50000,
+         'nb_bins': 10000,
          'nb_orbitals': 1,
          'nonfixed_op': False,
          'potential': [[1.0], [0], [0]],
@@ -39,11 +39,13 @@ p_cpp = {'U': 1.0,
          'store_configurations': 0,
          'w_dbl': 0,
          'w_ins_rem': 1.0,
-         'w_shift': 0}
+         'w_shift': 0,
+         'sampling_model_intervals': [[]],
+         'sampling_model_coeff': [[[]]]}
 
 p_py = {'nb_bins_sum': 1,
         'run_name': 'Run',
-        'save_period': 10000,
+        'save_period': 37,
         'size_part': 1,
         'staircase': True}
 
@@ -51,8 +53,9 @@ p_cpp['U'] = [p_cpp['U']]*p_cpp['max_perturbation_order']
 
 # Merge and set parameters
 params_all = dict(p_cpp, **p_py)
-params_all['N'] = [N_samples]
-params_all['order'] = [2]
+params_all['N'] = np.linspace(0, N_samples, 11, dtype=np.int).tolist()
+print(params_all['N'] )
+params_all['order'] = [4]
 params_all['max_perturbation_order'] = max(params_all['order'])
 params_all['U'] = params_all['max_perturbation_order']*[1.0]
 
@@ -61,7 +64,7 @@ params_all['nb_warmup_cycles'] = 1
 params_all["nb_cycles"] = 10000
 # 
 params_all['filename'] = "Test" + str(MPI.COMM_WORLD.size) + ".hdf5"
-params_all['num_gen'] = harmonic.HarmonicGenerator
+params_all['num_gen'] = SobolGenerator
 
 # We have to reinitilaize the solver core. Previously max order was 20 so.
 # The solver will generate unnecessary binning  up to this order, and we will
@@ -75,8 +78,8 @@ S = ctk.SolverCore(**p_cpp_temp)
 S.set_g0(params_all['g0_lesser'], params_all['g0_greater'])
 
 # Asymmetric model
-def fun(u, do_measure=False):
-    return ctkm.get(S, u, do_measure)
+def fun(u):
+    return [np.abs(S.evaluate_qmc_weight([(0,0,float(x)) for x in c])) for c in u]
 params_all['model'] = [fun for i in range(params_all['max_perturbation_order'])]
 
 p = ctkq.quasi_solver(S, **params_all) 
