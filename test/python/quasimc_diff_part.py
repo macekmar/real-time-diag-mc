@@ -2,9 +2,7 @@ from mpi4py import MPI
 import ctint_keldysh as ctk
 import ctint_keldysh.quasimc as ctkq
 from ctint_keldysh.generators import *
-import matplotlib.pyplot as plt
 import numpy as np
-from pytriqs.archive import HDFArchive
 import sys
 
 # Part of run_quasimc_diff_part.sh
