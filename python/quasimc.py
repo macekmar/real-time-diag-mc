@@ -6,7 +6,7 @@ from mpi4py import MPI
 
 from fourier_transform import fourier_transform
 from quasimc_results import *
-from quasimc_utility import process_parameters, calculate_inv_cdfs
+from quasimc_utility import calculate_inv_cdfs, process_parameters
 from solver import PARAMS_CPP_KEYS, PARAMS_PYTHON_KEYS, _add_params_to_results
 
 ###############################################################################
@@ -74,7 +74,7 @@ def quasi_solver(solver, **params):
     results_to_save['metadata'] = metadata
     if world.rank == 0:
         params_py['run_name'] = save_empty_results(results_to_save, params_py['filename'], params_py['run_name'], overwrite=overwrite, filemode=params_py['filemode'])
-        print("Saving into run_name: %s" % params_py['run_name'])     
+        print "Saving into run_name: %s" % params_py['run_name']
 
     ### Calculation
     for io, order in enumerate(orders):
@@ -111,15 +111,13 @@ def quasi_solver(solver, **params):
 
                 N_calculated += 1
                 ### Process and save results
-                if N_calculated % save_period[io] == 0 or \
-                                                    N_calculated == N_vec[iN+1]:
-                    world.barrier()
-                    solver.collect_sampling_weights(1)
+                if N_calculated % save_period[io] == 0 or N_calculated == N_vec[iN+1]:
+                    solver.collect_sampling_weights(1) # world.barrier is inside measure.collect_results()
                     if world.rank == 0:
                         if N_calculated != N_vec[iN+1]:
                             ratio_calc = (N_calculated - N_vec[iN])/float(N_vec[iN+1] - N_vec[iN])
                             sys.stdout.write("% 2.0f%% " % (100*ratio_calc))
-                        
+
                         chunk_results = extract_results(solver)
                         chunk_results['N_generated'] = N_generated
                         chunk_results['N_calculated'] = world.size*N_calculated
@@ -130,8 +128,9 @@ def quasi_solver(solver, **params):
                         metadata['order_duration'] = (datetime.now() - order_start_time).total_seconds()
 
                         update_results(chunk_results, metadata, io, order, iN, nb_bins_sum, params_py)
-                        
-                    world.barrier()
+
+                    world.barrier() # Is it necessary?
+
             ### Print some results at the end of each N_vec:
             if world.rank == 0:
                 print '\nDate time:', datetime.now()

@@ -10,8 +10,8 @@ from solver import extract_and_check_params
 
 
 def process_parameters(params, default_py, default_cpp):
-    world = MPI.COMM_WORLD
     """Extract parameters into different variables and do some checks."""
+    world = MPI.COMM_WORLD
     ### Extract parameters 
     params_py = extract_and_check_params(params, default_py)
     params_cpp = extract_and_check_params(params, default_cpp)
@@ -53,7 +53,7 @@ def process_parameters(params, default_py, default_cpp):
             name = name + '_1'
             params_py['run_name'] = name
             if world.rank == 0:
-                print("Changing run_name to %s" % name)
+                print "Changing run_name to %s" % name
     else:
         random_shift = np.zeros((max(params_py['order']),))
         overwrite = True
@@ -62,7 +62,7 @@ def process_parameters(params, default_py, default_cpp):
     if params_py['random_seed'] is False:
         seed = generator.default_seed
         if world.rank == 0:
-            print("Setting the seed to the default value: %d of the generator: %s" % (generator.default_seed, str(generator)))
+            print "Setting the seed to the default value: %d of the generator: %s" % (generator.default_seed, str(generator))
     else:
         seed = params_py['random_seed']
 

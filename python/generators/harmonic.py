@@ -10,7 +10,7 @@ def phi(d):
         x = np.longfloat(2.0)
         for i in range(50):
             xprev = x
-            x = np.power(1.0+x,1.0/(d+1))
+            x = np.power(1.0+x, 1.0/(d+1))
             if x == xprev:
                 break
         return x
