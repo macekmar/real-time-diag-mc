@@ -70,7 +70,18 @@ def process_parameters(params, default_py, default_cpp):
     if params_py['filemode'] is 'w' and os.path.isfile(params_py['filename']):
         raise IOError("File %s already exists!" % params_py['filename'])
 
-    return t_min, model, generator, nb_bins_sum, random_shift, seed, overwrite, params_py, params_cpp
+    # Get save_period
+    save_period = None
+    period = params_py['save_period']
+    if isinstance(period, int):
+        save_period = [period for o in params_py['order']]
+    if isinstance(period, list):
+        if len(period) == len(params_py['order']) and all(isinstance(p, int) for p in period):
+            save_period = period
+    if save_period is None:
+        raise ValueError("Parameter save_period is not an int or a list of ints.")
+
+    return t_min, model, generator, nb_bins_sum, random_shift, seed, save_period, overwrite, params_py, params_cpp
 
 
 def fix_cpp_parameters(p_cpp, p_py):

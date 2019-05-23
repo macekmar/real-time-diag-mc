@@ -36,7 +36,7 @@ def quasi_solver(solver, **params):
     start_time = datetime.now()
 
     t_min, model_funs, gen_class, nb_bins_sum, random_shift, seed, \
-    overwrite, params_py, params_cpp = \
+    save_period, overwrite, params_py, params_cpp = \
                 process_parameters(params, PARAMS_PYTHON_KEYS, PARAMS_CPP_KEYS)
     
     N_vec = [0] + params_py['N'][:]
@@ -77,7 +77,6 @@ def quasi_solver(solver, **params):
         print("Saving into run_name: %s" % params_py['run_name'])     
 
     ### Calculation
-    last_save = datetime.now()
     for io, order in enumerate(orders):
         order_start_time = datetime.now()
 
@@ -112,9 +111,7 @@ def quasi_solver(solver, **params):
 
                 N_calculated += 1
                 ### Process and save results
-                # save above save_period or at the end of each N_vec
-                time_from_save = datetime.now() - last_save
-                if time_from_save.total_seconds() > params_py['save_period'] or \
+                if N_calculated % save_period[io] == 0 or \
                                                     N_calculated == N_vec[iN+1]:
                     world.barrier()
                     solver.collect_sampling_weights(1)
@@ -135,8 +132,6 @@ def quasi_solver(solver, **params):
                         update_results(chunk_results, metadata, io, order, iN, nb_bins_sum, params_py)
                         
                     world.barrier()
-                    last_save = datetime.now()
-
             ### Print some results at the end of each N_vec:
             if world.rank == 0:
                 print '\nDate time:', datetime.now()
