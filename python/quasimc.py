@@ -39,12 +39,24 @@ def quasi_solver(solver, **params):
     save_period, overwrite, params_py, params_cpp = \
                 process_parameters(params, PARAMS_PYTHON_KEYS, PARAMS_CPP_KEYS)
     
-    N_vec = [0] + params_py['N'][:]
-    N_vec = list(set(N_vec)) # Remove duplicates
-    N_vec.sort()
     orders = params_py["order"]
     if isinstance(orders, int):
         orders = [orders]
+
+    if not isinstance(params_py["N"][0], list):
+        N_vec_orders = [params_py['N'][:] for o in orders]
+    else:
+        assert len(params_py['N']) == len(orders)
+        for i in range(len(params_py['N'])):
+            assert len(params_py['N'][i]) == len(params_py['N'][0])
+        N_vec_orders = params_py['N'][:]
+
+    for i in range(len(N_vec_orders)):
+        N = N_vec_orders[i][:]
+        N = [0] + N
+        N = list(set(N)) # Remove duplicates
+        N.sort()
+        N_vec_orders[i] = N
 
     ### Calculate inverse CDFs and the integral of the model
     # Integrals are not needed for normalization, because the model is already
@@ -58,7 +70,7 @@ def quasi_solver(solver, **params):
     solver.set_model(intervals, coeff)
 
     ### Prepare results
-    results_to_save = create_empty_results(orders, N_vec, params_py, params_cpp)
+    results_to_save = create_empty_results(orders, N_vec_orders[0], params_py, params_cpp)
     _add_params_to_results(results_to_save, dict(params_cpp, **params_py))
     metadata = {}
     metadata['total_duration'] = 0.0
@@ -90,6 +102,7 @@ def quasi_solver(solver, **params):
         ### Calculate
         N_generated = 0
         N_calculated = 0
+        N_vec = N_vec_orders[io]
         for iN in range(len(N_vec) - 1):
             if world.rank == 0:
                 print "\nCalculating points from {0} to {1}.".format(world.size*N_vec[iN], world.size*N_vec[iN+1])
