@@ -465,7 +465,9 @@ PARAMS_CPP_KEYS = {'creation_ops': None,
                    'cycles_trapped_thresh': 100,
                    'store_configurations': 0,
                    'preferential_sampling': False,
-                   'ps_gamma': 1.}
+                   'ps_gamma': 1.,
+                   "sampling_model_intervals": [[]],
+                   "sampling_model_coeff": [[[]]]}
 
 def solve(**params):
     """
@@ -502,7 +504,6 @@ def solve(**params):
             orders = orders[orders % 2 != params_cpp['forbid_parity_order']]
     else:
         orders = [params_cpp['max_perturbation_order']]
-
     ### result structure
     results = {}
     if params_cpp['method'] != 0:
