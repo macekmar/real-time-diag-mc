@@ -112,6 +112,9 @@ c.add_method("""std::vector<dcomplex> evaluate_importance_sampling (std::vector<
 c.add_method("""dcomplex evaluate_model (std::vector<timec_t> times_l_vec)""",
              doc = """ """)
 
+c.add_method("""timec_t inverse_cdf (int i, timec_t l)""",
+             doc = """ """)
+
 c.add_method("""void collect_sampling_weights (int dummy)""",
              doc = """ """)
 
@@ -122,6 +125,18 @@ c.add_method("""std::vector<double> l_to_u (std::vector<timec_t> times_l)""",
              doc = """ """)
 
 c.add_method("""std::vector<double> u_to_l (std::vector<timec_t> times_u)""",
+             doc = """ """)
+
+c.add_method("""std::vector<double> l_to_v (std::vector<timec_t> times_l)""",
+             doc = """ """)
+
+c.add_method("""std::vector<double> v_to_l (std::vector<timec_t> times_v)""",
+             doc = """ """)
+
+c.add_method("""std::vector<double> v_to_u (std::vector<timec_t> times_v)""",
+             doc = """ """)
+
+c.add_method("""std::vector<double> u_to_v (std::vector<timec_t> times_u)""",
              doc = """ """)
 
 c.add_property(name = "qmc_duration",

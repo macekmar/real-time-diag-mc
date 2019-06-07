@@ -65,9 +65,15 @@ class solver_core {
  // Importance sampling part
  std::vector<dcomplex> evaluate_importance_sampling(std::vector<timec_t> times_l, bool do_measure = false);
  dcomplex evaluate_model(std::vector<timec_t> times_l_vec);
+ timec_t inverse_cdf(int i, timec_t l) {return model.inverse_cdf(i, l);};
  void collect_sampling_weights(int dummy);
  void set_model(std::vector<std::vector<double>> intervals, std::vector<std::vector<std::vector<double>>> coeff);
  
  std::vector<double> l_to_u(std::vector<timec_t> times_l) {return model.l_to_u(times_l);};
  std::vector<double> u_to_l(std::vector<timec_t> times_u) {return model.u_to_l(times_u);};
+ std::vector<double> l_to_v(std::vector<timec_t> times_l) {return model.l_to_v(times_l);};
+ std::vector<double> v_to_l(std::vector<timec_t> times_v) {return model.v_to_l(times_v);};
+ std::vector<double> v_to_u(std::vector<timec_t> times_v) {return model.v_to_u(times_v);};
+ std::vector<double> u_to_v(std::vector<timec_t> times_u) {return model.u_to_v(times_u);};
+ 
 };
