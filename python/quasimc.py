@@ -96,7 +96,7 @@ def quasi_solver(solver, **params):
             print "\n=================================================================="
             print "Order: {0}\n".format(order)
 
-
+        
         generator = gen_class(dim=order, seed=seed)
 
         ### Calculate
@@ -131,19 +131,19 @@ def quasi_solver(solver, **params):
                             ratio_calc = (N_calculated - N_vec[iN])/float(N_vec[iN+1] - N_vec[iN])
                             sys.stdout.write("% 2.0f%% " % (100*ratio_calc))
 
-                        chunk_results = extract_results(solver)
+                        chunk_results = extract_results(solver, params_cpp)
                         chunk_results['N_generated'] = N_generated
                         chunk_results['N_calculated'] = world.size*N_calculated
                         # # Normalization
-                        chunk_results['kernels'][order-1] /= float(N_generated)
-
+                        normalize_results(chunk_results, order, N_generated, params_cpp)
                         metadata['total_duration'] = (datetime.now() - start_time).total_seconds()
                         metadata['order_duration'] = (datetime.now() - order_start_time).total_seconds()
-
-                        update_results(chunk_results, metadata, io, order, iN, nb_bins_sum, params_py)
+                        update_results(chunk_results, metadata, io, order, iN, nb_bins_sum, params_py, params_cpp)
 
             ### Print some results at the end of each N_vec:
             if world.rank == 0:
                 print '\nDate time:', datetime.now()
                 print 'Total run time:', datetime.now() - start_time, ' Order run time:', datetime.now() - order_start_time
                 print 'Total demanded points: %d*%d  Gen. points: %d Calc. pts: %d' % (world.size, N_vec[iN+1],  N_generated, world.size*N_calculated)
+
+    return solver

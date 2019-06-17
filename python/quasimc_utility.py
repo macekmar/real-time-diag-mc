@@ -24,8 +24,8 @@ def process_parameters(params, default_py, default_cpp):
 
     ### Do some checks
     # Method
-    if params_cpp['method'] == 0:
-        raise Exception("Method 0 is not implemented yet.")
+    # if params_cpp['method'] == 0:
+    #     raise Exception("Method 0 is not implemented yet.")
 
     # We do not want to reduce the binning before the Fourier transform
     if params_py['frequency_range'] is False:
