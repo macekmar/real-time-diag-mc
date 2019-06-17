@@ -139,6 +139,9 @@ c.add_method("""std::vector<double> v_to_u (std::vector<timec_t> times_v)""",
 c.add_method("""std::vector<double> u_to_v (std::vector<timec_t> times_u)""",
              doc = """ """)
 
+c.add_method("""void init_measure (int dummy)""",
+             doc = """ """)
+
 c.add_property(name = "qmc_duration",
                getter = cfunction("double get_qmc_duration ()"),
                doc = """ """)
