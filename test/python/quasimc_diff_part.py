@@ -75,6 +75,8 @@ params_all['g0_greater'] = g0_grea[0,0]
 S = ctk.SolverCore(**p_cpp_temp)
 S.set_g0(params_all['g0_lesser'], params_all['g0_greater'])
 
+S.init_measure(1)
+
 # Asymmetric model
 def fun(u):
     return [np.abs(S.evaluate_qmc_weight([(0,0,float(x)) for x in c])) for c in u]

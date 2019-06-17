@@ -25,7 +25,7 @@ p_cpp = {'U': 1.0,
          'interaction_start': 100.0,
          'length_cycle': 1,
          'max_perturbation_order': 20,
-         'method': 1,
+         'method': 0,
          'min_perturbation_order': 0,
          'nb_bins': 10000,
          'nb_orbitals': 1,
@@ -77,6 +77,7 @@ params_all['g0_lesser'] = g0_less[0,0]
 params_all['g0_greater'] = g0_grea[0,0]
 S = ctk.SolverCore(**p_cpp_temp)
 S.set_g0(params_all['g0_lesser'], params_all['g0_greater'])
+S.init_measure(1)
 
 # Asymmetric model
 def fun(u):
