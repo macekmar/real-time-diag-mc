@@ -77,18 +77,19 @@ std::vector<dcomplex> solver_core::evaluate_importance_sampling(std::vector<time
  config.evaluate();
  config.accept_config();
  
+ dcomplex weight = config.accepted_weight;
  if (do_measure) {
+  model.evaluate(times_l);
   if (params.method == 1 ) {
-   model.evaluate(times_l);
-
    config.accepted_kernels *= std::abs(config.accepted_weight);
    config.accepted_kernels /= std::abs(model.weight);
-
-   TwoDetKernelMeasure measure = TwoDetKernelMeasure(&config, &kernels_binning, &pn, &kernels, &kernel_diracs, &nb_kernels);
-   measure.accumulate(1);
-   }
   }
- return {config.accepted_weight, model.weight};
+  if (params.method == 0 ) {
+   config.accepted_weight /= std::abs(model.weight);
+  }
+ }
+ measure->accumulate(1);
+ return {weight, model.weight};
 };
 
 /**
@@ -96,9 +97,8 @@ std::vector<dcomplex> solver_core::evaluate_importance_sampling(std::vector<time
  * Variable `dummy` is necessary only for the python interface.
  */
 void solver_core::collect_sampling_weights(int dummy) {
-  TwoDetKernelMeasure measure = TwoDetKernelMeasure(&config, &kernels_binning, &pn, &kernels, &kernel_diracs, &nb_kernels);
   mpi::communicator world;
-  measure.collect_results(world);
+  measure->collect_results(world);
 };
 
 /**
@@ -122,3 +122,13 @@ dcomplex solver_core::evaluate_model(std::vector<timec_t> times_l) {
  model.evaluate(times_l);
  return model.weight;
 };
+
+
+void solver_core::init_measure(int dummy) {
+  if (params.method == 1) {
+   measure = new TwoDetKernelMeasure(&config, &kernels_binning, &pn, &kernels, &kernel_diracs, &nb_kernels);
+  }
+  if (params.method == 0) {
+   measure = new WeightMeasure(&config, &pn, &sn);
+  }
+}

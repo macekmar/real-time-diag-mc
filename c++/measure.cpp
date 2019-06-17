@@ -4,12 +4,14 @@ using namespace triqs::statistics;
 namespace mpi = triqs::mpi;
 
 
-// ----------
-WeightSignMeasure::WeightSignMeasure(Configuration* config, array<long, 1>* pn, array<dcomplex, 1>* sn)
-   : config(*config), pn(*pn), sn(*sn) {
-
+Measure::Measure(Configuration* config, array<long, 1>* pn) : config(*config), pn(*pn) {
  nb_orders = first_dim(*pn);
  histogram_pn = histogram(0, nb_orders - 1);
+};
+
+// ----------
+WeightSignMeasure::WeightSignMeasure(Configuration* config, array<long, 1>* pn, array<dcomplex, 1>* sn)
+   : Measure(config, pn), sn(*sn) {
  sn_accum = *sn;
  sn_accum() = 0;
 }
@@ -47,26 +49,29 @@ void WeightSignMeasure::collect_results(mpi::communicator c) {
  }
 }
 
+// ----------
+void WeightMeasure::accumulate(dcomplex sign) {
+ histogram_pn << config.order;
+ sn_accum(config.order) += config.accepted_weight;
+}
+
+WeightMeasure::WeightMeasure(Configuration* config, array<long, 1>* pn, array<dcomplex, 1>* sn)
+   : WeightSignMeasure(config, pn, sn) {}
+
 // -----------------------
 
 // ----------
 TwoDetKernelMeasure::TwoDetKernelMeasure(Configuration* config, KernelBinning* kernels_binning,
                                          array<long, 1>* pn, array<dcomplex, 4>* kernels,
                                          array<dcomplex, 4>* kernel_diracs, array<long, 4>* nb_kernels)
-   : config(*config),
+   : Measure(config, pn),
      kernels_binning(*kernels_binning),
-     pn(*pn),
      kernels(*kernels),
      kernel_diracs(*kernel_diracs),
-     nb_kernels(*nb_kernels) {
-
- nb_orders = first_dim(*pn);
- histogram_pn = histogram(0, nb_orders - 1);
-}
+     nb_kernels(*nb_kernels) {};
 
 // ----------
 void TwoDetKernelMeasure::accumulate(dcomplex sign) {
-
  config.incr_cycles_trapped();
  histogram_pn << config.order;
 

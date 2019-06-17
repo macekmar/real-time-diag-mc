@@ -75,5 +75,9 @@ class solver_core {
  std::vector<double> v_to_l(std::vector<timec_t> times_v) {return model.v_to_l(times_v);};
  std::vector<double> v_to_u(std::vector<timec_t> times_v) {return model.v_to_u(times_v);};
  std::vector<double> u_to_v(std::vector<timec_t> times_u) {return model.u_to_v(times_u);};
- 
+
+ private:
+ Measure* measure;
+ public:
+ void init_measure(int dummy);
 };
