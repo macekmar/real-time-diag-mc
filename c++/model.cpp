@@ -25,9 +25,9 @@ std::vector<timec_t> Model::l_to_v(std::vector<timec_t> l) {
 
 std::vector<timec_t> Model::v_to_u(std::vector<timec_t> v) {
  std::vector<timec_t> u;
- u.push_back(v.front());
+ u.push_back(-v.front());
  for (auto t = std::next(v.begin()); t != v.end(); ++t) {
-  u.emplace_back(*t + u.back());
+  u.emplace_back(u.back() - *t);
  }
  return u;
 }
@@ -44,10 +44,10 @@ std::vector<timec_t> Model::u_to_v(std::vector<timec_t> u) {
  std::sort(u.begin(), u.end(), std::greater<timec_t>());
  std::cout << std::endl;
  std::vector<timec_t> v;
- v.push_back(*u.begin());
+ v.push_back(-*u.begin());
  auto prev = u.begin();
  for (auto t = std::next(u.begin()); t != u.end(); ++t) {
-  v.push_back(*t - *prev);
+  v.push_back(*prev - *t);
   prev = t;
  }
  return v;

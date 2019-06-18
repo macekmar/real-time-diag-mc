@@ -79,7 +79,7 @@ S.init_measure(1)
 
 # Asymmetric model
 def fun(u):
-    return [np.abs(S.evaluate_qmc_weight([(0,0,float(x)) for x in c])) for c in u]
+    return [np.abs(S.evaluate_qmc_weight([(0,0,float(-x)) for x in c])) for c in u]
 params_all['model'] = [fun for i in range(params_all['max_perturbation_order'])]
 
 p = ctkq.quasi_solver(S, **params_all) 

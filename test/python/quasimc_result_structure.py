@@ -12,7 +12,7 @@ from pytriqs.archive import HDFArchive
 orders = [2,3,5]
 N_vec = [0, 100, 200, 300]
 model_ints = np.random.rand(5)
-params_cpp = {'nb_orbitals': 2, 'nb_bins': 10000}
+params_cpp = {'nb_orbitals': 2, 'nb_bins': 10000, 'method': 1}
 params_py = {'frequency_range': False, 'nb_bins_sum': 1, 'filemode': 'a', 'filename': 'TestSaving.hdf', 'run_name': "Run"}
 
 start_time = datetime.now()

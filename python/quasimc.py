@@ -22,6 +22,7 @@ PARAMS_PYTHON_KEYS['random_shift'] = False
 PARAMS_PYTHON_KEYS['random_seed'] = False
 PARAMS_PYTHON_KEYS['filemode'] = 'w' # Filemode for opening the hdf files, 'w' or 'a'
 PARAMS_PYTHON_KEYS['nb_sampling_intervals'] = 1001
+PARAMS_PYTHON_KEYS['keep_cubic_domain'] = True
 
 ### Removed not needed
 del PARAMS_PYTHON_KEYS['nb_warmup_cycles']
@@ -35,10 +36,14 @@ def quasi_solver(solver, **params):
 
     start_time = datetime.now()
 
-    t_min, model_funs, gen_class, nb_bins_sum, random_shift, seed, \
+    t_start, t_g0_max, model_funs, gen_class, nb_bins_sum, random_shift, seed, \
     save_period, overwrite, params_py, params_cpp = \
                 process_parameters(params, PARAMS_PYTHON_KEYS, PARAMS_CPP_KEYS)
-    
+    if params_py['keep_cubic_domain']:
+        t_lim = t_start
+    else:
+        t_lim = t_g0_max
+
     orders = params_py["order"]
     if isinstance(orders, int):
         orders = [orders]
@@ -61,7 +66,7 @@ def quasi_solver(solver, **params):
     ### Calculate inverse CDFs and the integral of the model
     # Integrals are not needed for normalization, because the model is already
     # normalized.
-    integral, inv_cdf = calculate_inv_cdfs(model_funs, t_min=t_min, Nt=params_py['nb_sampling_intervals'])
+    integral, inv_cdf = calculate_inv_cdfs(model_funs, t_min=0.0, t_max=t_start, Nt=params_py['nb_sampling_intervals'])
     model_ints = [np.prod(integral[:i+1]) for i in range(len(integral))]
     model_ints = np.insert(model_ints, 0, 1)
     # Set model
@@ -116,7 +121,7 @@ def quasi_solver(solver, **params):
                     l_proposed = (l_proposed + random_shift[:order]) % 1
                     u = solver.l_to_u([float(x) for x in l_proposed])
                     # check if in domain
-                    if np.all(np.array(u) > t_min):
+                    if np.all(np.array(u) > -t_lim): # u are negative
                         l.append(l_proposed)
 
                 # each rank only calculates the rank-th point out of world.size number of them
@@ -135,7 +140,7 @@ def quasi_solver(solver, **params):
                         chunk_results['N_generated'] = N_generated
                         chunk_results['N_calculated'] = world.size*N_calculated
                         # # Normalization
-                        normalize_results(chunk_results, order, N_generated, params_cpp)
+                        #normalize_results(chunk_results, order, N_generated, params_cpp) # Not needed anymore. Why?! Because from commit b479be on we init_measure only once? I guess so...
                         metadata['total_duration'] = (datetime.now() - start_time).total_seconds()
                         metadata['order_duration'] = (datetime.now() - order_start_time).total_seconds()
                         update_results(chunk_results, metadata, io, order, iN, nb_bins_sum, params_py, params_cpp)

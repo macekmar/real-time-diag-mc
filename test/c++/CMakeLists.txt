@@ -11,7 +11,8 @@ list(APPEND test_names
 	kernel_binning_1
 	kernel_binning_2
 	kernel_binning_3
-    moves)
+				moves
+				quasimc)
 
 foreach(test_name ${test_names})
 	set(test_file "${test_name}.x")

@@ -13,9 +13,11 @@ def process_parameters(params, default_py, default_cpp):
     """Extract parameters into different variables and do some checks."""
     world = MPI.COMM_WORLD
     ### Extract parameters 
+    t_g0_max = params['g0_lesser'].mesh.t_max # extract_... deletse g0, doesn't keep the data
     params_py = extract_and_check_params(params, default_py)
     params_cpp = extract_and_check_params(params, default_cpp)
-    t_min = -params_cpp['interaction_start']
+    t_start = params_cpp['interaction_start']
+    
     generator = params_py['num_gen']
     model = params_py['model'][:]
     # Remove 'model' and 'num_gen', which cannot be saved, g0_lesser is taken care of in _add_params_to_results
@@ -81,7 +83,7 @@ def process_parameters(params, default_py, default_cpp):
     if save_period is None:
         raise ValueError("Parameter save_period is not an int or a list of ints.")
 
-    return t_min, model, generator, nb_bins_sum, random_shift, seed, save_period, overwrite, params_py, params_cpp
+    return t_start, t_g0_max, model, generator, nb_bins_sum, random_shift, seed, save_period, overwrite, params_py, params_cpp
 
 
 def fix_cpp_parameters(p_cpp, p_py):
@@ -97,7 +99,7 @@ def fix_cpp_parameters(p_cpp, p_py):
         p_cpp['sampling_model_coeff'] = [[[]]]
 
 
-def _calculate_inv_cdf(fun, t_min, t_max=0, Nt=1001):
+def _calculate_inv_cdf(fun, t_min, t_max, Nt=1001):
     """Calculates inverse CDF for a nonnormalized function."""
     u_lin = np.linspace(t_min, t_max, Nt)
     fun_val = np.abs(fun(u_lin[:, np.newaxis])) # Newaxis is necessary for the get function
@@ -106,7 +108,7 @@ def _calculate_inv_cdf(fun, t_min, t_max=0, Nt=1001):
     cdf = cdf/integral
     return integral, PchipInterpolator(cdf, u_lin)
 
-def calculate_inv_cdfs(funs, t_min, t_max=0, Nt=1001):
+def calculate_inv_cdfs(funs, t_min, t_max, Nt=1001):
     """Calculates inverse CDF for nonnormalized functions."""
     integral = [None for i in range(len(funs))]
     inv_cdf = [None for i in range(len(funs))]

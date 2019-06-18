@@ -107,8 +107,6 @@ struct solve_parameters_t {
  double ps_gamma = 1.;
 
  // Quasi Monte Carlo
- bool do_importance_sampling = false;
-
  std::vector<std::vector<double>> sampling_model_intervals;
  std::vector<std::vector<std::vector<double>>> sampling_model_coeff;
 
