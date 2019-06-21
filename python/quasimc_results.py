@@ -119,7 +119,7 @@ def update_results(chunk_results, metadata, io, order, iN, nb_bins_sum, params_p
             run['results_final'][key][io] = chunk_results[key]
         if params_cpp['method'] == 0:
             for key in ['sn']:
-                run['results_final'][key][io] = chunk_results[key][io+1]       
+                run['results_final'][key][io] = chunk_results[key][order]       
         if params_cpp['method'] == 1:
             for key in ['kernels', 'nb_kernels', 'kernel_diracs']:
                 run['results_final'][key][io, ...] = chunk_results[key][order-1, ...]
@@ -132,7 +132,7 @@ def update_results(chunk_results, metadata, io, order, iN, nb_bins_sum, params_p
             for key in ['N_generated', 'N_calculated']:
                 run['results_inter'][key][io, iN] = chunk_results[key]      
             for key in ['sn']:
-                run['results_inter'][key][io, iN] = chunk_results[key][io+1]  
+                run['results_inter'][key][io, iN] = chunk_results[key][order]  
         if params_cpp['method'] == 1:
             res_part = dict(chunk_results)
             res_part['bin_times'] = reduce_binning(res_part['bin_times'], nb_bins_sum) / float(nb_bins_sum)
