@@ -21,7 +21,7 @@ PARAMS_PYTHON_KEYS['num_gen'] = None
 PARAMS_PYTHON_KEYS['random_shift'] = False
 PARAMS_PYTHON_KEYS['random_seed'] = False
 PARAMS_PYTHON_KEYS['filemode'] = 'w' # Filemode for opening the hdf files, 'w' or 'a'
-PARAMS_PYTHON_KEYS['nb_sampling_intervals'] = 1001
+PARAMS_PYTHON_KEYS['interpolation_points'] = False
 PARAMS_PYTHON_KEYS['keep_cubic_domain'] = True
 
 ### Removed not needed
@@ -36,7 +36,7 @@ def quasi_solver(solver, **params):
 
     start_time = datetime.now()
 
-    t_start, t_g0_max, model_funs, gen_class, nb_bins_sum, random_shift, seed, \
+    t_start, t_g0_max, model_funs, intp_pts, gen_class, nb_bins_sum, random_shift, seed, \
     save_period, overwrite, params_py, params_cpp = \
                 process_parameters(params, PARAMS_PYTHON_KEYS, PARAMS_CPP_KEYS)
     if params_py['keep_cubic_domain']:
@@ -66,7 +66,7 @@ def quasi_solver(solver, **params):
     ### Calculate inverse CDFs and the integral of the model
     # Integrals are not needed for normalization, because the model is already
     # normalized.
-    integral, inv_cdf = calculate_inv_cdfs(model_funs, t_min=0.0, t_max=t_start, Nt=params_py['nb_sampling_intervals'])
+    integral, inv_cdf = calculate_inv_cdfs(model_funs, intp_pts)
     model_ints = [np.prod(integral[:i+1]) for i in range(len(integral))]
     model_ints = np.insert(model_ints, 0, 1)
     # Set model

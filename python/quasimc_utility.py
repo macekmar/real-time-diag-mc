@@ -35,6 +35,16 @@ def process_parameters(params, default_py, default_cpp):
     else:
         nb_bins_sum = 1
 
+    intp_pts = None
+    if params_py['interpolation_points'] is False:
+        intp_pts = np.linspace(0.0, t_start, 1001)
+    elif isinstance(params_py['interpolation_points'], int):
+        intp_pts = np.linspace(0.0, t_start, params_py['interpolation_points'])
+    elif isinstance(params_py['interpolation_points'], list) or isinstance(params_py['interpolation_points'], np.ndarray):
+        intp_pts = params_py['interpolation_points']
+    if intp_pts is None:
+        raise Exception("Wrong format for parameter 'interpolation points'")
+
     # Check random shift
     if params_py['random_shift'] is not False:
         random_shift = params_py['random_shift']
@@ -83,7 +93,7 @@ def process_parameters(params, default_py, default_cpp):
     if save_period is None:
         raise ValueError("Parameter save_period is not an int or a list of ints.")
 
-    return t_start, t_g0_max, model, generator, nb_bins_sum, random_shift, seed, save_period, overwrite, params_py, params_cpp
+    return t_start, t_g0_max, model, intp_pts, generator, nb_bins_sum, random_shift, seed, save_period, overwrite, params_py, params_cpp
 
 
 def fix_cpp_parameters(p_cpp, p_py):
@@ -99,20 +109,26 @@ def fix_cpp_parameters(p_cpp, p_py):
         p_cpp['sampling_model_coeff'] = [[[]]]
 
 
-def _calculate_inv_cdf(fun, t_min, t_max, Nt=1001):
+def _calculate_inv_cdf(fun, pts):
     """Calculates inverse CDF for a nonnormalized function."""
-    u_lin = np.linspace(t_min, t_max, Nt)
-    fun_val = np.abs(fun(u_lin[:, np.newaxis])) # Newaxis is necessary for the get function
-    cdf = cumtrapz(fun_val, u_lin, initial=0)
+    fun_val = np.abs(fun(pts[:, np.newaxis])) # Newaxis is necessary for the get function
+    cdf = cumtrapz(fun_val, pts, initial=0)
     integral = cdf[-1]
     cdf = cdf/integral
-    return integral, PchipInterpolator(cdf, u_lin)
+    return integral, PchipInterpolator(cdf, pts)
 
-def calculate_inv_cdfs(funs, t_min, t_max, Nt=1001):
+def calculate_inv_cdfs(funs, points):
     """Calculates inverse CDF for nonnormalized functions."""
+    if isinstance(points, tuple):
+        t_min, t_max, Nt = points
+        pts = np.linspace(t_min, t_max, Nt)
+    elif isinstance(points, list) or isinstance(points, np.ndarray):
+        pts = points
+    else:
+        raise Exception("You either have to provide a tuple (t_min, t_max, Nt) for np.linspace for interpolation points or provide points themselves.")
     integral = [None for i in range(len(funs))]
     inv_cdf = [None for i in range(len(funs))]
     for i, f in enumerate(funs):
-        integral[i], inv_cdf[i] = _calculate_inv_cdf(f, t_min=t_min, t_max=t_max, Nt=Nt)
+        integral[i], inv_cdf[i] = _calculate_inv_cdf(f, pts)
 
     return integral, inv_cdf
