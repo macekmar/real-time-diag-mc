@@ -25,10 +25,12 @@ std::vector<timec_t> Model::l_to_v(std::vector<timec_t> l) {
 
 std::vector<timec_t> Model::v_to_u(std::vector<timec_t> v) {
  std::vector<timec_t> u;
- u.push_back(-v.front());
- for (auto t = std::next(v.begin()); t != v.end(); ++t) {
+ u.push_back(-v.back());
+ for (auto t = std::prev(v.end(), 2); t != v.begin(); --t) {
   u.emplace_back(u.back() - *t);
  }
+ u.emplace_back(u.back() - v.front());
+ std::reverse(u.begin(), u.end());
  return u;
 }
 
@@ -39,17 +41,14 @@ std::vector<timec_t> Model::l_to_u(std::vector<timec_t> l) {
 // Reverse
 
 std::vector<timec_t> Model::u_to_v(std::vector<timec_t> u) {
- // This sorts to \bar{u}_1,  \bar{u}_2, .., \dots
- // The largers u is at the beginning!
- std::sort(u.begin(), u.end(), std::greater<timec_t>());
- std::cout << std::endl;
+ std::sort(u.begin(), u.end(), std::less<timec_t>());
  std::vector<timec_t> v;
- v.push_back(-*u.begin());
  auto prev = u.begin();
- for (auto t = std::next(u.begin()); t != u.end(); ++t) {
-  v.push_back(*prev - *t);
+  for (auto t = std::next(u.begin()); t != u.end(); ++t) {
+  v.push_back(*t - *prev);
   prev = t;
  }
+ v.push_back(-*std::prev(u.end()));
  return v;
 }
 
