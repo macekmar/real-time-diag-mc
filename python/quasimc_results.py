@@ -53,8 +53,12 @@ def create_empty_results(orders, N_vec, params_py, params_cpp):
     
     results['results_final']['N_generated'] = np.zeros((lo, ), dtype=np.int)
     results['results_final']['N_calculated'] = np.zeros((lo, ), dtype=np.int)
+    results['results_final']['integrated_weight'] = np.zeros((lo, ), dtype=np.complex)
+    results['results_final']['integrated_abs_weight'] = np.zeros((lo, ), dtype=np.float)
     results['results_inter']['N_generated'] = np.zeros((lo, lN), dtype=np.int)
     results['results_inter']['N_calculated'] = np.zeros((lo, lN), dtype=np.int)
+    results['results_inter']['integrated_weight'] = np.zeros((lo, lN), dtype=np.complex)
+    results['results_inter']['integrated_abs_weight'] = np.zeros((lo, lN), dtype=np.float)
 
     return results
 
@@ -115,7 +119,7 @@ def update_results(chunk_results, metadata, io, order, iN, nb_bins_sum, params_p
         run = ar[params_py["run_name"]]
         
         # update results_all
-        for key in ['N_generated', 'N_calculated']:
+        for key in ['N_generated', 'N_calculated', 'integrated_weight', 'integrated_abs_weight']:
             run['results_final'][key][io] = chunk_results[key]
         if params_cpp['method'] == 0:
             for key in ['sn']:
@@ -129,7 +133,7 @@ def update_results(chunk_results, metadata, io, order, iN, nb_bins_sum, params_p
 
         # update results_intermediate
         if params_cpp['method'] == 0:
-            for key in ['N_generated', 'N_calculated']:
+            for key in ['N_generated', 'N_calculated', 'integrated_weight', 'integrated_abs_weight']:
                 run['results_inter'][key][io, iN] = chunk_results[key]      
             for key in ['sn']:
                 run['results_inter'][key][io, iN] = chunk_results[key][order]  
@@ -155,7 +159,7 @@ def update_results(chunk_results, metadata, io, order, iN, nb_bins_sum, params_p
                 if key in ['kernels', 'nb_kernels', 'kernel_diracs']:
                     if key in res_part: # after FFT, nb_kernels are missing
                         run['results_inter'][key][io, ..., iN] = res_part[key][order - 1, ...] 
-                elif key in ['N_generated', 'N_calculated']:
+                elif key in ['N_generated', 'N_calculated', 'integrated_weight', 'integrated_abs_weight']:
                     run['results_inter'][key][io, iN] = res_part[key]        
                 else:
                     run['results_inter'][key][...] = res_part[key]  
