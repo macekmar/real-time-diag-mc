@@ -1,5 +1,6 @@
 from __future__ import print_function
 import numpy as np
+import os
 ####
 ## (C) Dirk Nuyens, KU Leuven, 2016,2017,...
 ##
@@ -125,7 +126,7 @@ class latticeseq_b2(object):
 
 class LatticeGenerator(latticeseq_b2):
     def __init__(self, dim, seed):
-        super(LatticeGenerator, self).__init__(z="lattice_parameters.txt", s=dim, kstart=seed+1)
+        super(LatticeGenerator, self).__init__(z=os.path.dirname(__file__)+"/lattice_parameters.txt", s=dim, kstart=seed+1)
 
     class __metaclass__(type):    
         def __str__(self):
