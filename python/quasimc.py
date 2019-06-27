@@ -23,6 +23,7 @@ PARAMS_PYTHON_KEYS['random_seed'] = False
 PARAMS_PYTHON_KEYS['filemode'] = 'w' # Filemode for opening the hdf files, 'w' or 'a'
 PARAMS_PYTHON_KEYS['interpolation_points'] = False
 PARAMS_PYTHON_KEYS['keep_cubic_domain'] = True
+PARAMS_PYTHON_KEYS['baker_transform'] = False
 
 ### Removed not needed
 del PARAMS_PYTHON_KEYS['nb_warmup_cycles']
@@ -123,6 +124,8 @@ def quasi_solver(solver, **params):
                     N_generated += 1
                     l_proposed = generator.next()
                     l_proposed = (l_proposed + random_shift[:order]) % 1
+                    if params_py['baker_transform'] is True:
+                        l_proposed= np.where(l_proposed < 0.5, 2*l_proposed, 2-2*l_proposed)
                     u = solver.l_to_u([float(x) for x in l_proposed])
                     # check if in domain
                     if np.all(np.array(u) > -t_lim): # u are negative
