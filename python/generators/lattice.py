@@ -1,9 +1,12 @@
-#!/usr/bin/env python
 from __future__ import print_function
-
+import numpy as np
 ####
 ## (C) Dirk Nuyens, KU Leuven, 2016,2017,...
 ##
+
+# This is a modified file written by Dirk Nuyens and taken from 
+# https://bitbucket.org/dnuyens/qmc-generators/src/master/
+# The original file is latticeseq_b2.py in the python folder
 
 # the following function is duplicated from poylat.py such that this file can be used stand alone
 def bitreverse(a, m=None):
@@ -43,7 +46,7 @@ exod2_base2_m20_CKN_z = [1, 182667, 469891, 498753, 110745, 446247, 250185, 1186
         310163, 94631, 108795, 21175, 142847, 383599, 71105, 65989, 446433, 177457, 107311, 295679, 442763, \
         40729, 322721, 420175, 430359, 480757]
 
-class latticeseq_b2:
+class latticeseq_b2(object):
 
     def __init__(self, z=exod2_base2_m20_CKN_z, kstart=0, m=None, s=None, returnDeepCopy=True):
         import sys
@@ -94,11 +97,10 @@ class latticeseq_b2:
         """Calculate all points from 2**(m-1) up to 2**m, without using radical
         inverse, using numpy and returning as numpy array object. This is tons
         faster!"""
-        from numpy import arange, outer
         n = 2**m
         start = min(1, n/2) # this is a funky way of setting start to zero for m == 0
         # the arange below only ranges over odd numbers, except for m == 0, then we only have 0
-        x = (outer(arange(min(1,n/2), n, 2, dtype='i'), self.z) % n) / float(n)
+        x = (np.outer(np.arange(min(1,n/2), n, 2, dtype='i'), self.z) % n) / float(n)
         return x
 
     def __iter__(self):
@@ -109,27 +111,23 @@ class latticeseq_b2:
         """Return the next point of the sequence or raise StopIteration."""
         if self.k < self.n - 1:
             self.calc_next()
-            if self.returnDeepCopy:
-                from copy import deepcopy
-                return deepcopy(self.x)
-            return self.x
+            # if self.returnDeepCopy:
+            #     from copy import deepcopy
+            #     return deepcopy(self.x)
+            # return self.x
+            return np.array(self.x)
         else:
             raise StopIteration
 
     def next(self):
         return self.__next__()
 
-if __name__ == "__main__":
-    import sys
-    if len(sys.argv) < 2: raise ValueError("Please specify the power of 2 as a command line argument: latticeseq_b2 m < z.txt")
-    try:
-        m = int(sys.argv[1])
-    except:
-        raise ValueError("Please specify the power of 2 as a command line argument: latticeseq_b2 m < z.txt")
-    if len(sys.argv) > 2: f = sys.argv[2]
-    else: f = sys.stdin
-    seq = latticeseq_b2(f, m=m)
-    for x in seq:
-        for xj in x:
-            print(xj, end=" ")
-        print()
+
+class LatticeGenerator(latticeseq_b2):
+    def __init__(self, dim, seed):
+        super(LatticeGenerator, self).__init__(z="lattice_parameters.txt", s=dim, kstart=seed+1)
+
+    class __metaclass__(type):    
+        def __str__(self):
+            return "Lattice rule generator"
+        default_seed = 1

@@ -1,0 +1,20 @@
+# cmd line =  ./lat-cbc.py --s 20 --m 16 --m1 12 --b 1.0 --force
+# elapsed time = 1.760000 s
+# 2019-05-22 22:27:47 local time
+# 2019-05-22 20:27:47 UTC
+pointset = 'lat'
+s = 20
+m = 16
+p = 2
+alpha = 1
+a1 = 0
+a2 = 1
+a3 = 0
+d1 = 1
+d2 = 2
+delta = 0.125
+lambda_ = 0.571428571429
+convrate = 0.875
+b = '1.0'
+power_2_fft = True
+## b = 1.0 , 1.0 , 1.0 , ... , 1.0
