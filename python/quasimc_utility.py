@@ -40,6 +40,9 @@ def process_parameters(params, default_py, default_cpp):
         intp_pts = np.linspace(0.0, t_start, 1001)
     elif isinstance(params_py['interpolation_points'], int):
         intp_pts = np.linspace(0.0, t_start, params_py['interpolation_points'])
+    elif isinstance(params_py['interpolation_points'], tuple):
+        t_min, t_max, nb_points = params_py['interpolation_points']
+        intp_pts = np.linspace(t_min, t_max, nb_points)
     elif isinstance(params_py['interpolation_points'], list) or isinstance(params_py['interpolation_points'], np.ndarray):
         intp_pts = params_py['interpolation_points']
     if intp_pts is None:
