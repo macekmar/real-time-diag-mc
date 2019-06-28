@@ -27,6 +27,8 @@ class solver_core {
  array<long, 4> nb_kernels;
  array<long, 1> pn;
  array<dcomplex, 1> sn;
+ array<dcomplex, 1> weight;
+ array<double, 1> abs_weight;
  Model model;
 
  int finish(const int run_status);
@@ -54,6 +56,8 @@ class solver_core {
  std::vector<dcomplex> get_config_weight() const { return config.config_weight; }
  array<long, 1> get_pn() const;
  array<dcomplex, 1> get_sn() const;
+ array<dcomplex, 1> get_weight() const;
+ array<double, 1> get_abs_weight() const;
  array<dcomplex, 4> get_kernels() const;
  array<dcomplex, 4> get_kernel_diracs() const;
  array<long, 4> get_nb_kernels() const;

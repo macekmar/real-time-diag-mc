@@ -7,6 +7,8 @@ import h5py
 
 def extract_results(solver, params_cpp):
     res = {}
+    for key in ['weight', 'abs_weight']:
+        res[key] = np.array(getattr(solver, key))
     if params_cpp['method'] == 0:
         for key in ['sn']:
             res[key] = np.array(getattr(solver, key))
@@ -53,12 +55,12 @@ def create_empty_results(orders, N_vec, params_py, params_cpp):
     
     results['results_final']['N_generated'] = np.zeros((lo, ), dtype=np.int)
     results['results_final']['N_calculated'] = np.zeros((lo, ), dtype=np.int)
-    results['results_final']['integrated_weight'] = np.zeros((lo, ), dtype=np.complex)
-    results['results_final']['integrated_abs_weight'] = np.zeros((lo, ), dtype=np.float)
+    results['results_final']['weight'] = np.zeros((lo, ), dtype=np.complex)
+    results['results_final']['abs_weight'] = np.zeros((lo, ), dtype=np.float)
     results['results_inter']['N_generated'] = np.zeros((lo, lN), dtype=np.int)
     results['results_inter']['N_calculated'] = np.zeros((lo, lN), dtype=np.int)
-    results['results_inter']['integrated_weight'] = np.zeros((lo, lN), dtype=np.complex)
-    results['results_inter']['integrated_abs_weight'] = np.zeros((lo, lN), dtype=np.float)
+    results['results_inter']['weight'] = np.zeros((lo, lN), dtype=np.complex)
+    results['results_inter']['abs_weight'] = np.zeros((lo, lN), dtype=np.float)
 
     return results
 
@@ -105,7 +107,13 @@ def save_empty_results(results, filename, run_name, overwrite=True, filemode='w'
             run.create_group(name)
             group = run[name]
             for key in results[name]:
-                group[key] = results[name][key]
+                # num_gen_kwargs is a dictionary
+                if name == 'parameters' and key == 'num_gen_kwargs':
+                    group.create_group(key)
+                    for subkey in results[name][key]:
+                        group[key][subkey] = results[name][key][subkey]
+                else:
+                    group[key] = results[name][key]
 
     print 'Saved in {0}\n'.format(filename)
     return run_name
@@ -119,8 +127,10 @@ def update_results(chunk_results, metadata, io, order, iN, nb_bins_sum, params_p
         run = ar[params_py["run_name"]]
         
         # update results_all
-        for key in ['N_generated', 'N_calculated', 'integrated_weight', 'integrated_abs_weight']:
+        for key in ['N_generated', 'N_calculated']:
             run['results_final'][key][io] = chunk_results[key]
+        for key in ['weight', 'abs_weight']:
+            run['results_final'][key][io] = chunk_results[key][order]
         if params_cpp['method'] == 0:
             for key in ['sn']:
                 run['results_final'][key][io] = chunk_results[key][order]       
@@ -132,8 +142,10 @@ def update_results(chunk_results, metadata, io, order, iN, nb_bins_sum, params_p
         
 
         # update results_intermediate
+        for key in ['weight', 'abs_weight']:
+            run['results_inter'][key][io, iN] = chunk_results[key][order]
         if params_cpp['method'] == 0:
-            for key in ['N_generated', 'N_calculated', 'integrated_weight', 'integrated_abs_weight']:
+            for key in ['N_generated', 'N_calculated']:
                 run['results_inter'][key][io, iN] = chunk_results[key]      
             for key in ['sn']:
                 run['results_inter'][key][io, iN] = chunk_results[key][order]  
@@ -156,10 +168,12 @@ def update_results(chunk_results, metadata, io, order, iN, nb_bins_sum, params_p
                 del res_part['nb_kernels']
 
             for key in run['results_final']:
+                if key in ['weight', 'abs_weight']:
+                    continue # Already written
                 if key in ['kernels', 'nb_kernels', 'kernel_diracs']:
                     if key in res_part: # after FFT, nb_kernels are missing
                         run['results_inter'][key][io, ..., iN] = res_part[key][order - 1, ...] 
-                elif key in ['N_generated', 'N_calculated', 'integrated_weight', 'integrated_abs_weight']:
+                elif key in ['N_generated', 'N_calculated']:
                     run['results_inter'][key][io, iN] = res_part[key]        
                 else:
                     run['results_inter'][key][...] = res_part[key]  

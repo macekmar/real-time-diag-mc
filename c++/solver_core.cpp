@@ -103,6 +103,12 @@ solver_core::solver_core(solve_parameters_t const& params)
  // to store old method results
  sn = array<dcomplex, 1>(params.max_perturbation_order + 1);
  sn() = 0;
+
+ // to store weights
+ weight = array<dcomplex, 1>(params.max_perturbation_order + 1);
+ weight() = 0;
+ abs_weight = array<double, 1>(params.max_perturbation_order + 1);
+ abs_weight() = 0;
 };
 
 // --------------------------------
@@ -153,9 +159,9 @@ void solver_core::set_g0(triqs::gfs::gf_view<triqs::gfs::retime, triqs::gfs::mat
  }
 
  if (params.method == 0) {
-  qmc.add_measure(WeightSignMeasure(&config, &pn, &sn), "Weight sign measure");
+  qmc.add_measure(WeightSignMeasure(&config, &pn, &sn, &weight, &abs_weight), "Weight sign measure");
  } else if (params.method == 1 or params.method == 2) {
-  qmc.add_measure(TwoDetKernelMeasure(&config, &kernels_binning, &pn, &kernels, &kernel_diracs, &nb_kernels),
+  qmc.add_measure(TwoDetKernelMeasure(&config, &kernels_binning, &pn, &kernels, &kernel_diracs, &nb_kernels, &weight, &abs_weight),
                   "Kernel measure");
  } else {
   TRIQS_RUNTIME_ERROR << "Cannot recognise the method ID";
@@ -350,6 +356,18 @@ dcomplex solver_core::evaluate_qmc_weight(std::vector<std::tuple<orbital_t, orbi
    TRIQS_RUNTIME_ERROR << "sn array is empty";
   return sn;
  }
+
+array<dcomplex, 1> solver_core::get_weight() const {
+ if (weight.is_empty())
+  TRIQS_RUNTIME_ERROR << "weight array is empty";
+ return weight;
+}
+
+array<double, 1> solver_core::get_abs_weight() const {
+ if (abs_weight.is_empty())
+  TRIQS_RUNTIME_ERROR << "abs_weight array is empty";
+ return abs_weight;
+}
 
  array<dcomplex, 4> solver_core::get_kernels() const {
   if (kernels.is_empty())

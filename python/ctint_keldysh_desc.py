@@ -1,5 +1,5 @@
 # Generated automatically using the command :
-# c++2py.py ../c++/solver_core.hpp -p -mctint_keldysh -o ctint_keldysh --moduledoc "The ctint solver"
+# c++2py.py ../c++/solver_core.hpp -p -mctint_keldysh -o ctint_keldysh --moduledoc "The ctint solver" --libclang_location /usr/lib/llvm-3.8/lib/libclang-3.8.so
 from wrap_generator import *
 
 # The module
@@ -166,6 +166,14 @@ c.add_property(name = "pn",
 
 c.add_property(name = "sn",
                getter = cfunction("array<dcomplex,1> get_sn ()"),
+               doc = """ """)
+
+c.add_property(name = "weight",
+               getter = cfunction("array<dcomplex,1> get_weight ()"),
+               doc = """ """)
+
+c.add_property(name = "abs_weight",
+               getter = cfunction("array<double,1> get_abs_weight ()"),
                doc = """ """)
 
 c.add_property(name = "kernels",

@@ -78,17 +78,15 @@ std::vector<dcomplex> solver_core::evaluate_importance_sampling(std::vector<time
  config.accept_config();
  
  dcomplex weight = config.accepted_weight;
+ model.evaluate(times_l);
+ config.accepted_weight /= std::abs(model.weight);
  if (do_measure) {
-  model.evaluate(times_l);
   if (params.method == 1 ) {
    config.accepted_kernels *= std::abs(config.accepted_weight);
-   config.accepted_kernels /= std::abs(model.weight);
   }
-  if (params.method == 0 ) {
-   config.accepted_weight /= std::abs(model.weight);
-  }
+  measure->accumulate(1);
  }
- measure->accumulate(1);
+
  return {weight, model.weight};
 };
 
@@ -126,9 +124,9 @@ dcomplex solver_core::evaluate_model(std::vector<timec_t> times_l) {
 
 void solver_core::init_measure(int dummy) {
   if (params.method == 1) {
-   measure = new TwoDetKernelMeasure(&config, &kernels_binning, &pn, &kernels, &kernel_diracs, &nb_kernels);
+   measure = new TwoDetKernelMeasure(&config, &kernels_binning, &pn, &kernels, &kernel_diracs, &nb_kernels, &weight, &abs_weight);
   }
   if (params.method == 0) {
-   measure = new WeightMeasure(&config, &pn, &sn);
+   measure = new WeightSignMeasure(&config, &pn, &sn, &weight, &abs_weight);
   }
 }

@@ -104,10 +104,6 @@ def quasi_solver(solver, **params):
 
         
         generator = gen_class(dim=order, seed=seed)
-        weight_rank_sum = np.zeros(1, dtype=np.complex)
-        weight_total_sum = np.zeros(1, dtype=np.complex)
-        abs_weight_rank_sum = np.zeros(1, dtype=np.float)
-        abs_weight_total_sum = np.zeros(1, dtype=np.float)
 
         ### Calculate
         N_generated = 0
@@ -132,16 +128,12 @@ def quasi_solver(solver, **params):
                         l.append(l_proposed)
 
                 # each rank only calculates the rank-th point out of world.size number of them
-                weight, model_weight = solver.evaluate_importance_sampling([float(x) for x in l[world.rank]], True)
-                weight_rank_sum[0] = weight_rank_sum[0] + weight
-                abs_weight_rank_sum[0] = abs_weight_rank_sum[0] + np.abs(weight)
+                solver.evaluate_importance_sampling([float(x) for x in l[world.rank]], True)
 
                 N_calculated += 1
                 ### Process and save results
                 if N_calculated % save_period[io] == 0 or N_calculated == N_vec[iN+1]:
                     solver.collect_sampling_weights(1) # world.barrier is inside measure.collect_results()
-                    world.Reduce(weight_rank_sum, weight_total_sum, MPI.SUM, 0)
-                    world.Reduce(abs_weight_rank_sum, abs_weight_total_sum, MPI.SUM, 0)
                     if world.rank == 0:
                         if N_calculated != N_vec[iN+1]:
                             ratio_calc = (N_calculated - N_vec[iN])/float(N_vec[iN+1] - N_vec[iN])
@@ -150,8 +142,6 @@ def quasi_solver(solver, **params):
                         chunk_results = extract_results(solver, params_cpp)
                         chunk_results['N_generated'] = N_generated
                         chunk_results['N_calculated'] = world.size*N_calculated
-                        chunk_results['integrated_weight'] = weight_total_sum/(world.size*N_calculated)
-                        chunk_results['integrated_abs_weight'] = abs_weight_total_sum/(world.size*N_calculated)
                         # # Normalization
                         #normalize_results(chunk_results, order, N_generated, params_cpp) # Not needed anymore. Why?! Because from commit b479be on we init_measure only once? I guess so...
                         metadata['total_duration'] = (datetime.now() - start_time).total_seconds()
