@@ -13,6 +13,10 @@ Model::Model(std::vector<std::vector<double>> intervals, std::vector<std::vector
 // ============================================================================
 
 std::vector<timec_t> Model::l_to_v(std::vector<timec_t> l) {
+ if (l.size() > interpolators.size())
+ {
+  TRIQS_RUNTIME_ERROR << "Demanded order is too high for the model.";
+ }
  std::vector<timec_t> v;
 
  int i = 0;
@@ -26,11 +30,13 @@ std::vector<timec_t> Model::l_to_v(std::vector<timec_t> l) {
 std::vector<timec_t> Model::v_to_u(std::vector<timec_t> v) {
  std::vector<timec_t> u;
  u.push_back(-v.back());
- for (auto t = std::prev(v.end(), 2); t != v.begin(); --t) {
-  u.emplace_back(u.back() - *t);
+ if (v.size() > 1) {
+  for (auto t = std::prev(v.end(), 2); t != v.begin(); --t) {
+    u.emplace_back(u.back() - *t);
+  }
+  u.emplace_back(u.back() - v.front());
+  std::reverse(u.begin(), u.end());
  }
- u.emplace_back(u.back() - v.front());
- std::reverse(u.begin(), u.end());
  return u;
 }
 
@@ -53,10 +59,15 @@ std::vector<timec_t> Model::u_to_v(std::vector<timec_t> u) {
 }
 
 std::vector<timec_t> Model::v_to_l(std::vector<timec_t> v) {
+if (v.size() > interpolators.size())
+ {
+  TRIQS_RUNTIME_ERROR << "Demanded order is too high for the model.";
+ }
  std::vector<timec_t> l;
  int i = 0;
  for (auto t = v.begin(); t != v.end(); ++t) {
   l.push_back(cdf(i, *t));
+  ++i;
  }
  return l;
 }
