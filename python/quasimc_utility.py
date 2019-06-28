@@ -71,12 +71,15 @@ def process_parameters(params, default_py, default_cpp):
         overwrite = True
 
     # Process random seed
-    if params_py['random_seed'] is False:
+    if params_py['num_gen_seed'] is False:
         seed = generator.default_seed
         if world.rank == 0:
             print "Setting the seed to the default value: %d of the generator: %s" % (generator.default_seed, str(generator))
     else:
-        seed = params_py['random_seed']
+        seed = params_py['num_gen_seed']
+
+    # Procees num_gen_kwargs
+    num_gen_kwargs = params_py['num_gen_kwargs']
 
     # Check if the results file already exist
     if params_py['filemode'] is 'w' and os.path.isfile(params_py['filename']):
@@ -93,7 +96,7 @@ def process_parameters(params, default_py, default_cpp):
     if save_period is None:
         raise ValueError("Parameter save_period is not an int or a list of ints.")
 
-    return t_start, t_g0_max, model, intp_pts, generator, nb_bins_sum, random_shift, seed, save_period, overwrite, params_py, params_cpp
+    return t_start, t_g0_max, model, intp_pts, generator, nb_bins_sum, random_shift, seed, num_gen_kwargs, save_period, overwrite, params_py, params_cpp
 
 
 def fix_cpp_parameters(p_cpp, p_py):

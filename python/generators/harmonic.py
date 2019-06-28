@@ -73,6 +73,7 @@ class HarmonicGenerator():
         """
         self.dim = dim
         self.count = np.ulonglong(seed)
+        self.seed = seed
         self.alpha = np.zeros((dim),dtype=np.longfloat)
         h = phi(dim)
         for i in range(dim):
@@ -98,7 +99,11 @@ class HarmonicGenerator():
         self.count += n
         return np.outer(counts, self.alpha) % 1
 
+    def reset(self):
+        self.count = np.ulonglong(self.seed)
+
     def __iter__(self):
+        self.reset()
         return self
 
     def next(self):

@@ -1,29 +1,48 @@
 import numpy as np
 from ctint_keldysh.generators import *
 
-# Test if generators are reset after reusing them -- we do not want that!
-
-
-for generator in [SobolGenerator, HarmonicGenerator, PseudoGenerator]:
-
+for generator in [SobolGenerator, HarmonicGenerator, PseudoGenerator, LatticeGenerator]:
+  
+    # Each time the generator is used as a python generator it has to be reset
     gs = generator(5,1)
-    x2 = []
+    x = []
     for _ in range(2):
+        x.append([])
         i = 0
-        # The statement below calls gs.__iter__, which can reset gs
         for l in gs:
-            x2.append(l)
             i += 1
+            x[-1].append(l)
             if i >= 10:
                 break
-    x2 = np.array(x2)
+    x = np.array(x)
+
+    # We can also produce numbers by a "manual" loop
+    # Now, generator is not reset! [*]
+    gs = generator(5,1)
+    y = []
+    for _ in range(2):
+        y.append([])
+        for i in range(10):
+            y[-1].append(gs.next())
+            i = 0
+    y = np.array(y)
 
     gs = generator(5,1)
-    x1 = []
-    for i in range(20):
-        x1.append(gs.next())
-    x1 = np.array(x1)
+    z = []
+    i = 0
+    for l in gs:
+        i += 1
+        z.append(l)
+        if i >= 20:
+            break
+    z = np.array(z)
 
-    assert np.allclose(x1, x2)
+    assert np.allclose(x[0], x[1])
+    assert np.allclose(x[0], y[0])
+    assert not np.allclose(y[0], y[1]) # [*] (comment above)
+    assert np.allclose(np.vstack(y), z)
+
+
+    print(str(generator) + " passsed!")
 
 print 'SUCCESS!'

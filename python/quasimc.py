@@ -18,8 +18,9 @@ PARAMS_PYTHON_KEYS['model'] = None
 PARAMS_PYTHON_KEYS['frequency_range'] = False # False to store times, tuple (freq_min, freq_max, nb_freq) to store frequencies
 
 PARAMS_PYTHON_KEYS['num_gen'] = None
+PARAMS_PYTHON_KEYS['num_gen_seed'] = False
+PARAMS_PYTHON_KEYS['num_gen_kwargs'] = {}
 PARAMS_PYTHON_KEYS['random_shift'] = False
-PARAMS_PYTHON_KEYS['random_seed'] = False
 PARAMS_PYTHON_KEYS['filemode'] = 'w' # Filemode for opening the hdf files, 'w' or 'a'
 PARAMS_PYTHON_KEYS['interpolation_points'] = False
 PARAMS_PYTHON_KEYS['keep_cubic_domain'] = True
@@ -37,7 +38,7 @@ def quasi_solver(solver, **params):
 
     start_time = datetime.now()
 
-    t_start, t_g0_max, model_funs, intp_pts, gen_class, nb_bins_sum, random_shift, seed, \
+    t_start, t_g0_max, model_funs, intp_pts, gen_class, nb_bins_sum, random_shift, seed, num_gen_kwargs, \
     save_period, overwrite, params_py, params_cpp = \
                 process_parameters(params, PARAMS_PYTHON_KEYS, PARAMS_CPP_KEYS)
     if params_py['keep_cubic_domain']:
@@ -86,7 +87,7 @@ def quasi_solver(solver, **params):
     metadata['model_integrals'] = model_ints
     metadata['random_shift'] = random_shift
     metadata['random_num_generator'] = str(gen_class)
-    metadata['random_seed'] = seed
+    metadata['num_gen_seed'] = seed
     metadata['sampling_coeff'] = coeff
     metadata['sampling_intervals'] = intervals
     results_to_save['metadata'] = metadata
@@ -103,7 +104,7 @@ def quasi_solver(solver, **params):
             print "Order: {0}\n".format(order)
 
         
-        generator = gen_class(dim=order, seed=seed)
+        generator = gen_class(dim=order, seed=seed, **num_gen_kwargs)
 
         ### Calculate
         N_generated = 0

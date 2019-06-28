@@ -191,6 +191,7 @@ class digitalseq_b2g(object): # EDIT Marjan Macek: remove returnDeepCopy
         return True
 
     def __iter__(self):
+        self.reset()
         return self
 
     def __next__(self):
