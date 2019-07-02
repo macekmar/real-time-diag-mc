@@ -57,9 +57,10 @@ def process_parameters(params, default_py, default_cpp):
             raise Exception("Parameter random_shift has to be 1D numpy array")
         if random_shift.shape[0] < max(params_py['order']):
             raise Exception("Parameter random_shift has to be at least as large as the maximum order.")
-        if params_py['filemode'] is 'w':
-            raise IOError("If using random_shift, filemode has to be 'a'.")
-        overwrite = False
+        if params_py['filemode'] is 'a':
+            overwrite = False
+        else:
+            overwrite = True
 
         regex = re.compile(r'_[0-9]+$')
         name = params_py['run_name']
