@@ -105,8 +105,7 @@ def quasi_solver(solver, **params):
             print "\n=================================================================="
             print "Order: {0}\n".format(order)
 
-        
-        generator = gen_class(dim=order, seed=seed, **num_gen_kwargs)
+        generator = gen_class(order, seed, **num_gen_kwargs)
 
         ### Calculate
         N_generated = 0

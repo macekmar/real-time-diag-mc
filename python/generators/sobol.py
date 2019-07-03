@@ -206,19 +206,19 @@ class digitalseq_b2g(object): # EDIT Marjan Macek: remove returnDeepCopy
         return self.__next__()
 
 class SobolGenerator(digitalseq_b2g):
-    def __init__(self, dim, seed):
-        f = open(os.path.dirname(__file__) + "/sobol_Cs.col")
-        i = 0
-        Cs = []
-        for line in f:
-            Cs.append(list(map(int, line.split())))
-            i += 1
-            if i >= dim:
-                break
-        f.close()
-        super(SobolGenerator, self).__init__(Cs=Cs, kstart=seed+1)
+    def __init__(self, dim, start, **kwargs):
+        if "Cs" not in kwargs.keys():
+            Cs = os.path.dirname(__file__)+"/sobol_Cs.col"
+        else:
+            Cs = kwargs["Cs"]
+            del kwargs["Cs"]
+        if "kstart" in kwargs.keys():
+            raise Exception("`kstart` is the same as the `start` argument.")
+        if "s" in kwargs.keys():
+            raise Exception("`s` is the same as the `dim` argument.")
+        super(SobolGenerator, self).__init__(Cs=Cs, kstart=start, s=dim, **kwargs)
 
     class __metaclass__(type):    
         def __str__(self):
             return "Sobol generator"
-        default_seed = 1
+        default_seed = 0

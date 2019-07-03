@@ -1,4 +1,5 @@
 import numpy as np
+import warnings
 
 def phi(d):
     """
@@ -66,19 +67,31 @@ class HarmonicGenerator():
         Martin Roberts, May 2018.
     
     """
-    def __init__(self,dim,seed):
+    def __init__(self,dim,start, **kwargs):
         """
-        qh = QH(d=1, seed=1<<30) creates a generator for d-dimensional 
+        qh = QH(d=1, start=1<<30) creates a generator for d-dimensional 
         quasi-random vectors based on Harmonious Number Additive Recurrence.    
         """
         self.dim = dim
-        self.count = np.ulonglong(seed)
-        self.seed = seed
+        self.count = np.ulonglong(start)  # Has -1 but -2 is overflow.
+        self.start = start
         self.alpha = np.zeros((dim),dtype=np.longfloat)
+
+        if "m" not in kwargs:
+            m = float("inf")
+        else:
+            m = kwargs["m"]
+            del kwargs["m"]
+        self.n = 2**m
+
+        if len(kwargs) > 0:
+            warnings.warn("HarmonicGenerator does not except any other argument besides the dimension, starting index and number of requested numbers.")
+
+        # We could add custom alpha...
         h = phi(dim)
         for i in range(dim):
             self.alpha[i] = np.power(h,-(i+1))
-
+        
     def rand(self,n=1,out=None):
         """
         out = qh.rand(n=1, out=None) creates/fills out=array((n,d),float) with
@@ -100,17 +113,27 @@ class HarmonicGenerator():
         return np.outer(counts, self.alpha) % 1
 
     def reset(self):
-        self.count = np.ulonglong(self.seed)
+        """Reset this digital sequence to its initial state: next index = kstart."""
+        self.count = np.ulonglong(self.start)
 
     def __iter__(self):
         self.reset()
         return self
 
+    def __next__(self):
+        """Return the next point of the sequence or raise StopIteration."""
+        if self.count < self.n:
+            # The ordering of these two lines is essential.
+            # In __init__ we have self.start == start - 1
+            self.count += 1 
+            return ((self.count - 1) * self.alpha) % 1
+        else:
+            raise StopIteration
+
     def next(self):
-        self.count += 1
-        return ((self.count - 1) * self.alpha) % 1
+        return self.__next__()        
 
     class __metaclass__(type):    
         def __str__(self):
             return "Harmonic generator"
-        default_seed = 1<<30
+        default_seed = 1 << 30

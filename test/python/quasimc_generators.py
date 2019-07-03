@@ -43,6 +43,13 @@ for generator in [SobolGenerator, HarmonicGenerator, PseudoGenerator, LatticeGen
     assert np.allclose(np.vstack(y), z)
 
 
+    # Test parameter m, test if we produce 2**m numbers
+    gs = generator(4, 0, m=5)
+    n = []
+    for pt in gs:
+        n.append(pt)
+    assert np.array(n).shape == (2**5, 4)
+
     print(str(generator) + " passsed!")
 
 print 'SUCCESS!'

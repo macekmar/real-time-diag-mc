@@ -125,10 +125,21 @@ class latticeseq_b2(object):
 
 
 class LatticeGenerator(latticeseq_b2):
-    def __init__(self, dim, seed):
-        super(LatticeGenerator, self).__init__(z=os.path.dirname(__file__)+"/lattice_parameters.txt", s=dim, kstart=seed+1)
+    def __init__(self, dim, start, **kwargs):
+        if "z" not in kwargs.keys():
+            gen_num = exod2_base2_m20_CKN_z
+        else:
+            gen_num = kwargs["z"]
+            del kwargs["z"]
+
+        if "kstart" in kwargs.keys():
+            raise Exception("`kstart` is the same as the `start` argument.")
+        if "s" in kwargs.keys():
+            raise Exception("`s` is the same as the `dim` argument.")
+
+        super(LatticeGenerator, self).__init__(z=gen_num, s=dim, kstart=start, **kwargs)
 
     class __metaclass__(type):    
         def __str__(self):
             return "Lattice rule generator"
-        default_seed = 1
+        default_seed = 0
