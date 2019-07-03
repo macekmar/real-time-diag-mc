@@ -111,14 +111,14 @@ void TwoDetKernelMeasure::accumulate(dcomplex sign) {
     alpha = config.matrices[0].get_y(p);
     alpha.k_index = k_index;
     kernels_binning.add(config.order, alpha,
-                        config.accepted_kernels(p, k_index) / std::abs(config.accepted_weight));
+                        config.accepted_kernels(p, k_index) / std::abs(config.model_weight));
     p++;
    }
    while (p < config.matrices[0].size()) {
     alpha = config.matrices[0].get_y(p);
     alpha.k_index = k_index;
     kernels_binning.add_dirac(config.order, alpha,
-                              config.accepted_kernels(p, k_index) / std::abs(config.accepted_weight));
+                              config.accepted_kernels(p, k_index) / std::abs(config.model_weight));
     p++;
    }
   }

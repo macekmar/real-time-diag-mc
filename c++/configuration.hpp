@@ -152,6 +152,7 @@ class Configuration {
  array<dcomplex, 2> accepted_kernels; // kernels of the last accepted config
  dcomplex current_weight; // weights have to be complex as they are used for sn measure in the oldway method
  dcomplex accepted_weight; // weight of the last accepted config
+ dcomplex model_weight;    // in QuantumMC this is just the accepted weight, in importance sampling this is the value of the pdf
  array<long, 1> nb_cofact;
  array<long, 1> nb_inverse;
 

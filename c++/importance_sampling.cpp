@@ -79,11 +79,10 @@ std::vector<dcomplex> solver_core::evaluate_importance_sampling(std::vector<time
  
  dcomplex weight = config.accepted_weight;
  model.evaluate(times_l);
- config.accepted_weight /= std::abs(model.weight);
+ config.model_weight = model.weight;
+
  if (do_measure) {
-  if (params.method == 1 ) {
-   config.accepted_kernels *= std::abs(config.accepted_weight);
-  }
+  config.accepted_weight /= std::abs(model.weight);
   measure->accumulate(1);
  }
 

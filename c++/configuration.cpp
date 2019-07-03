@@ -366,6 +366,7 @@ void Configuration::accept_config() {
  //if (cycles_trapped > 100) std::cout << "Trapped " << cycles_trapped << " cycles" << std::endl;
  cycles_trapped = 0;
  accepted_weight = current_weight;
+ model_weight = accepted_weight;
  accepted_kernels() = current_kernels();
 }
 
@@ -381,6 +382,7 @@ void Configuration::incr_cycles_trapped() {
  if ((cycles_trapped % params.cycles_trapped_thresh) == 0) {
   evaluate();
   accepted_weight = current_weight;
+  model_weight = accepted_weight;
   accepted_kernels() = current_kernels();
   // do not reset cycles_trapped to 0, its done after acceptation
  }
