@@ -63,7 +63,7 @@ S.set_g0(g0_less[0,0], g0_grea[0,0])
 def fun(u):
     return [np.abs(S.evaluate_qmc_weight([(0,0,float(-x)) for x in c])) for c in u]
 model_funs = [fun for i in range(p_cpp['max_perturbation_order'])]
-integral, inv_cdf = calculate_inv_cdfs(model_funs, t_min=-100, Nt=1001)
+integral, inv_cdf = calculate_inv_cdfs(model_funs, (0,100.0, 1001))
 
 # Set coefficients for solver
 intervals = [inv_cdf[i].x.tolist() for i in range(p_cpp['max_perturbation_order'])]

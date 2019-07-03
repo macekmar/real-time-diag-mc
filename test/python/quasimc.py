@@ -35,7 +35,7 @@ p_py = {'run_name': 'Run',
         'filename': "Test" + str(MPI.COMM_WORLD.size) + ".hdf5",
         'order': [2,3,4],
         'num_gen': SobolGenerator,
-        'num_gen_seed': 0,
+        'num_gen_seed': 1,
         'keep_cubic_domain': False,
         'save_period': 37}
 
@@ -94,7 +94,6 @@ w, Gw = get_GR_w(bin_times_inter, kernels_inter, orders, w_window, w_num_points,
 ind = np.argmin(np.abs(w)) # point closest to 0
 true_val = 0.01563883-0.00562187j # Taken from Corentin's data
 error = np.abs(Gw[0,ind,0,-1] - true_val)/np.abs(true_val) 
-print "\n\nThe error for G2(w=0.0) is %3.2e" % error
 assert error < 1e-2
 
 if MPI.COMM_WORLD.rank == 0:

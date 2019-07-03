@@ -1,3 +1,4 @@
+#!/bin/bash
 # This scipt tests if results for different number of processes but for the
 # same  points are the same
 

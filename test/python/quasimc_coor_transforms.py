@@ -86,3 +86,5 @@ L = np.array([S.u_to_l([x for x in u]) for u in U])
 W = np.array([S.l_to_u([x for x in u]) for u in L])
 U = np.sort(U, axis=1) # ... but it have to be for comparison with W
 assert np.allclose(U,W)
+
+print 'SUCCESS!'
