@@ -77,7 +77,8 @@ def quasi_solver(solver, **params):
     solver.set_model(intervals, coeff)
 
     ### Prepare results
-    results_to_save = create_empty_results(orders, N_vec_orders[0], params_py, params_cpp)
+    solver.collect_sampling_weights(1) # so that we get the shape of  bin_times, kernels, ... Only needed for bin_times
+    results_to_save = create_empty_results(solver, orders, N_vec_orders[0], params_py, params_cpp)
     _add_params_to_results(results_to_save, dict(params_cpp, **params_py))
     metadata = {}
     metadata['total_duration'] = 0.0
@@ -96,6 +97,7 @@ def quasi_solver(solver, **params):
         print "Saving into run_name: %s" % params_py['run_name']
 
     ### Calculation
+    solver.init_measure(1) # Reset before the calculation
     for io, order in enumerate(orders):
         order_start_time = datetime.now()
 
@@ -155,4 +157,7 @@ def quasi_solver(solver, **params):
                 print 'Total run time:', datetime.now() - start_time, ' Order run time:', datetime.now() - order_start_time
                 print 'Total demanded points: %d*%d  Gen. points: %d Calc. pts: %d' % (world.size, N_vec[iN+1],  N_generated, world.size*N_calculated)
 
+    if world.rank == 0:
+        print "\n\n=================================================================="
+        print "Calculation is done!"
     return solver

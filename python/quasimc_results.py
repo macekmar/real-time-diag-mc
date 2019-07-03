@@ -1,7 +1,7 @@
 import numpy as np
 from mpi4py import MPI
 from pytriqs.archive import HDFArchive
-from fourier_transform import fourier_transform, _next_regular
+from fourier_transform import fourier_transform, _next_regular, _get_min_padding
 from solver import reduce_binning, _next_name_gen
 import h5py
 
@@ -18,7 +18,7 @@ def extract_results(solver, params_cpp):
     #res['U'] = np.array(solver.U)[np.newaxis, :]
     return res
 
-def create_empty_results(orders, N_vec, params_py, params_cpp):
+def create_empty_results(solver, orders, N_vec, params_py, params_cpp):
     results = {'results_final': {}, 'results_inter': {}}
     lo = len(orders)
     lN = len(N_vec) - 1 # The first N is 0, we skip it
@@ -41,15 +41,19 @@ def create_empty_results(orders, N_vec, params_py, params_cpp):
         # resutls_part
         results['results_inter']['dirac_times'] = np.zeros((1,lN), dtype=np.float)
         results['results_inter']['kernel_diracs'] = np.zeros((lo, 1, 2, nb_orb, lN), dtype=np.complex)
-
         if params_py['frequency_range'] is False:
             # Reduced binning
-            nb_bins_reduced = nb_bins - nb_bins % params_py['nb_bins_sum']
+            nb_bins_reduced = int(nb_bins / params_py['nb_bins_sum'])
             results['results_inter']['bin_times'] = np.zeros((nb_bins_reduced, ), dtype=np.float)
             results['results_inter']['kernels'] = np.zeros((lo, nb_bins_reduced, 2, nb_orb, lN), dtype=np.complex)
             results['results_inter']['nb_kernels'] = np.zeros((lo, nb_bins_reduced, 2, nb_orb, lN), dtype=np.int)
         else:
-            nb_omega = _next_regular(params_py['frequency_range'][-1])
+            bin_times = solver.bin_times[:]
+            w_window = (params_py['frequency_range'][0], params_py['frequency_range'][1])
+            nb_w = params_py['frequency_range'][-1]
+            w, fw = fourier_transform(bin_times, np.zeros_like(bin_times), w_window, nb_w)
+            nb_omega = len(w)
+
             results['results_inter']['omega'] = np.zeros((nb_omega, ), dtype=np.float)
             results['results_inter']['kernels'] = np.zeros((lo, nb_omega, 2, nb_orb, lN), dtype=np.complex)
     
@@ -168,6 +172,8 @@ def update_results(chunk_results, metadata, io, order, iN, nb_bins_sum, params_p
                 del res_part['nb_kernels']
 
             for key in run['results_final']:
+                if key == 'bin_times' and params_py['frequency_range'] is not False:
+                    continue
                 if key in ['weight', 'abs_weight']:
                     continue # Already written
                 if key in ['kernels', 'nb_kernels', 'kernel_diracs']:
