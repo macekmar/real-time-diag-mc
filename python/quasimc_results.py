@@ -165,7 +165,7 @@ def update_results(chunk_results, metadata, io, order, iN, nb_bins_sum, params_p
                 nb_w = params_py['frequency_range'][2]
                 w, kernels_w = fourier_transform(res_part['bin_times'], res_part['kernels'],
                                                 w_window, nb_w, axis=1)
-                res_part['omega'] = w
+                run['results_inter']['omega'][...] = w
                 res_part['kernels'] = kernels_w
 
                 del res_part['bin_times']
