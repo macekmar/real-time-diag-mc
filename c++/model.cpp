@@ -27,18 +27,16 @@ std::vector<timec_t> Model::l_to_v(std::vector<timec_t> l) {
  return v;
 }
 
+
 std::vector<timec_t> Model::v_to_u(std::vector<timec_t> v) {
  std::vector<timec_t> u;
- u.push_back(-v.back());
- if (v.size() > 1) {
-  for (auto t = std::prev(v.end(), 2); t != v.begin(); --t) {
-    u.emplace_back(u.back() - *t);
-  }
-  u.emplace_back(u.back() - v.front());
-  std::reverse(u.begin(), u.end());
+ u.push_back(-v.front());
+ for (auto t = std::next(v.begin()); t != v.end(); ++t) {
+  u.emplace_back(u.back() - *t);
  }
  return u;
 }
+
 
 std::vector<timec_t> Model::l_to_u(std::vector<timec_t> l) {
  return v_to_u(l_to_v(l));
@@ -47,16 +45,18 @@ std::vector<timec_t> Model::l_to_u(std::vector<timec_t> l) {
 // Reverse
 
 std::vector<timec_t> Model::u_to_v(std::vector<timec_t> u) {
- std::sort(u.begin(), u.end(), std::less<timec_t>());
+ std::sort(u.begin(), u.end(), std::greater<timec_t>());
+ std::cout << std::endl;
  std::vector<timec_t> v;
+ v.push_back(-*u.begin());
  auto prev = u.begin();
-  for (auto t = std::next(u.begin()); t != u.end(); ++t) {
-  v.push_back(*t - *prev);
+ for (auto t = std::next(u.begin()); t != u.end(); ++t) {
+  v.push_back(*prev - *t);
   prev = t;
  }
- v.push_back(-*std::prev(u.end()));
  return v;
 }
+
 
 std::vector<timec_t> Model::v_to_l(std::vector<timec_t> v) {
 if (v.size() > interpolators.size())
