@@ -600,7 +600,7 @@ def solve(**params):
 
         nb_cycles_left = params_py['nb_cycles']
         # Fast hack for intermediate saves:
-        if params_py['nb_save']:
+        if params_py['nb_save'] is not False:
             ind_save = 0
             nb_cycles_per_subrun = params_py['nb_save'][ind_save]
             params_py['nb_save'].append(int(1e12))
@@ -621,7 +621,7 @@ def solve(**params):
                 results_to_save = merge_results(results, subrun_results)
                 add_cn_to_results(results_to_save)
                 _add_params_to_results(results_to_save, params_all)
-                if params_py['nb_save']:
+                if params_py['nb_save'] is not False:
                     filename = params_py['filename'][:]
                     ind_extension = filename[::-1].find(".") # Assume last . is for the extension
                     ind_extension = -ind_extension - 1
