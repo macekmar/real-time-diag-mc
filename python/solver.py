@@ -434,7 +434,8 @@ PARAMS_PYTHON_KEYS = {'staircase': None,
                       'g0_lesser': None,
                       'g0_greater': None,
                       'size_part': 1,
-                      'nb_bins_sum': 1}
+                      'nb_bins_sum': 1,
+                      'nb_save': False}
 
 ### The following params should be the same as in parameters.hpp (and the default values too !)
 PARAMS_CPP_KEYS = {'creation_ops': None,
@@ -598,11 +599,13 @@ def solve(**params):
             print '\n* Main runs'
 
         nb_cycles_left = params_py['nb_cycles']
+        # Fast hack for intermediate saves:
+        if params_py['nb_save']:
+            nb_cycles_per_subrun = params_py['nb_save']
         while nb_cycles_left > 0:
             nb_cycles_todo = min(nb_cycles_per_subrun, nb_cycles_left)
             S.run(nb_cycles_todo, True)
             nb_cycles_left -= nb_cycles_todo
-
             subrun_results = _extract_results(S, res_structure, params_all['size_part'],
                                               params_all['nb_bins_sum'])
 
@@ -613,7 +616,12 @@ def solve(**params):
                 results_to_save = merge_results(results, subrun_results)
                 add_cn_to_results(results_to_save)
                 _add_params_to_results(results_to_save, params_all)
-                _save_in_file(results_to_save, params_py['filename'], params_py['run_name'])
+                filename = params_py['filename'][:]
+                if params_py['nb_save']:
+                    ind_extension = filename[::-1].find(".") # Assume last . is for the extension
+                    ind_extension = -ind_extension - 1
+                    filename = filename[:ind_extension] + "_" + "%d" % (params_py['nb_cycles'] - nb_cycles_left)  + filename[ind_extension:]
+                _save_in_file(results_to_save, filename, params_py['run_name'])
 
         if world.rank == 0:
             results = results_to_save
