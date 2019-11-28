@@ -603,7 +603,8 @@ def solve(**params):
         if params_py['nb_save'] is not False:
             ind_save = 0
             nb_cycles_per_subrun = params_py['nb_save'][ind_save]
-            params_py['nb_save'].append(int(1e12))
+            params_py['nb_save'] = np.append(params_py['nb_save'], int(1e12))
+            params_py['nb_save'] = np.sort(params_py['nb_save'])
             print params_py['nb_save']
         while nb_cycles_left > 0:
             nb_cycles_todo = min(nb_cycles_per_subrun, nb_cycles_left)
