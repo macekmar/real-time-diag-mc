@@ -616,12 +616,14 @@ def solve(**params):
                 results_to_save = merge_results(results, subrun_results)
                 add_cn_to_results(results_to_save)
                 _add_params_to_results(results_to_save, params_all)
-                filename = params_py['filename'][:]
                 if params_py['nb_save']:
+                    filename = params_py['filename'][:]
                     ind_extension = filename[::-1].find(".") # Assume last . is for the extension
                     ind_extension = -ind_extension - 1
-                    filename = filename[:ind_extension] + "_" + "%d" % (params_py['nb_cycles'] - nb_cycles_left)  + filename[ind_extension:]
-                _save_in_file(results_to_save, filename, params_py['run_name'])
+                    filename = filename[:ind_extension] + "_" "%d" % k + "_" + "%d" % (params_py['nb_cycles'] - nb_cycles_left)  + filename[ind_extension:]
+                    _save_in_file(results_to_save, filename, params_py['run_name'])           
+                else:
+                    _save_in_file(results_to_save, params_py['filename'][:], params_py['run_name'])           
 
         if world.rank == 0:
             results = results_to_save
