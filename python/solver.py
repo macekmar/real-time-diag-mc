@@ -10,6 +10,7 @@ from utility import reduce_binning, pad_along_axis
 import warnings
 from copy import deepcopy
 from results import merge_results, add_cn_to_results
+from intermediate_saving import *
 
 def variance_error(data, comm=MPI.COMM_WORLD, weight=None, unbiased=True):
     """
@@ -516,6 +517,14 @@ def solve(**params):
     else:
         orders = [params_cpp['max_perturbation_order']]
 
+    ### manage intermediate saving
+    if params_py['nb_save'] is not False:
+        assert params_cpp['method'] == 0
+        assert params_py['staircase'] == 1
+        params_py['nb_save'] = np.append(params_py['nb_save'], int(1e12))
+        params_py['nb_save'] = np.sort(params_py['nb_save'])
+        N_save = params_py['nb_save']
+
     ### result structure
     results = {}
     if params_cpp['method'] != 0:
@@ -526,15 +535,22 @@ def solve(**params):
 
     params_cpp['U'] = [params_cpp['U']]
 
-    ### loop over orders
-    for k in orders:
+    if params_py['nb_save'] is not False:
+        results_intermediate = create_empty_results(np.append([0], orders), N_save, params_py, params_cpp)
+        # metadata is already created in create_empty_results
+        _add_params_to_results(results_intermediate, dict(params_cpp, **params_py))
         if world.rank == 0:
-            print "---------------- Order", k, "----------------"
+            save_empty_results(results_intermediate, "test.hdf5", params_py["run_name"])
 
-        if k == 1: # at order 1, force disable double moves
+    ### loop over orders
+    for order in orders:
+        if world.rank == 0:
+            print "---------------- Order", order, "----------------"
+
+        if order == 1: # at order 1, force disable double moves
             params_cpp['w_dbl'] = 0.
-        params_cpp['max_perturbation_order'] = k
-        while len(params_cpp['U']) < k - params_cpp['min_perturbation_order']:
+        params_cpp['max_perturbation_order'] = order
+        while len(params_cpp['U']) < order - params_cpp['min_perturbation_order']:
             params_cpp['U'].append(params_cpp['U'][-1])
         S = SolverCore(**params_cpp)
         S.set_g0(params_py['g0_lesser'], params_py['g0_greater'])
@@ -558,7 +574,7 @@ def solve(**params):
             ### prepare new solver taking new U into account
             if world.rank == 0:
                 print 'Changing U: {0} => {1} (+-{2})'.format(S.U[-1], new_U, new_U_error)
-            params_cpp['U'] = [new_U] * (k - params_cpp['min_perturbation_order']) # is also used as a first guess U in next order
+            params_cpp['U'] = [new_U] * (order - params_cpp['min_perturbation_order']) # is also used as a first guess U in next order
             S = SolverCore(**params_cpp)
             S.set_g0(params_py['g0_lesser'], params_py['g0_greater'])
 
@@ -598,22 +614,20 @@ def solve(**params):
         if world.rank == 0:
             print '\n* Main runs'
 
+        ind_save = 0
         nb_cycles_left = params_py['nb_cycles']
-        # Fast hack for intermediate saves:
         if params_py['nb_save'] is not False:
             ind_save = 0
-            nb_cycles_per_subrun = params_py['nb_save'][ind_save]
-            params_py['nb_save'] = np.append(params_py['nb_save'], int(1e12))
-            params_py['nb_save'] = np.sort(params_py['nb_save'])
-            print params_py['nb_save']
+            nb_cycles_per_subrun = N_save[ind_save]
         while nb_cycles_left > 0:
             nb_cycles_todo = min(nb_cycles_per_subrun, nb_cycles_left)
             S.run(nb_cycles_todo, True)
             nb_cycles_left -= nb_cycles_todo
             subrun_results = _extract_results(S, res_structure, params_all['size_part'],
                                               params_all['nb_bins_sum'])
-            ind_save += 1
-            nb_cycles_per_subrun = params_py['nb_save'][ind_save] - params_py['nb_save'][ind_save-1]
+            if params_py['nb_save'] is not False:
+                ind_save += 1
+                nb_cycles_per_subrun = N_save[ind_save] - N_save[ind_save-1]
 
             if world.rank == 0:
                 print 'pn (all nodes):', S.pn # results have been gathered previously
@@ -623,11 +637,13 @@ def solve(**params):
                 add_cn_to_results(results_to_save)
                 _add_params_to_results(results_to_save, params_all)
                 if params_py['nb_save'] is not False:
-                    filename = params_py['filename'][:]
-                    ind_extension = filename[::-1].find(".") # Assume last . is for the extension
-                    ind_extension = -ind_extension - 1
-                    filename = filename[:ind_extension] + "_" "%d" % k + "_" + "%d" % (params_py['nb_cycles'] - nb_cycles_left)  + filename[ind_extension:]
-                    _save_in_file(results_to_save, filename, params_py['run_name'])           
+                    # filename = params_py['filename'][:]
+                    # ind_extension = filename[::-1].find(".") # Assume last . is for the extension
+                    # ind_extension = -ind_extension - 1
+                    # filename = filename[:ind_extension] + "_" "%d" % order + "_" + "%d" % (params_py['nb_cycles'] - nb_cycles_left)  + filename[ind_extension:]
+                    # _save_in_file(results_to_save, filename, params_py['run_name'])      
+
+                    update_results(subrun_results, order, ind_save, params_py, params_cpp)  
                 else:
                     _save_in_file(results_to_save, params_py['filename'][:], params_py['run_name'])           
 
