@@ -527,7 +527,7 @@ def solve(**params):
             N_save = N_save[1:]
         params_py['nb_cycles'] = N_save[-1]
         if world.rank == 0:
-            print N_save
+            print "Saving at: ", N_save
         params_py['nb_save'] = N_save #np.append(N_save, int(1e12))
 
     ### result structure
@@ -628,7 +628,6 @@ def solve(**params):
             nb_cycles_todo = min(nb_cycles_per_subrun, nb_cycles_left)
             S.run(nb_cycles_todo, True)
             nb_cycles_left -= nb_cycles_todo
-            print ind_save, nb_cycles_left
             subrun_results = _extract_results(S, res_structure, params_all['size_part'],
                                               params_all['nb_bins_sum'])
             if params_py['nb_save'] is not False and nb_cycles_left > 0:
