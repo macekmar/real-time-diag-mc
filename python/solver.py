@@ -540,7 +540,7 @@ def solve(**params):
         # metadata is already created in create_empty_results
         _add_params_to_results(results_intermediate, dict(params_cpp, **params_py))
         if world.rank == 0:
-            save_empty_results(results_intermediate, "test.hdf5", params_py["run_name"])
+            save_empty_results(results_intermediate, params_py["filename"], params_py["run_name"])
 
     ### loop over orders
     for order in orders:

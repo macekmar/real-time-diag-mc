@@ -82,7 +82,7 @@ def save_empty_results(results, filename, run_name, overwrite=True, filemode="w"
 def update_results(chunk_results, order, iN, params_py, params_cpp):
     assert MPI.COMM_WORLD.rank == 0
 
-    with h5py.File("test.hdf5", "a") as ar:  #HDF does't have r+ mode    
+    with h5py.File(params_py["filename"], "a") as ar:  #HDF does't have r+ mode    
 
         run = ar[params_py["run_name"]]
         
