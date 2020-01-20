@@ -521,9 +521,14 @@ def solve(**params):
     if params_py['nb_save'] is not False:
         assert params_cpp['method'] == 0
         assert params_py['staircase'] == 1
-        params_py['nb_save'] = np.append(params_py['nb_save'], int(1e12))
-        params_py['nb_save'] = np.sort(params_py['nb_save'])
         N_save = params_py['nb_save']
+        N_save = np.sort(N_save)
+        if N_save[0] == 0:
+            N_save = N_save[1:]
+        params_py['nb_cycles'] = N_save[-1]
+        if world.rank == 0:
+            print N_save
+        params_py['nb_save'] = N_save #np.append(N_save, int(1e12))
 
     ### result structure
     results = {}
@@ -623,11 +628,13 @@ def solve(**params):
             nb_cycles_todo = min(nb_cycles_per_subrun, nb_cycles_left)
             S.run(nb_cycles_todo, True)
             nb_cycles_left -= nb_cycles_todo
+            print ind_save, nb_cycles_left
             subrun_results = _extract_results(S, res_structure, params_all['size_part'],
                                               params_all['nb_bins_sum'])
-            if params_py['nb_save'] is not False:
+            if params_py['nb_save'] is not False and nb_cycles_left > 0:
                 ind_save += 1
                 nb_cycles_per_subrun = N_save[ind_save] - N_save[ind_save-1]
+                
 
             if world.rank == 0:
                 print 'pn (all nodes):', S.pn # results have been gathered previously

@@ -89,8 +89,6 @@ def update_results(chunk_results, order, iN, params_py, params_cpp):
         if params_cpp['method'] == 0:
             run['results']['sn'][iN, order-1, :order+1,:] = chunk_results['results_part']['sn']
             run['results']['pn'][iN, order-1, :order+1,:] = chunk_results['results_part']['pn']
-            # print "-------------------------------------"
-            # print chunk_results['results_part']['U']
             run['results']['U'][order-1,:order] = chunk_results['results_part']['U']
 
             run['metadata']['duration'][0] = run['metadata']['duration'][0] +  chunk_results['metadata']['duration']
