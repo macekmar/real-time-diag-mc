@@ -630,11 +630,7 @@ def solve(**params):
             nb_cycles_left -= nb_cycles_todo
             subrun_results = _extract_results(S, res_structure, params_all['size_part'],
                                               params_all['nb_bins_sum'])
-            if params_py['nb_save'] is not False and nb_cycles_left > 0:
-                ind_save += 1
-                nb_cycles_per_subrun = N_save[ind_save] - N_save[ind_save-1]
-                
-
+          
             if world.rank == 0:
                 print 'pn (all nodes):', S.pn # results have been gathered previously
                 print 'run time:', datetime.now() - start_time
@@ -653,6 +649,10 @@ def solve(**params):
                 else:
                     _save_in_file(results_to_save, params_py['filename'][:], params_py['run_name'])           
 
+            if params_py['nb_save'] is not False and nb_cycles_left > 0:
+                ind_save += 1
+                nb_cycles_per_subrun = N_save[ind_save] - N_save[ind_save-1]
+          
         if world.rank == 0:
             results = results_to_save
 
