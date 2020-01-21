@@ -147,6 +147,9 @@ def _collect_results(solver, res_structure, size_part):
                 if comm.rank == 0:
                     output[key] = change_axis(np.array(data))
 
+    if is_part_master:
+        part_comm.Free()
+
     if comm.rank == 0:
         ### prepare pn and U for merge, add axis for subruns
         output['U'] = np.array(output['U'], dtype=float)[np.newaxis, ...]
