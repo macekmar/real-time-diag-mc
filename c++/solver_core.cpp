@@ -1,6 +1,7 @@
 #include "./solver_core.hpp"
 #include "./moves.hpp"
 #include "./det_manip.hpp"
+#include <mpi.h>
 
 namespace mpi = triqs::mpi;
 using triqs::arrays::range;
@@ -276,7 +277,9 @@ bool solver_core::collect_results(int size_partition) {
   // collect within these partitions
   qmc.collect_results(part);
   cum_qmc_duration = mpi::mpi_all_reduce(qmc_duration, part);
-  return (part.rank() == 0) and (color < nb_parts);
+  int rank = part.rank();
+  part.free();
+  return (rank == 0) and (color < nb_parts);
  }
 }
 
