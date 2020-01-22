@@ -8,12 +8,15 @@ from copy import deepcopy
 def create_empty_results(orders, N_vec, params_py, params_cpp):
     lo = len(orders)
     lN = len(N_vec)
-    lc = MPI.COMM_WORLD.size
+    size_part = min(MPI.COMM_WORLD.size, params_py['size_part'])
 
+    if params_py['size_part'] == 1:
+        raise Exception("Parameter size_part cannot be 1. But you can run on one core.")
     results = {'results': {}}
     if params_cpp['method'] == 0:
-        results['results']['sn'] = np.zeros((lN, lo-1, lo, lc), dtype=np.complex)
-        results['results']['pn'] = np.zeros((lN, lo-1, lo, lc), dtype=np.int)
+        
+        results['results']['sn'] = np.zeros((lN, lo-1, lo, size_part), dtype=np.complex)
+        results['results']['pn'] = np.zeros((lN, lo-1, lo, size_part), dtype=np.int)
         results['results']['U'] = np.zeros((lo-1, lo-1), dtype=np.float)
 
         results['metadata'] = {}
