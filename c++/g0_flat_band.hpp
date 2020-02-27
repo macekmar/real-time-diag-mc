@@ -1,5 +1,6 @@
 #pragma once
 #include <triqs/gfs.hpp>
+#include <boost/math/special_functions/expint.hpp>
 
 using namespace triqs::gfs;
 
@@ -94,12 +95,41 @@ std::pair<gf_view<refreq>, gf_view<refreq>> make_g0_flat_band_freq(double beta, 
 std::pair<gf_view<retime>, gf_view<retime>> make_g0_flat_band(double beta, double Gamma, double tmax_gf0,
                                                               int Nt_gf0, double epsilon_d, double muL,
                                                               double muR) {
+//  auto g0_w = make_g0_flat_band_freq(beta, Gamma, tmax_gf0, Nt_gf0, epsilon_d, muL, muR);
 
- auto g0_w = make_g0_flat_band_freq(beta, Gamma, tmax_gf0, Nt_gf0, epsilon_d, muL, muR);
+//  // The non interacting GF in time, obtained from the exact expression in frequency
+//  auto g0_lesser_t = make_gf_from_inverse_fourier(g0_w.first);
+//  auto g0_greater_t = make_gf_from_inverse_fourier(g0_w.second);
 
- // The non interacting GF in time, obtained from the exact expression in frequency
- auto g0_lesser_t = make_gf_from_inverse_fourier(g0_w.first);
- auto g0_greater_t = make_gf_from_inverse_fourier(g0_w.second);
+//  return {g0_lesser_t, g0_greater_t};
 
- return {g0_lesser_t, g0_greater_t};
+    auto const time_mesh = gf_mesh<retime>({-tmax_gf0, tmax_gf0, Nt_gf0});
+    auto g0_lesser_up = gf<retime>{time_mesh, {2, 2}};
+    auto g0_greater_up = gf<retime>{time_mesh, {2, 2}}; 
+
+    auto const g0_lesser_values = [Gamma](double time) -> dcomplex {
+        using namespace boost::math;
+        using namespace boost::math::double_constants;
+
+        if (time == 0.0) {
+        return 0.5_j;
+        }
+        auto Gt = Gamma * time;
+        auto real_part = (std::exp(Gt) * expint(-Gt) - std::exp(-Gt) * expint(Gt)) / (2 * pi);
+        return real_part + 0.5_j * std::exp(-std::abs(Gt));
+    };
+
+    dcomplex val = 0.;
+    for (auto t : time_mesh) {
+        val = g0_lesser_values(t);
+        g0_lesser_up[t](0, 0) = val;
+        g0_greater_up[t](0, 0) = std::conj(val);
+        g0_lesser_up[t](0, 1) = 0.0;
+        g0_lesser_up[t](1, 0) = 0.0;
+        g0_lesser_up[t](1, 1) = 0.0;
+        g0_greater_up[t](0, 1) = 0.0;
+        g0_greater_up[t](1, 0) = 0.0;
+        g0_greater_up[t](1, 1) = 0.0;
+    }
+return {g0_lesser_up, g0_greater_up};
 }
